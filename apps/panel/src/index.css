@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Tokens: brief UX/UI §4.3 */
+@theme {
+  --color-brand: #1e2124;
+  --color-pattern: #2c3a5e;
+  --color-navy: #1f2a4a;
+  --color-accent: #ff7a3d;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f1f1;
+  --color-surface-card: #e9e6df;
+  --color-text-primary: #1e2124;
+  --color-text-secondary: #6b6f76;
+  --color-success: #1f9d55;
+  --color-error: #d93a3a;
+  --color-warning: #e0a100;
+}
+
+body {
+  @apply bg-surface-muted text-text-primary;
+}

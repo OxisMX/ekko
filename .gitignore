@@ -1,0 +1,15 @@
+node_modules
+dist
+.expo
+apps/mobile/ios
+apps/mobile/android
+.env*
+!.env.example
+supabase/.temp
+supabase/.branches
+
+# graphify: keep graph.json, graph.html, GRAPH_REPORT.md
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/.graphify_*
