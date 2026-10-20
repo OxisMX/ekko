@@ -110,7 +110,7 @@ gantt
 
 | Sprint | Objetivo | R1 Diseño | R2 Móvil | R3 Panel | R4 Backend/DevOps |
 |---|---|---|---|---|---|
-| S2 | Registro e inicio de sesión | Detalle de comercio, tarjeta y estados (alta fidelidad). | A-02, A-03, A-04, A-06 (US-01, US-02 con Google, US-03). | P-01 completo, manejo de sesión y rol. | `complete_profile`, `get_my_profile`, `register_device`; SMTP; Edge Function `email-verification` (si SP-7 lo exige). |
+| S2 | Registro e inicio de sesión | Detalle de comercio, tarjeta y estados (alta fidelidad). | A-02, A-03, A-04, A-06 (US-01, US-02 con Google, US-03). | P-01 completo, manejo de sesión y rol. | `complete_profile`, `get_my_profile`, `register_device`; SMTP; plantilla OTP en español y rate limit de Auth (ADR-14). |
 | S3 | Verificación y catálogo | Escáner, resultado de visita, permisos. | Apple Sign-In; A-05 y banner (F-04); A-07 Explorar con paginación y búsqueda. | Página W-01 y `.well-known`; esqueleto de navegación administrativa. | `list_merchants`; RLS de catálogo; script `onboard-merchant.ts` (versión 1). |
 | S4 | Detalle de comercio | Mis Tarjetas y cupones. | A-08 a A-11 (pestañas, encabezado compacto); caché de imágenes. | Modo Caja: generar QR con cuenta regresiva (US-19) sin Realtime. | `get_merchant_detail`, `add_card`, `app.roll_cycle`; `generate_visit_qr`. |
 | S5 | Registro de visita | Celebraciones y animaciones de sello. | A-13, A-14, A-15 (F-08); enlaces universales (F-09). | Realtime y respaldo con `get_qr_status` (F-21). | `claim_visit`, `app.grant_stamps`, índice diario; pruebas de concurrencia. |
