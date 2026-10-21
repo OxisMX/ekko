@@ -33,3 +33,23 @@ jobs:
       # Plan QA §6.2: the committed types must match the migrations.
       - run: supabase gen types typescript --local --schema public > packages/shared/src/database.types.ts
       - run: git diff --exit-code packages/shared/src/database.types.ts
+
+  e2e-panel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      # WHY: the panel E2E only needs Auth, PostgREST, Storage and Realtime; skipping the rest saves minutes.
+      - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+      - run: supabase db reset
+      - run: echo "E2E_SUPABASE_ANON_KEY=$(supabase status -o json 2>/dev/null | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
+      - run: pnpm --filter @ekko/panel exec playwright install --with-deps chromium
+      - run: pnpm --filter @ekko/panel exec playwright test --project=chromium

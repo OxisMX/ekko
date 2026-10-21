@@ -33,6 +33,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // WHY: F-05 recovery links come back as ?code= (no tokens in the URL); the verifier stays in
+    // this device's encrypted storage. Password sign-in and signUp are unaffected.
+    flowType: "pkce",
   },
 });
 

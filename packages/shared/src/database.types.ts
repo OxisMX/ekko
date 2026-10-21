@@ -351,8 +351,17 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "get_merchant_session":
+            "complete_profile":
+{ Args: { "p_birth_date": string,"p_first_name": string,"p_last_name": string }; Returns: Json
+                           },
+"get_merchant_session":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_my_profile":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"register_device":
+{ Args: { "p_device_id_digest": string,"p_expo_push_token"?: string,"p_platform": Database["public"]['Enums']["device_platform"],"p_push_enabled"?: boolean }; Returns: Json
                            }
           }
           Enums: {

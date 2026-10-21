@@ -578,6 +578,7 @@ Las RPC devuelven un código estable; la interfaz traduce cada código a un mens
 | E-20 | Correo ya registrado | F-02 | Ya existe una cuenta con este correo. | Iniciar sesión o recuperar contraseña. |
 | E-21 | Error del proveedor social | F-03 | No pudimos conectar con Google/Apple. | Reintentar u otro método. |
 | E-22 | Error de imagen | F-24 a F-26 | No pudimos procesar la imagen. | Otra imagen o reintentar. |
+| E-23 | Datos inválidos (`details.field` indica el campo) | F-02, F-03 | Revisa los datos marcados. | Corregir el campo. |
 | E-99 | Error inesperado | Global | Algo salió mal. | Reintentar; el error se reporta a Sentry. |
 
 ### 7.1 Reglas generales de recuperación

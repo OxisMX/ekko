@@ -134,7 +134,7 @@ Las versiones exactas se fijan en el repositorio al iniciar el proyecto, usando 
 | Sesión segura | `expo-secure-store` como almacenamiento de sesión de Supabase | — |
 | Escáner QR | `expo-camera` (escaneo de códigos integrado) | Sin librerías de escaneo adicionales. |
 | Imágenes | `expo-image` | Caché en disco; tope de 20 MB sujeto al spike SP-1. |
-| Login con Google | Google Sign-In nativo con intercambio de ID token en Supabase | `@react-native-google-signin/google-signin` (Original) + `signInWithIdToken` (SP-4). Plan B: `signInWithOAuth` + `expo-web-browser` (PKCE). |
+| Login con Google | `supabase.auth.signInWithOAuth` + `expo-web-browser` (PKCE) | ADR-15: conserva la verificación de nonce y evita un módulo nativo de Google. |
 | Login con Apple | `expo-apple-authentication` | Obligatorio en iOS al ofrecer login social. |
 | Notificaciones | `expo-notifications` | Registro del Expo Push Token por dispositivo. |
 | Identificador de dispositivo | `expo-application` (ID de proveedor en iOS, Android ID en Android) | Se envía solo como hash SHA-256 con sal del proyecto (RN-07). |
@@ -463,7 +463,7 @@ Resultados y evidencia de cada spike en docs/ekko_spikes.md.
 | SP-1 | ¿`expo-image` permite limitar la caché en disco a 20 MB? | Prueba en Android e iOS con medición del directorio. | Limpieza propia al iniciar la app. | Aplicado: tope nativo en iOS y purga al iniciar en ambas plataformas. |
 | SP-2 | ¿Los enlaces universales funcionan servidos desde Cloudflare Pages en ambos sistemas? | QR escaneado con la cámara nativa abre la app en iOS y Android. | Esquema propio (`ekko://`) más página `/v/:token`. | Diseño cerrado; verificación pendiente de DEP-01 y del primer deploy. |
 | SP-3 | Revocación de token de Apple desde Edge Function. | Revocación exitosa en staging. | Revocación manual documentada. | Diseño cerrado; verificación en staging pendiente de DEP-01. |
-| SP-4 | Librería de Google Sign-In compatible con Expo y Supabase. | Login completo en Android e iOS en dev client. | `signInWithOAuth` + `expo-web-browser` (PKCE). | Librería elegida; nonce pendiente de decisión. |
+| SP-4 | Librería de Google Sign-In compatible con Expo y Supabase. | Login completo en Android e iOS en dev client. | `signInWithOAuth` + `expo-web-browser` (PKCE). | Resuelto (ADR-15): se adopta el plan B, OAuth web con PKCE. |
 | SP-5 | Codificación WebP en Safari de iPad. | Variantes WebP generadas correctamente. | Respaldo a JPEG comprimido. | Resuelto; WebKit/iPad real pendiente (TC-161). |
 | SP-6 | Tamaño base de la app con las dependencias elegidas. | Tamaño de descarga estimado menor a 25 MB. | Revisión de dependencias. | Bundle JS 2.6 MB; binario pendiente de EAS (DEP-05). |
 | SP-7 | ¿Supabase Auth permite sesión con correo sin confirmar y confirmación posterior? | Usuario nuevo registra un sello sin verificar y verifica después. | Verificación propia con Edge Function (ADR-12). | Resuelto: OTP nativo + trigger (ADR-14). |

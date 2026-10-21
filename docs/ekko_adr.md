@@ -28,6 +28,7 @@
 | ADR-12 | Verificación de correo propia | Obsoleto (SP-7; ver ADR-14) |
 | ADR-13 | Reloj controlable para pruebas | Aceptado |
 | ADR-14 | Verificación de correo con OTP nativo de Supabase y trigger | Aceptado |
+| ADR-15 | Login social: Google por OAuth web con PKCE y Apple nativo con nonce | Aceptado |
 
 Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obsoleto**.
 
@@ -316,6 +317,29 @@ Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obs
 - Positivas: sin Edge Function, tabla de tokens ni RPC propias; rate limit y plantillas nativos.
 - Negativas: dependencia de la tabla interna `auth.mfa_amr_claims` de GoTrue; todo correo de Auth comparte el rate limit de Supabase con SMTP propio (30/h por defecto); la vigencia del OTP es `otp_expiry` de Auth (1 h).
 - Mitigación: prueba pgTAP de contrato sobre las columnas `session_id` y `authentication_method` de `auth.mfa_amr_claims`; ajustar Authentication → Rate Limits antes del lanzamiento.
+
+---
+
+## ADR-15 — Login social: Google por OAuth web con PKCE y Apple nativo con nonce
+
+**Estado:** Aceptado · **Fecha:** 21/10/2026 · **Origen:** docs/ekko_spikes.md SP-4, decisión del PO
+
+**Contexto.** SP-4 encontró que la librería nativa gratuita de Google (`@react-native-google-signin` Original) no permite pasar nonce, por lo que exigiría activar "Skip nonce check" en Supabase y perder la protección contra reutilización de un `id_token` robado. La versión Universal sí lo permite, pero es de pago y aún no declara soporte para Expo SDK 58.
+
+**Decisión.**
+- Google: `supabase.auth.signInWithOAuth({ provider: 'google' })` con `expo-web-browser` (`openAuthSessionAsync`) y flujo PKCE; la sesión se obtiene con `exchangeCodeForSession` al volver a la app. Se mantiene la verificación de nonce en Supabase.
+- Apple (solo iOS, obligatorio al ofrecer login social): `expo-apple-authentication` nativo + `signInWithIdToken` con nonce (`sha256` del nonce crudo a Apple, nonce crudo a Supabase).
+
+**Alternativas consideradas.**
+| Alternativa | Motivo de descarte |
+|---|---|
+| Librería Original + "Skip nonce check" | Debilita la seguridad del login. |
+| Librería Universal (de pago) | Costo de licencia y registro privado de npm en CI; sin soporte declarado para SDK 58. |
+
+**Consecuencias.**
+- Positivas: sin costo; sin módulo nativo de Google (menos peso de app, OD-6); Google funciona también en Expo Go; seguridad completa del nonce.
+- Negativas: Google abre una hoja de navegador en lugar de la hoja nativa; la pantalla de consentimiento muestra el dominio `<ref>.supabase.co` salvo con dominio personalizado (add-on de pago).
+- Pendiente: proyecto de Google Cloud con client ID web (DEP-02) y cuenta de Apple Developer (DEP-01); `redirectTo` de la app agregado a `additional_redirect_urls`.
 
 ---
 
