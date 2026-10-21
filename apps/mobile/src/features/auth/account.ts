@@ -3,7 +3,9 @@ import { AuthApiError } from "@supabase/supabase-js";
 import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { toAppError } from "../../lib/appError";
 import { supabase } from "../../lib/supabase";
+import { sendVerificationCode } from "./emailVerification";
 
 // Backend §4.1 get_my_profile.
 export type MyProfile = {
@@ -16,7 +18,7 @@ export type MyProfile = {
   profile_complete: boolean;
 };
 
-const MY_PROFILE_KEY = ["my-profile"] as const;
+export const MY_PROFILE_KEY = ["my-profile"] as const;
 export const REGISTER_MUTATION_KEY = ["register"] as const;
 
 export function useMyProfile() {
@@ -62,9 +64,17 @@ export function useRegister() {
       // WHY: with email confirmations on, Auth hides an existing account as a user without identities.
       if (data.user?.identities?.length === 0) throw new AuthApiError("User already registered", 422, "user_already_exists");
       await completeProfile(values);
+      // F-02 K: the first code goes out on its own. WHY not thrown: the account exists already, and
+      // A-05 offers "Enviar código" when no send started the cooldown. toAppError reports E-99 only.
+      await sendVerificationCode(values.email).catch((error: unknown) => void toAppError(error));
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: MY_PROFILE_KEY }),
   });
+}
+
+/** F-02 K: a sign-up finished in this session (the mutation cache is cleared on sign-out). */
+export function useJustSignedUp(): boolean {
+  return useMutationState({ filters: { mutationKey: REGISTER_MUTATION_KEY, status: "success" } }).length > 0;
 }
 
 /**
@@ -78,4 +88,17 @@ export function useRegisterDraft(): Partial<CompleteProfileValues> | undefined {
   });
   const last = drafts.at(-1);
   return last && { first_name: last.first_name, last_name: last.last_name, birth_date: last.birth_date };
+}
+
+export function useVerifyEmailCode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ email, token }: { email: string; token: string }) => {
+      // ADR-14: this OTP sign-in fires the trigger that sets email_verified_at.
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+      if (error) throw error;
+    },
+    // NOTE: awaited, so the success message only shows once the banner's profile is fresh.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: MY_PROFILE_KEY }),
+  });
 }

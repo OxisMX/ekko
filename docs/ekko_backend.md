@@ -425,6 +425,15 @@ Retorna: arreglo de `{ coupon_id, merchant_name, title, source, redeemed_at }`.
 | `p_limit` | integer, default 10 (máx. 20) | — |
 
 Reglas: solo `is_visible = true`; orden `md5(id::text || p_seed)`.
+
+Detalle S3:
+- Requiere cliente activo (`app.current_customer()`: E-18 sin sesión, E-19 con JWT de comercio).
+- Validación (E-23 con `details.field`): `seed` de 1 a 64 caracteres; `limit` de 1 a 20; `offset` ≥ 0.
+- `p_query` se recorta; vacío equivale a sin filtro. Coincidencia por subcadena, sin distinguir mayúsculas ni acentos: `app.search_text(name) LIKE '%' || app.search_text(query) || '%'`, con los comodines de LIKE escapados. `app.search_text` = `lower(unaccent(...))` con diccionario fijo (IMMUTABLE); la extensión `unaccent` se instala en `extensions`.
+- Índice: `merchants_name_search_idx` = `gin (app.search_text(name) gin_trgm_ops)` reemplaza al índice de §2.5 sobre `name` (que no serviría para la búsqueda normalizada).
+- Empate de `md5` resuelto por `id`. Se leen `limit + 1` filas para calcular `has_more`; una página vacía devuelve `{"items": [], "has_more": false}`.
+- La relación cliente-comercio no agrega comercios invisibles al catálogo (solo afecta RLS).
+
 Retorna:
 ```json
 {
@@ -811,6 +820,12 @@ La verificación de correo no usa Edge Function: ver 6.3 y ADR-14.
 
 El rol `anon` no tiene acceso a ninguna tabla: la app exige sesión para todo, incluido el catálogo.
 
+Notas S3 (migración `catalog_rls`, parte de catálogo de la 013):
+- Políticas `SELECT ... to authenticated` en `merchants`, `loyalty_programs`, `menu_categories`, `products` y `weekly_offers`: `id`/`merchant_id in (select rls.readable_merchant_ids())`. La función (`SECURITY DEFINER`, se evalúa una vez por consulta) devuelve: el comercio propio (`auth_user_id = auth.uid()`); y, con rol `customer`, los comercios visibles más los relacionados en `customer_merchants` (cliente activo).
+- Un comercio solo ve sus propias filas, no las de otros comercios visibles (TC-201), a diferencia de "todos los autenticados" de la tabla.
+- La función vive en el esquema `rls` (no expuesto por la API; `USAGE` solo para `authenticated`) porque la política se evalúa con los privilegios del usuario y `app`/`private` deben seguir cerrados a `authenticated`.
+- Se revocan todos los privilegios de `anon` sobre esas cinco tablas (denegación explícita). Los privilegios por columna llegan con las tablas de su sprint.
+
 ### 6.3 Verificación de correo
 
 Mecanismo de ADR-14 (resultado de SP-7):
@@ -921,6 +936,7 @@ Notas de Sprint 1:
 - `get_merchant_session` (4.4) se adelantó a S1 en su propia migración (`merchant_session_rpc`) para el login del panel (F-20).
 - S2: la migración `customer_account_rpc` trae solo `complete_profile`, `get_my_profile` y `register_device` (4.1); el resto de la 010 llega con sus sprints. Plantillas de Auth en español en `supabase/templates/` (`magic_link`, `recovery`, `confirmation`), conectadas en `config.toml`.
 - La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
+- S3: migración `catalog_rpc` (extensión `unaccent`, `app.search_text`, índice de búsqueda que reemplaza al trigram sobre `name`, `list_merchants`) y `catalog_rls` (esquema `rls`, políticas de catálogo de la 013). `get_merchant_detail` llega en S4. `seed.sql` agrega C5–C16 visibles (solo comercio, tarjeta y PIN) para paginar el catálogo.
 
 ---
 

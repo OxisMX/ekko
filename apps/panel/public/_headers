@@ -3,3 +3,15 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
   Content-Security-Policy: default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; img-src 'self' data: https://*.supabase.co; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'
+
+# W-01: also gets the /* security headers above (Pages applies every matching rule).
+/v/*
+  Cache-Control: public, max-age=300
+
+# SP-2: active now so nobody has to remember to uncomment them when DEP-01 adds the files.
+# Until then these URLs fall back to index.html labeled as JSON: invalid either way, and no app
+# claims the domain yet.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+/.well-known/assetlinks.json
+  Content-Type: application/json

@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  W-01 (TRD §9, F-09): what someone without the app sees after scanning the cashier QR
+  (https://ekko.oxis.mx/v/<token>) with the native camera. Static on purpose: no React
+  bundle, no JS (the panel CSP has no script-src, so inline JS would not run anyway).
+  Served for every /v/* by public/_redirects on Cloudflare Pages and by the `staticW01`
+  plugin in vite.config.ts during dev/preview. The token is ignored here: it expires in
+  60 s and the app reads it from the URL itself when installed (SP-2).
+
+  Store URL constants (one per button below):
+    APP_STORE_URL   = "#"
+    GOOGLE_PLAY_URL = "#"
+  TODO(DEP-01/DEP-03): once the apps are published, put the store URLs in the two hrefs,
+  remove aria-disabled and change the labels to "Descargar en App Store" / "Disponible en Google Play".
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#1e2124" />
+    <title>Descarga Ekko Rewards</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      /* Tokens: brief UX/UI §4.3–4.5. DM Sans only if installed locally: the panel's
+         self-hosted copy lives in hashed bundle assets this page must not depend on. */
+      :root {
+        --bg: #1e2124;
+        --pattern: #2c3a5e;
+        --navy: #1f2a4a;
+        --surface: #fff;
+        --muted: #f1f1f1;
+        --text: #1e2124;
+        --text-2: #64676e;
+        font-family: "DM Sans", "DM Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--text);
+        -webkit-text-size-adjust: 100%;
+      }
+      * { box-sizing: border-box; margin: 0; }
+      body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+      header {
+        position: relative; overflow: hidden; display: grid; place-items: center;
+        min-height: clamp(140px, 26vh, 240px); padding: calc(24px + env(safe-area-inset-top)) 24px 40px;
+      }
+      header svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .wordmark { position: relative; color: #fff; font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.5px; }
+      main {
+        position: relative; flex: 1; display: flex; flex-direction: column; gap: 24px; margin-top: -32px;
+        background: var(--surface); border-top-left-radius: 32px;
+        padding: 32px 24px calc(24px + env(safe-area-inset-bottom));
+      }
+      .wrap { width: 100%; max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+      h1 { font-size: 24px; line-height: 30px; font-weight: 700; }
+      ol { list-style: none; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+      li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; line-height: 22px; counter-increment: step; }
+      li::before {
+        content: counter(step); flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-top: -3px;
+        border-radius: 50%; background: var(--navy); color: #fff; font-size: 14px; font-weight: 700;
+      }
+      strong { font-weight: 700; }
+      nav { display: grid; gap: 12px; }
+      .store {
+        display: flex; flex-direction: column; justify-content: center; min-height: 56px; padding: 8px 20px;
+        border-radius: 12px; background: var(--text); color: #fff; text-decoration: none; line-height: 1.2;
+      }
+      .store small { font-size: 12px; }
+      .store span { font-size: 18px; font-weight: 700; }
+      .store[aria-disabled="true"] { background: var(--muted); color: var(--text-2); pointer-events: none; cursor: not-allowed; }
+      .store:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+      .hint { font-size: 14px; line-height: 20px; color: var(--text-2); }
+      @media (min-width: 600px) {
+        nav { grid-template-columns: 1fr 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <!-- Patrón de círculos (brief §4.5), mismo dibujo que apps/mobile BrandPattern. -->
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 375 240" preserveAspectRatio="xMidYMid slice">
+        <g fill="#2c3a5e">
+          <circle cx="40" cy="30" r="90" fill-opacity=".9" />
+          <circle cx="150" cy="-20" r="70" fill-opacity=".55" />
+          <circle cx="330" cy="60" r="110" fill-opacity=".8" />
+          <circle cx="250" cy="190" r="80" fill-opacity=".5" />
+          <circle cx="90" cy="210" r="60" fill-opacity=".65" />
+        </g>
+      </svg>
+      <p class="wordmark">Ekko Rewards</p>
+    </header>
+    <main>
+      <div class="wrap">
+        <h1>Descarga la app para sumar tu visita</h1>
+        <ol>
+          <li><span>Descarga <strong>Ekko Rewards</strong>.</span></li>
+          <li><span>Crea tu cuenta.</span></li>
+          <li><span>Pide al cajero un <strong>código nuevo</strong>: este vence en 60 segundos.</span></li>
+        </ol>
+        <nav aria-label="Descargar la app">
+          <a class="store" href="#" aria-disabled="true"><small>Muy pronto en</small> <span>App Store</span></a>
+          <a class="store" href="#" aria-disabled="true"><small>Muy pronto en</small> <span>Google Play</span></a>
+        </nav>
+        <p class="hint">¿Ya tienes la app? Ábrela y escanea el código nuevo desde “Registrar visita”.</p>
+      </div>
+    </main>
+  </body>
+</html>

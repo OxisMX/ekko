@@ -4,6 +4,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider.tsx'
+import { AdminLayout, AdminPlaceholderPage } from './components/AdminLayout.tsx'
+import { ADMIN_SECTIONS } from './components/adminSections.ts'
 import { PanelGate } from './components/PanelGate.tsx'
 import './index.css'
 import { queryClient } from './lib/queryClient.ts'
@@ -21,6 +23,14 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <CashierModePage /> },
       { path: '/inactiva', element: <InactivePage /> },
+      {
+        path: '/admin',
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <Navigate to="metricas" replace /> },
+          ...ADMIN_SECTIONS.map((section) => ({ path: section.path, element: <AdminPlaceholderPage section={section} /> })),
+        ],
+      },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

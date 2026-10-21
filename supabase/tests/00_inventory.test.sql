@@ -27,7 +27,7 @@ select is_empty(
     select n.nspname || '.' || p.proname
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname in ('public', 'app', 'private')
+    where n.nspname in ('public', 'app', 'private', 'rls')
       and p.prosecdef
       and not coalesce('search_path=""' = any (p.proconfig), false)
   $$,

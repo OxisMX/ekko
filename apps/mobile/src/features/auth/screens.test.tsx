@@ -15,6 +15,7 @@ const mockSupabase = {
     signInWithPassword: jest.fn(),
     signUp: jest.fn(),
     resetPasswordForEmail: jest.fn(),
+    signInWithOtp: jest.fn(),
     exchangeCodeForSession: jest.fn(),
     setSession: jest.fn(),
     updateUser: jest.fn(),
@@ -118,7 +119,8 @@ describe("A-03 Crear cuenta", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Iniciar sesión" }));
     expect(mockRouter.replace).toHaveBeenCalledWith("/login");
     await fireEvent.press(screen.getByTestId("register-recover"));
-    expect(mockRouter.replace).toHaveBeenCalledWith("/recover");
+    // Sprint 2 review: A-06 opens with the email already typed.
+    expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/recover", params: { email: "daniela@example.com" } });
     expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
@@ -138,6 +140,33 @@ describe("A-03 Crear cuenta", () => {
     );
     expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({ email: "daniela@example.com", password: "secreta123" });
     expect(mockSupabase.auth.signUp.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(mockSupabase.rpc.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it("sends the first verification code after saving the profile (F-02 K)", async () => {
+    mockSupabase.auth.signUp.mockResolvedValue({ data: { user: { identities: [{}] }, session: {} }, error: null });
+    mockSupabase.rpc.mockResolvedValue({ data: { profile_complete: true }, error: null });
+    mockSupabase.auth.signInWithOtp.mockResolvedValue({ data: {}, error: null });
+    await renderScreen(<RegisterScreen />);
+    await fillRegister(new Date(2000, 0, 15));
+    await fireEvent.press(screen.getByTestId("register-submit"));
+
+    await waitFor(() =>
+      expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledWith({ email: "daniela@example.com", options: { shouldCreateUser: false } })
+    );
+    expect(mockSupabase.rpc.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(mockSupabase.auth.signInWithOtp.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it("still finishes sign-up when the first code cannot be sent", async () => {
+    mockSupabase.auth.signUp.mockResolvedValue({ data: { user: { identities: [{}] }, session: {} }, error: null });
+    mockSupabase.rpc.mockResolvedValue({ data: { profile_complete: true }, error: null });
+    mockSupabase.auth.signInWithOtp.mockResolvedValue({ data: {}, error: new TypeError("Network request failed") });
+    await renderScreen(<RegisterScreen />);
+    await fillRegister(new Date(2000, 0, 15));
+    await fireEvent.press(screen.getByTestId("register-submit"));
+
+    await waitFor(() => expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId("register-submit")).toBeEnabled());
+    expect(screen.queryByTestId("register-error")).toBeNull();
   });
 });
 
@@ -172,6 +201,14 @@ describe("A-06 Recuperar contraseña", () => {
     expect(await screen.findByText(/Si el correo existe, recibirás un enlace para restablecer tu contraseña\./)).toBeOnTheScreen();
     expect(mockSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("ana@ekko.mx", { redirectTo: "ekko://reset-password" });
     expect(screen.getByTestId("recover-submit")).toBeDisabled();
+  });
+});
+
+describe("A-06 prefill", () => {
+  it("starts with the email passed from A-03", async () => {
+    mockParams = { email: "daniela@example.com" };
+    await renderScreen(<RecoverScreen />);
+    expect(screen.getByLabelText("Correo electrónico").props.value).toBe("daniela@example.com");
   });
 });
 

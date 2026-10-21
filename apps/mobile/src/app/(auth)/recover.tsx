@@ -2,37 +2,32 @@ import { ERRORS, recoverSchema, type RecoverValues } from "@ekko/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { AuthLayout } from "../../components/auth";
 import { Button, FormMessage, TextField } from "../../components/ui";
 import { TextLink } from "../../features/auth/TextLink";
 import { toAppError } from "../../lib/appError";
+import { createCooldown, useCooldown } from "../../lib/cooldown";
 import { supabase } from "../../lib/supabase";
 
 const COOLDOWN_SECONDS = 60;
 const GENERIC_SENT = "Si el correo existe, recibirás un enlace para restablecer tu contraseña.";
 
-function useCooldown() {
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const timer = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [secondsLeft]);
-  return { secondsLeft, start: () => setSecondsLeft(COOLDOWN_SECONDS) };
-}
 
 // A-06 / F-05 (US-03).
 export default function RecoverScreen() {
   const router = useRouter();
-  const cooldown = useCooldown();
+  // E-20 on A-03 passes the email already typed there.
+  const { email: typedEmail } = useLocalSearchParams<{ email?: string }>();
+  const [ownCooldown] = useState(createCooldown);
+  const cooldown = useCooldown(ownCooldown);
   const [result, setResult] = useState<"sent" | "offline" | null>(null);
   const { control, handleSubmit } = useForm<RecoverValues>({
     resolver: zodResolver(recoverSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: typeof typedEmail === "string" ? typedEmail : "" },
   });
 
   const request = useMutation({
@@ -43,14 +38,14 @@ export default function RecoverScreen() {
     },
     onSuccess: () => {
       setResult("sent");
-      cooldown.start();
+      cooldown.start(COOLDOWN_SECONDS);
     },
     onError: (error) => {
       // WHY: same message whatever Auth answers, so the screen never reveals whether an account
       // exists (F-05 step C). Only a dropped connection differs: nothing was sent, so offer a retry.
       const offline = toAppError(error).code === "E-01";
       setResult(offline ? "offline" : "sent");
-      if (!offline) cooldown.start();
+      if (!offline) cooldown.start(COOLDOWN_SECONDS);
     },
   });
 

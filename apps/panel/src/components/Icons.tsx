@@ -55,3 +55,50 @@ export const TicketIcon = (p: IconProps) => (
     <path d="M9 6v12" strokeDasharray="2 2" />
   </Svg>
 )
+
+export const ChartIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 20h16M7 16v-5M12 16V7M17 16v-8" />
+  </Svg>
+)
+
+export const CardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="8" cy="12" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="16" cy="12" r="1.5" />
+  </Svg>
+)
+
+export const MenuBookIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 8h6M8 12h6" />
+  </Svg>
+)
+
+export const TagIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" />
+    <path d="M8 8h.01" />
+  </Svg>
+)
+
+export const BellIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" />
+  </Svg>
+)
+
+export const UnlockIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="11" width="16" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+  </Svg>
+)
+
+export const ArrowLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </Svg>
+)

@@ -19,14 +19,14 @@ import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 // TODO(legal, PRD 12.1): confirm the final privacy notice URL before release.
 const PRIVACY_URL = "https://ekko.oxis.mx/privacidad";
 
-// A-03 / F-02 (US-01). A-05 "Verifica tu correo" arrives in Sprint 3; the gate takes the user on.
+// A-03 / F-02 (US-01). On success the gate takes the user to A-05 (GatedStack afterSignUp).
 export default function RegisterScreen() {
   const router = useRouter();
   const lastNameRef = useRef<ComponentRef<typeof TextInput>>(null);
   const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [errorCode, setErrorCode] = useState<keyof typeof ERRORS | null>(null);
-  const { control, handleSubmit } = useForm<RegisterInput, unknown, RegisterValues>({
+  const { control, handleSubmit, getValues } = useForm<RegisterInput, unknown, RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { first_name: "", last_name: "", email: "", password: "", birth_date: "", privacy_accepted: false },
   });
@@ -186,7 +186,11 @@ export default function RegisterScreen() {
             testID="register-error"
           />
           {/* NOTE: FormMessage takes a single action; the second E-20 option sits right below it. */}
-          <TextLink label="Recuperar contraseña" onPress={() => router.replace("/recover")} testID="register-recover" />
+          <TextLink
+            label="Recuperar contraseña"
+            onPress={() => router.replace({ pathname: "/recover", params: { email: getValues("email").trim() } })}
+            testID="register-recover"
+          />
         </View>
       ) : errorCode ? (
         <FormMessage

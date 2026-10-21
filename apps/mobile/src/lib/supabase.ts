@@ -1,20 +1,30 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Database } from "@ekko/shared";
 import { createClient } from "@supabase/supabase-js";
-import { CryptoDigestAlgorithm, digestStringAsync, getRandomBytes } from "expo-crypto";
+import { CryptoDigestAlgorithm, digest, digestStringAsync, getRandomBytes, getRandomValues } from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { AppState } from "react-native";
 
 import { createEncryptedStorage } from "./encryptedStorage";
+import { installWebCrypto } from "./webCrypto";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+// WHY: must run before createClient so PKCE uses S256 and a CSPRNG verifier (see webCrypto.ts).
+installWebCrypto(globalThis as { crypto?: unknown }, {
+  digest: (_algorithm, data) => digest(CryptoDigestAlgorithm.SHA256, data),
+  getRandomValues: getRandomValues as Parameters<typeof installWebCrypto>[1]["getRandomValues"],
+});
+
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!url || !supabaseAnonKey) {
   throw new Error(
     "Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Set them in apps/mobile/.env (or the EAS environment) and restart Metro."
   );
 }
+
+// Also the base of public Storage URLs (merchant logos and covers, backend §7).
+export const supabaseUrl: string = url;
 
 const sessionStorage = createEncryptedStorage({
   keyStore: {

@@ -15,6 +15,8 @@ export type AuthContextValue = {
   session: Session | null;
   errorCode: AuthErrorCode | null;
   signOut: () => Promise<void>;
+  /** Server says the session is no longer valid for this app (E-18/E-19): sign out and show why. */
+  endSession: (code: AuthErrorCode) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error) throw error;
   }, []);
+
+  const endSession = useCallback(
+    (code: AuthErrorCode) => {
+      setErrorCode(code);
+      void signOut().catch(reportError);
+    },
+    [signOut],
+  );
 
   useEffect(() => {
     // NOTE: INITIAL_SESSION delivers the stored session once the client has recovered it, so no
@@ -62,7 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => data.subscription.unsubscribe();
   }, [queryClient, signOut]);
 
-  const value = useMemo(() => ({ status, session, errorCode, signOut }), [status, session, errorCode, signOut]);
+  const value = useMemo(
+    () => ({ status, session, errorCode, signOut, endSession }),
+    [status, session, errorCode, signOut, endSession],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
