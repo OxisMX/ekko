@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { parseVisitQr, qrAnnouncement, qrReducer, type QrState, type VisitQr } from './qrState'
+import {
+  nextSyncMode,
+  parseQrStatus,
+  parseVisitQr,
+  qrAnnouncement,
+  qrReducer,
+  statusFromRow,
+  type QrState,
+  type VisitQr,
+} from './qrState'
 
 const QR: VisitQr = { id: 'q1', token: 'AbCdEfGhIjKlMnOpQrStU_', ttlSeconds: 60 }
 const QR2: VisitQr = { ...QR, id: 'q2', token: 'zzzzzzzzzzzzzzzzzzzzz-' }
@@ -63,6 +72,70 @@ describe('qrReducer', () => {
   it('ignores ticks outside the active state', () => {
     expect(qrReducer(idle, { type: 'tick', now: 1 })).toBe(idle)
   })
+
+  it('active → used / expired / invalidated when the server resolves the current QR', () => {
+    expect(qrReducer(activeAt(0), { type: 'resolved', qrId: 'q1', status: 'used' })).toEqual({ status: 'used' })
+    expect(qrReducer(activeAt(0), { type: 'resolved', qrId: 'q1', status: 'expired' })).toEqual({ status: 'expired' })
+    expect(qrReducer(activeAt(0), { type: 'resolved', qrId: 'q1', status: 'invalidated' })).toEqual({
+      status: 'invalidated',
+    })
+  })
+
+  it('first terminal result wins: later or stale results are ignored', () => {
+    const used = qrReducer(activeAt(0), { type: 'resolved', qrId: 'q1', status: 'used' })
+    expect(qrReducer(used, { type: 'resolved', qrId: 'q1', status: 'expired' })).toBe(used)
+    expect(qrReducer(used, { type: 'tick', now: 999_999 })).toBe(used)
+    const active = activeAt(0, QR2)
+    expect(qrReducer(active, { type: 'resolved', qrId: 'q1', status: 'used' })).toBe(active)
+    const pending: QrState = { status: 'pending', requestedAt: 0 }
+    expect(qrReducer(pending, { type: 'resolved', qrId: 'q1', status: 'used' })).toBe(pending)
+  })
+
+  it('used → idle on dismiss (after the 3 s confirmation); dismiss does nothing elsewhere', () => {
+    expect(qrReducer({ status: 'used' }, { type: 'dismiss' })).toEqual(idle)
+    const active = activeAt(0)
+    expect(qrReducer(active, { type: 'dismiss' })).toBe(active)
+  })
+
+  it('used → pending when the cashier generates a new QR during the confirmation', () => {
+    expect(qrReducer({ status: 'used' }, { type: 'request', now: 3 })).toEqual({ status: 'pending', requestedAt: 3 })
+  })
+})
+
+describe('nextSyncMode (Realtime first, get_qr_status every 3 s as fallback)', () => {
+  it.each([
+    ['connecting', 'SUBSCRIBED', 'realtime'],
+    ['connecting', 'TIMEOUT', 'polling'],
+    ['connecting', 'CHANNEL_ERROR', 'polling'],
+    ['connecting', 'TIMED_OUT', 'polling'],
+    ['connecting', 'CLOSED', 'polling'],
+    ['realtime', 'TIMEOUT', 'realtime'],
+    ['realtime', 'CHANNEL_ERROR', 'polling'],
+    ['realtime', 'CLOSED', 'polling'],
+    ['polling', 'SUBSCRIBED', 'realtime'],
+    ['polling', 'TIMEOUT', 'polling'],
+  ] as const)('%s + %s → %s', (mode, event, next) => {
+    expect(nextSyncMode(mode, event)).toBe(next)
+  })
+})
+
+describe('statusFromRow (Realtime UPDATE payload)', () => {
+  it('maps used_at / invalidated_at; a still-pending row is not terminal', () => {
+    expect(statusFromRow({ used_at: '2026-10-21T10:00:00Z', invalidated_at: null })).toBe('used')
+    expect(statusFromRow({ used_at: null, invalidated_at: '2026-10-21T10:00:00Z' })).toBe('invalidated')
+    expect(statusFromRow({ used_at: null, invalidated_at: null })).toBeNull()
+    expect(statusFromRow({})).toBeNull()
+  })
+})
+
+describe('parseQrStatus (backend §4.4 get_qr_status)', () => {
+  it.each(['pending', 'used', 'expired', 'invalidated'] as const)('accepts %s', (status) => {
+    expect(parseQrStatus({ status })).toBe(status)
+  })
+  it('rejects anything else', () => {
+    expect(() => parseQrStatus({ status: 'claimed' })).toThrow()
+    expect(() => parseQrStatus(null)).toThrow()
+  })
 })
 
 describe('qrAnnouncement (aria-live, only at 30 s, 10 s and expiry)', () => {
@@ -78,8 +151,10 @@ describe('qrAnnouncement (aria-live, only at 30 s, 10 s and expiry)', () => {
     expect(qrAnnouncement(at(remaining))).toBe(text)
   })
 
-  it('announces expiry', () => {
+  it('announces expiry, replacement and the registered visit', () => {
     expect(qrAnnouncement({ status: 'expired' })).toBe('El QR venció. Genera otro.')
+    expect(qrAnnouncement({ status: 'invalidated' })).toBe('El QR se reemplazó. Genera otro.')
+    expect(qrAnnouncement({ status: 'used' })).toBe('Visita registrada')
     expect(qrAnnouncement(idle)).toBe('')
   })
 })

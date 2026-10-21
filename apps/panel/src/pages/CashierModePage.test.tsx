@@ -6,10 +6,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthState } from '../auth/AuthContext'
 import { QrSvg } from '../components/VisitQrPanel'
 import type { MerchantSession } from '../lib/panelRoute'
+import { createFakeRealtime } from '../test/fakeRealtime'
 import { CashierModePage } from './CashierModePage'
 
-const rpc = vi.hoisted(() => vi.fn())
-vi.mock('../lib/supabase', () => ({ supabase: { rpc } }))
+const { rpc, realtime } = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  realtime: { current: null as unknown as ReturnType<typeof createFakeRealtime> },
+}))
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    rpc,
+    channel: (n: string) => realtime.current.channel(n),
+    removeChannel: (c: never) => realtime.current.removeChannel(c),
+  },
+}))
 
 const TOKEN_1 = 'AbCdEfGhIjKlMnOpQrStU_'
 const TOKEN_2 = 'zzzzzzzzzzzzzzzzzzzzz-'
@@ -55,6 +65,7 @@ const liveRegion = () => document.querySelector('[aria-live="polite"]')!
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'] })
   rpc.mockReset()
+  realtime.current = createFakeRealtime((ch) => ch.status('SUBSCRIBED'))
   signOut.mockReset()
   queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
 })
@@ -127,7 +138,43 @@ describe('CashierModePage — visit QR (US-19, F-21)', () => {
 
     expect(rpc).toHaveBeenCalledTimes(2)
     expect(qrImage().getAttribute('data-qr-id')).not.toBe(firstId)
+    const [first, second] = realtime.current.channels
+    expect(first.removed).toBe(true)
+    expect(second.removed).toBe(false)
     expect(screen.getByText('60 s')).toBeInTheDocument()
+  })
+
+  it('Realtime "used" → green "Visita registrada" with icon + announcement for 3 s, then ready again (TC-053)', async () => {
+    rpc.mockResolvedValueOnce(qrResponse(1))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Generar QR' }))
+    await flush()
+    const [ch] = realtime.current.channels
+    expect(ch.name).toBe('qr-6f1c1d1e-7b5a-4c1e-9a7b-1d2e3f4a5b6c')
+
+    await act(async () => ch.emit({ used_at: '2026-10-21T10:00:00Z', invalidated_at: null }))
+    expect(screen.getByText('Visita registrada', { selector: 'p:not([aria-live])' })).toBeVisible()
+    expect(liveRegion()).toHaveTextContent('Visita registrada')
+    expect(screen.queryByRole('img', { name: /Código QR de visita/ })).not.toBeInTheDocument()
+    expect(ch.removed).toBe(true)
+
+    await flush(2_999)
+    expect(liveRegion()).toHaveTextContent('Visita registrada')
+    await flush(1)
+    expect(screen.queryByText('Visita registrada')).not.toBeInTheDocument()
+    expect(screen.getByText('El QR aparecerá aquí')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generar QR' })).toBeEnabled()
+    expect(rpc).toHaveBeenCalledTimes(1) // no polling while Realtime is subscribed
+  })
+
+  it('Realtime "invalidated" (another device generated a QR) → "QR reemplazado"', async () => {
+    rpc.mockResolvedValueOnce(qrResponse(1))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Generar QR' }))
+    await flush()
+    await act(async () => realtime.current.channels[0].emit({ used_at: null, invalidated_at: '2026-10-21T10:00:00Z' }))
+    expect(screen.getByText('QR reemplazado')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generar otro' })).toBeEnabled()
   })
 
   it('E-01: shows the connection error with a retry that calls the RPC again', async () => {

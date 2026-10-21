@@ -275,14 +275,14 @@ isOneToOne: false
                   ]
                 },"visit_qr_tokens": {
                   Row: {
-                    "created_at": string,"expires_at": string,"id": string,"invalidated_at": string | null,"merchant_id": string,"token_hash": string,"used_at": string | null,"used_by_customer_id": string | null
+                    "claim_result": Json | null,"created_at": string,"expires_at": string,"id": string,"invalidated_at": string | null,"merchant_id": string,"token_hash": string,"used_at": string | null,"used_by_customer_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"expires_at": string,"id"?: string,"invalidated_at"?: string | null,"merchant_id": string,"token_hash": string,"used_at"?: string | null,"used_by_customer_id"?: string | null
+                    "claim_result"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"invalidated_at"?: string | null,"merchant_id": string,"token_hash": string,"used_at"?: string | null,"used_by_customer_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"expires_at"?: string,"id"?: string,"invalidated_at"?: string | null,"merchant_id"?: string,"token_hash"?: string,"used_at"?: string | null,"used_by_customer_id"?: string | null
+                    "claim_result"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"invalidated_at"?: string | null,"merchant_id"?: string,"token_hash"?: string,"used_at"?: string | null,"used_by_customer_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -354,6 +354,9 @@ isOneToOne: false
             "add_card":
 { Args: { "p_merchant_id": string }; Returns: Json
                            },
+"claim_visit":
+{ Args: { "p_device_id_digest": string,"p_token": string }; Returns: Json
+                           },
 "complete_profile":
 { Args: { "p_birth_date": string,"p_first_name": string,"p_last_name": string }; Returns: Json
                            },
@@ -368,6 +371,9 @@ isOneToOne: false
                            },
 "get_my_profile":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_qr_status":
+{ Args: { "p_qr_id": string }; Returns: Json
                            },
 "list_merchants":
 { Args: { "p_category"?: Database["public"]['Enums']["merchant_category"],"p_limit"?: number,"p_offset"?: number,"p_query"?: string,"p_seed": string }; Returns: Json

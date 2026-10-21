@@ -8,6 +8,7 @@ import { REGISTER_MUTATION_KEY, useJustSignedUp, useMyProfile } from "../feature
 import { useRegisterDeviceOnce } from "../features/auth/deviceRegistration";
 import { decideGate } from "../features/auth/gate";
 import { GatedStack } from "../features/auth/GatedStack";
+import { usePendingVisitRedirect } from "../features/visit/pendingVisit";
 import { enforceImageCacheLimit } from "../lib/imageCache";
 import { queryClient } from "../lib/queryClient";
 import { toAppError } from "../lib/appError";
@@ -30,6 +31,7 @@ function RootNavigator() {
   const ready = route !== "loading" && fontsReady;
 
   useRegisterDeviceOnce(route === "tabs" ? (session?.user.id ?? null) : null);
+  usePendingVisitRedirect(route);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();

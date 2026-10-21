@@ -332,7 +332,7 @@ Restricción: `CHECK` que exige la columna de origen correspondiente a `source`.
 | `app.raise(code text, detail jsonb)` | void | Lanza `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = code, DETAIL = detail::text`. |
 | `app.roll_cycle(customer_id, merchant_id)` | `card_cycles` | Bloquea el ciclo activo (`FOR UPDATE`); si venció (`expires_at <= app.now()`) lo cierra como `expired` y abre uno nuevo con la configuración vigente; si no existe, lo crea. Concurrencia: el índice único parcial rechaza el segundo ciclo activo; ante `unique_violation` relee y devuelve el del ganador (verificado con dos sesiones simultáneas). Migración `card_cycle` (S4). |
 | `app.wheel_status(customer, merchant)` | text | Estado de la ruleta para un cliente CON relación: `spun` → `unavailable` (comercio inactivo o sin premios activos) → `needs_verification` → `available`. Migración `merchant_detail_rpc` (S4). |
-| `app.grant_stamps(cycle, n, qr_token_id, is_bonus)` | jsonb | Inserta sellos, actualiza `stamps_count` y, si se completa, cierra el ciclo, emite el cupón de premio (30 días) y abre un ciclo nuevo (RN-26). |
+| `app.grant_stamps(cycle, n, qr_token_id, is_bonus)` | jsonb | Inserta sellos, actualiza `stamps_count` y, si se completa, cierra el ciclo, emite el cupón de premio (30 días) y abre un ciclo nuevo (RN-26). S5: el llamador ya bloqueó el ciclo (`roll_cycle`); con `is_bonus = false` el primer sello es el de visita (lleva `qr_token_id`, cuenta para el límite diario) y los demás son extra; topa en `stamps_required` (RN-36); el código del cupón se regenera ante colisión. Retorna `{stamps_added, stamps_count, stamps_required, cycle_completed, reward_coupon_id}` (`stamps_count` del ciclo que recibió los sellos). Migración `claim_visit`. |
 
 ### 3.1 Contrato de errores
 
@@ -566,6 +566,13 @@ Retorna:
   "wheel_status": "spun"
 }
 ```
+Notas S5 (migración `claim_visit`):
+- Orden de validación: `app.current_customer()` (E-18/E-19) → digest de dispositivo como en `register_device` (E-23 `device_id_digest`) → token (hash `sha256(convert_to(p_token, 'UTF8'))`; inexistente o nulo: E-08) → E-03 / E-02 → E-05. `expires_at <= app.now()` es vencido (mismo límite que "pendiente" en `generate_visit_qr`).
+- Idempotencia (RR-2): el resultado se guarda en la columna nueva `visit_qr_tokens.claim_result` (jsonb, sin privilegio para `authenticated`, por lo que tampoco viaja en Realtime). Un reintento del mismo cliente lo devuelve tal cual, aun pasados los 60 s.
+- Paso 4: tras crear la relación se bloquea su fila (`FOR UPDATE`) para leer `pending_extra_stamps` sin carrera con `spin_wheel`.
+- Paso 6: E-04 lleva `details = {"next_available_on": "<local_today + 1>"}`; ante concurrencia, el `unique_violation` del índice diario se traduce a E-04. Un E-04 deja el sello extra pendiente (RN-36: el extra solo se exime del límite, no la visita).
+- Dispositivo: solo actualiza `last_seen_at` de la fila de `register_device` (`customer_id`, `device_hash`); si no existe, no se crea (la plataforma es desconocida) ni se falla la visita.
+- Cualquier error revierte la transacción: el token no se consume (TC-050).
 
 #### `list_my_cards`
 Retorna arreglo de:
@@ -627,6 +634,7 @@ El panel compone la URL `https://<dominio>/v/<token>` y se suscribe a cambios de
 | `p_qr_id` | uuid |
 
 Respaldo por consulta cuando Realtime no está disponible (F-21). Retorna `{ "status": "pending | used | expired | invalidated" }`.
+Notas S5: requiere `app.current_merchant()` (también comercios inactivos: un QR ya emitido sigue consultable); un `qr_id` inexistente o de otro comercio lanza E-19. Precedencia: `used` → `invalidated` → `expired` (`expires_at <= app.now()`) → `pending`.
 
 #### `lookup_redemption`
 | Parámetro | Tipo |
@@ -902,6 +910,8 @@ Limpieza de huérfanos: script de operación mensual que elimina archivos sin re
 | Seguridad | RLS limita los eventos a las filas del comercio; el hash del token y el cliente no se exponen. |
 | Respaldo | `get_qr_status` cada 3 s si el canal se desconecta. |
 
+Notas S5 (migración `realtime`): la publicación se agrega en su propia migración. Realtime aplica RLS (`visit_qr_tokens_select`) y descarta las columnas sin privilegio `SELECT` del suscriptor (`realtime.apply_rls` usa `has_column_privilege`), así que el evento `UPDATE` llega al comercio dueño con `id`, `merchant_id`, `created_at`, `expires_at`, `used_at` e `invalidated_at`; `token_hash`, `used_by_customer_id` y `claim_result` nunca viajan. El panel debe leer `used_at` (o `invalidated_at`) del `record` para decidir el estado.
+
 ---
 
 ## 9. Vistas de KPIs (`private`)
@@ -948,6 +958,7 @@ Notas de Sprint 1:
 - S2: la migración `customer_account_rpc` trae solo `complete_profile`, `get_my_profile` y `register_device` (4.1); el resto de la 010 llega con sus sprints. Plantillas de Auth en español en `supabase/templates/` (`magic_link`, `recovery`, `confirmation`), conectadas en `config.toml`.
 - La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
 - S3: migración `catalog_rpc` (extensión `unaccent`, `app.search_text`, índice de búsqueda que reemplaza al trigram sobre `name`, `list_merchants`) y `catalog_rls` (esquema `rls`, políticas de catálogo de la 013). `get_merchant_detail` llega en S4. `seed.sql` agrega C5–C16 visibles (solo comercio, tarjeta y PIN) para paginar el catálogo.
+- S5: migraciones `claim_visit` (columna `visit_qr_tokens.claim_result`, `app.grant_stamps`, `claim_visit`, `get_qr_status`) y `realtime` (015). Concurrencia TC-044 fuera de pgTAP: `supabase/tests/concurrency/tc044_claim_visit.sh` (dos sesiones `psql` vía `docker exec`; limpia lo que crea).
 - S4: migración `card_cycle` (`app.roll_cycle`) y `merchant_detail_rpc` (`app.wheel_status`, `add_card`, `get_merchant_detail`, `generate_visit_qr`, política y privilegios por columna de `visit_qr_tokens` de la 013). `seed.sql`: Brownie de C1 agotado el día local de la siembra y Chai el día anterior.
 
 ---

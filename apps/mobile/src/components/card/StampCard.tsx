@@ -1,11 +1,12 @@
 import { stampGridRows } from "@ekko/shared";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { formatDate } from "../format";
 import { MerchantAvatar } from "../merchant/MerchantAvatar";
+import { useReduceMotion } from "../useReduceMotion";
 import { Button } from "../ui/Button";
 
 export type StampCardStamp = { grantedAt: string; isBonus: boolean };
@@ -39,7 +40,7 @@ const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 const dateText = [textStyles.label, { letterSpacing: 0, textTransform: "none" as const, color: colors.textPrimary, textAlign: "center" as const }];
 
-function GiftIcon({ size, testID }: { size: number; testID?: string }) {
+export function GiftIcon({ size, testID }: { size: number; testID?: string }) {
   const stroke = { stroke: colors.navy, strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
   return (
     <Svg testID={testID} width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
@@ -48,20 +49,6 @@ function GiftIcon({ size, testID }: { size: number; testID?: string }) {
       <Path d="M12 7v13M12 7c-1.5-3-5-3.5-5-1.2C7 7 9.5 7 12 7zM12 7c1.5-3 5-3.5 5-1.2C17 7 14.5 7 12 7z" {...stroke} />
     </Svg>
   );
-}
-
-function useReduceMotion(): boolean | null {
-  const [reduce, setReduce] = useState<boolean | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((value) => !cancelled && setReduce(value))
-      .catch(() => !cancelled && setReduce(false));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return reduce;
 }
 
 // PX-6: short entrance (scale 0.9 → 1 + fade, 250 ms); §9: skipped entirely with reduce motion.
