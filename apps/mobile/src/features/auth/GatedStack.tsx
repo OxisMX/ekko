@@ -31,6 +31,8 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
         <Stack.Screen name="verify-email" />
         {/* A-14 / A-15: full screen over the tabs, no tab bar (F-08). */}
         <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
+        {/* A-16: notifications explainer over whatever screen triggered it. */}
+        <Stack.Screen name="notifications-permission" options={{ presentation: "modal" }} />
         <Stack.Screen name="visit-result" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!decided || route === "completeProfile"} redirectTo={redirectTo}>

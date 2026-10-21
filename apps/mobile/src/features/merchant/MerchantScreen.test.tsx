@@ -9,6 +9,7 @@ import { menuChips, type MerchantDetail, productsFor } from "./merchantDetail";
 const mockSupabase = { rpc: jest.fn() };
 const mockRouter = { back: jest.fn(), replace: jest.fn(), push: jest.fn(), canGoBack: jest.fn(() => true) };
 
+jest.mock("../notifications/pushExplainer", () => ({ maybeShowPushExplainer: jest.fn() }));
 jest.mock("../../lib/supabase", () => ({
   get supabase() {
     return mockSupabase;

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../auth/AuthProvider";
 import { VisitResult, type VisitResultKind, type VisitResultProps } from "../components/visit";
 import { useClaimVisit, visitErrorKind } from "../features/visit/claimVisit";
+import { maybeShowPushExplainer } from "../features/notifications/pushExplainer";
 import { setPendingVisit } from "../features/visit/pendingVisit";
 import { isVisitToken } from "../features/visit/visitToken";
 import { toAppError } from "../lib/appError";
@@ -53,9 +54,12 @@ export default function VisitResultScreen() {
   const data = claim.data;
   if (data) {
     // Back to the merchant's card (popping to it when the scan started there), newest stamp animated.
-    const openMerchant = (params: Record<string, string>) =>
+    const openMerchant = (params: Record<string, string>) => {
       router.dismissTo({ pathname: "/merchant/[id]", params: { id: data.merchant_id, ...params } } as Href);
-    // TODO(S6/S8): relation_created → F-07 (notifications permission, then the welcome wheel) after closing.
+      // A-16 once, after the result is closed; the explainer decides whether it still applies.
+      void maybeShowPushExplainer(router);
+    };
+    // TODO(S8): relation_created → the welcome wheel (F-07) after closing.
     const common = { merchantName: data.merchant_name, stampsCount: data.stamps_count, stampsRequired: data.stamps_required, stampsAdded: data.stamps_added };
     props = data.cycle_completed
       ? {
