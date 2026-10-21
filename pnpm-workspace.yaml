@@ -10,3 +10,6 @@ allowBuilds:
   esbuild: true
   supabase: true
   unrs-resolver: true
+
+patchedDependencies:
+  expo-notifications@58.1.5: patches/expo-notifications@58.1.5.patch

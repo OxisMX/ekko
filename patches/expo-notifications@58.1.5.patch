@@ -1,0 +1,12 @@
+diff --git a/build/TopicSubscriptionModule.android.js b/build/TopicSubscriptionModule.android.js
+index 4ad9affeea4282013924ca0f8c5f81809b57bc02..40a103bc774c93e4513c2ddbe7515f808ef98e42 100644
+--- a/build/TopicSubscriptionModule.android.js
++++ b/build/TopicSubscriptionModule.android.js
+@@ -1,4 +1,3 @@
+-import { requireNativeModule } from 'expo';
+-export default requireNativeModule('ExpoTopicSubscriptionModule');
+-
+-//# sourceMappingURL=TopicSubscriptionModule.android.js.map
++import { requireOptionalNativeModule } from 'expo';
++// ekko patch: Expo Go (Android) ships without this module; requiring it eagerly crashes on import.
++export default requireOptionalNativeModule('ExpoTopicSubscriptionModule') ?? {};
