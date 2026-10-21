@@ -20,4 +20,5 @@ export function reportError(error: unknown): void {
   Sentry.captureException(error);
 }
 
-export const wrapRootComponent = Sentry.wrap;
+// NOTE: without a DSN Sentry.wrap only logs "wrap was called before init" on every start.
+export const wrapRootComponent: typeof Sentry.wrap = (component) => (dsn ? Sentry.wrap(component) : component);

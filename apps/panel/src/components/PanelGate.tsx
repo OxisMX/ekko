@@ -4,12 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
-import { reactivationRefetch, resolvePanelRoute, toPanelErrorCode, type MerchantSession, type PanelRoute } from '../lib/panelRoute'
+import { panelRedirect, reactivationRefetch, resolvePanelRoute, toPanelErrorCode, type MerchantSession } from '../lib/panelRoute'
 import { supabase } from '../lib/supabase'
 import { AlertIcon } from './Icons'
 import type { PanelOutletContext } from './panelOutlet'
-
-const PATHS: Record<PanelRoute, string> = { login: '/login', cashier: '/', inactive: '/inactiva' }
 
 // Route guard for every signed-in screen (F-20, F-28).
 export function PanelGate() {
@@ -36,8 +34,8 @@ export function PanelGate() {
   if (session === null) return <Navigate to="/login" replace />
   // WHY: keep showing data during a failed background refetch; only a first load can error out.
   if (session && query.data) {
-    const target = PATHS[resolvePanelRoute({ session, merchantSession: query.data })]
-    if (target !== pathname) return <Navigate to={target} replace />
+    const target = panelRedirect(resolvePanelRoute({ session, merchantSession: query.data }), pathname)
+    if (target) return <Navigate to={target} replace />
     return <Outlet context={{ merchantSession: query.data } satisfies PanelOutletContext} />
   }
   if (errorCode && errorCode !== 'E-19' && errorCode !== 'E-18') {

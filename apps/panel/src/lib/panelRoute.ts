@@ -28,6 +28,23 @@ export function resolvePanelRoute({
   return merchantSession.is_active ? 'cashier' : 'inactive'
 }
 
+const PATHS: Record<PanelRoute, string> = { login: '/login', cashier: '/', inactive: '/inactiva' }
+const isAdminPath = (pathname: string) => pathname === '/admin' || pathname.startsWith('/admin/')
+
+// Where PanelGate must send the user, or null to render the requested path. Admin paths pass
+// only for active merchants; AdminLayout then applies canAccessAdmin. Inactive → always P-12.
+export function panelRedirect(route: PanelRoute, pathname: string): string | null {
+  if (route === 'cashier' && isAdminPath(pathname)) return null
+  return PATHS[route] === pathname ? null : PATHS[route]
+}
+
+// RT-12/F-23: admin sections only while unlock_admin's window is open. Today the PIN does not
+// exist (S8) so admin_unlocked_until is always null. UX guard only: admin RPCs re-check (E-16).
+export function canAccessAdmin({ adminUnlockedUntil, now }: { adminUnlockedUntil: string | null; now: number }): boolean {
+  if (!adminUnlockedUntil) return false
+  return Date.parse(adminUnlockedUntil) > now // NaN (unparseable) → false
+}
+
 // WHY: postgrest-js returns fetch failures (offline, timeout) as an error without `code`;
 // real RPC errors always carry one (P0001, PGRST…), so a missing code means E-01.
 // PGRST301/PGRST303 are PostgREST's 401s for an invalid or expired JWT (E-18).

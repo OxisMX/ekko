@@ -1,1 +1,8 @@
-/* /index.html 200
+# Order matters: Pages applies the first matching rule; existing static files are served as is.
+# WHY targets end in "/" instead of "index.html": Cloudflare rejects rewrites whose target would
+# be normalized (strip ".html"/"/index") back into the same rule as an infinite loop (error
+# 10021, workers-sdk#10992); "/v/" and "/" are already canonical and serve v/index.html and index.html.
+# W-01 (TRD §9): every /v/<token> gets the static page in v/index.html, never the React app.
+/v/* /v/ 200
+# SP-2: no rule may touch /.well-known/* (Apple does not follow redirects); the files win once they exist.
+/* / 200

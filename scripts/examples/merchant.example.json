@@ -1,0 +1,28 @@
+{
+  "name": "Cafetería Ejemplo Ficticio",
+  "category": "cafeterias_postres",
+  "description": "Comercio de ejemplo con datos falsos para probar el alta.",
+  "address": "Calle Falsa 123, Colonia Ejemplo",
+  "maps_url": "https://maps.example.com/cafeteria-ejemplo",
+  "reviews_url": "https://reviews.example.com/cafeteria-ejemplo",
+  "logo_path": "merchants/{merchant_id}/logo/logo-1",
+  "cover_path": "merchants/{merchant_id}/cover/cover-1",
+  "birthday_benefit": "Un café gratis en tu mes de cumpleaños",
+  "billing_period": "annual",
+  "paid_until": "2027-10-31",
+  "email": "ejemplo-comercio@example.com",
+  "password": "cambia-esta-clave-123",
+  "pin": "4321",
+  "loyalty_program": {
+    "stamps_required": 6,
+    "cycle_months": 6,
+    "reward_title": "Bebida gratis",
+    "reward_description": "Cualquier bebida mediana de la carta.",
+    "terms": "Consumo mínimo de $80 por visita."
+  },
+  "push_coupon_validity_hours": 48,
+  "wheel_prizes": [
+    { "label": "10% de descuento", "prize_type": "coupon", "benefit_title": "10% de descuento", "benefit_description": "En tu siguiente consumo.", "weight": 70 },
+    { "label": "Sello extra", "prize_type": "extra_stamp", "benefit_title": "Sello extra", "benefit_description": "Se suma en tu próxima visita.", "weight": 30 }
+  ]
+}

@@ -9,6 +9,7 @@ import { GatedStack } from "./GatedStack";
 
 // The gate decision as a tiny external store, so tests can drive it like auth/profile changes.
 let currentRoute: GateRoute = "loading";
+let afterSignUp = false;
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
@@ -17,7 +18,7 @@ const subscribe = (listener: () => void) => {
 
 function Layout() {
   const route = useSyncExternalStore(subscribe, () => currentRoute);
-  return <GatedStack route={route} />;
+  return <GatedStack route={route} afterSignUp={afterSignUp} />;
 }
 
 function page(name: string) {
@@ -37,6 +38,8 @@ async function renderApp(initialUrl = "/") {
       "(auth)/login": page("login"),
       "(auth)/register": page("register"),
       "complete-profile": page("complete-profile"),
+      "verify-email": page("verify-email"),
+      "merchant/[id]": page("merchant"),
       "reset-password": page("reset-password"),
     },
     { initialUrl }
@@ -51,6 +54,7 @@ const go = (route: GateRoute) =>
 
 beforeEach(() => {
   currentRoute = "loading";
+  afterSignUp = false;
 });
 
 describe("GatedStack", () => {
@@ -98,5 +102,30 @@ describe("GatedStack", () => {
     expect(app.getPathname()).toBe("/reset-password");
     await go("tabs");
     expect(app.getPathname()).toBe("/reset-password");
+  });
+
+  it("lands a fresh sign-up on A-05 instead of Explorar (F-02 K)", async () => {
+    afterSignUp = true;
+    const app = await renderApp("/register");
+    await go("auth");
+    await go("loading");
+    await go("tabs");
+    expect(app.getPathname()).toBe("/verify-email");
+  });
+
+  it("keeps A-05 and the merchant screen behind the tabs gate", async () => {
+    const app = await renderApp("/merchant/m1");
+    await go("auth");
+    expect(app.getPathname()).toBe("/login");
+
+    const again = await renderApp("/verify-email");
+    await go("completeProfile");
+    expect(again.getPathname()).toBe("/complete-profile");
+  });
+
+  it("opens a merchant deep link once signed in", async () => {
+    const app = await renderApp("/merchant/m1");
+    await go("tabs");
+    expect(app.getPathname()).toBe("/merchant/m1");
   });
 });

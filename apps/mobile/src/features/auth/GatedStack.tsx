@@ -13,13 +13,22 @@ const HOME: Record<Exclude<GateRoute, "loading">, Href> = {
  * cannot bypass it. While "loading" every group stays mounted so a cold-start deep link keeps
  * its target behind the splash; once decided, the others drop out and redirect to HOME.
  */
-export function GatedStack({ route }: { route: GateRoute }) {
+type GatedStackProps = {
+  route: GateRoute;
+  // F-02 K: a fresh email sign-up enters through A-05 instead of Explorar.
+  afterSignUp?: boolean;
+};
+
+export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
   const decided = route !== "loading";
-  const redirectTo = decided ? HOME[route] : undefined;
+  const redirectTo = !decided ? undefined : route === "tabs" && afterSignUp ? "/verify-email" : HOME[route];
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!decided || route === "tabs"} redirectTo={redirectTo}>
         <Stack.Screen name="(tabs)" />
+        {/* WHY: pushed over the tab bar (own header, back to the tab) yet behind the same guard. */}
+        <Stack.Screen name="merchant/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name="verify-email" />
       </Stack.Protected>
       <Stack.Protected guard={!decided || route === "completeProfile"} redirectTo={redirectTo}>
         <Stack.Screen name="complete-profile" />

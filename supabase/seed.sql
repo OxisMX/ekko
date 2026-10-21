@@ -10,6 +10,7 @@
 -- | c1@ekko.test   | merchant | C1 active + visible, 6-stamp card, wheel, birthday, menu      |
 -- | c2@ekko.test   | merchant | C2 active + visible, 4-stamp card, no birthday benefit        |
 -- | c3@ekko.test   | merchant | C3 inactive + invisible; U4 related with an active coupon     |
+-- | c05..c16@...   | merchant | C5–C16 active + visible, catalog filler (no menu or wheel)    |
 -- | u1@ekko.test   | customer | verified email; C1 card with 3 stamps                         |
 -- | u2@ekko.test   | customer | unverified email; no relations                                |
 -- | u3@ekko.test   | customer | Google identity; birthday this month; C1 and C2 cards         |
@@ -42,6 +43,21 @@ from (values
   ('10000000-0000-0000-0000-0000000000a3', 'u3@ekko.test', '{"provider":"google","providers":["google"]}'),
   ('10000000-0000-0000-0000-0000000000a4', 'u4@ekko.test', '{"provider":"email","providers":["email"]}')
 ) as u (id, email, app_meta);
+
+-- C5–C16: lightweight visible merchants so the catalog has more than one page (TC-020).
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  ('10000000-0000-0000-0000-000000000c' || lpad(n::text, 2, '0'))::uuid, 'authenticated', 'authenticated',
+  'c' || lpad(n::text, 2, '0') || '@ekko.test', extensions.crypt('ekko-local-123', extensions.gen_salt('bf')), app.now(),
+  jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email'), 'role', 'merchant',
+                     'merchant_id', '20000000-0000-0000-0000-000000000c' || lpad(n::text, 2, '0')),
+  '{}'::jsonb, app.now(), app.now(), '', '', '', ''
+from generate_series(5, 16) n;
 
 insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
 select gen_random_uuid(), x.id, x.provider_id, x.provider,
@@ -91,16 +107,46 @@ insert into public.merchants (
    'https://maps.example/c3', 'https://reviews.example/c3', null,
    false, false, 'inactive', 'annual', (app.local_today() - interval '2 months')::date);
 
+insert into public.merchants (
+  id, auth_user_id, name, category, description, address, logo_path, cover_path, maps_url,
+  reviews_url, is_active, is_visible, subscription_status, billing_period, paid_until
+)
+select
+  ('20000000-0000-0000-0000-000000000c' || f.n)::uuid, ('10000000-0000-0000-0000-000000000c' || f.n)::uuid,
+  f.name, f.category::public.merchant_category, f.description, 'Calle ' || f.n || ', Centro',
+  'merchants/c' || f.n || '/logo', 'merchants/c' || f.n || '/cover',
+  'https://maps.example/c' || f.n, 'https://reviews.example/c' || f.n,
+  true, true, 'active', 'annual', (app.local_today() + interval '1 year')::date
+from (values
+  ('05', 'Panadería La Espiga', 'cafeterias_postres', 'Pan dulce recién horneado.'),
+  ('06', 'Cafetería Doña Lupe', 'cafeterias_postres', 'Café de olla y desayunos.'),
+  ('07', 'Estética Bella Luz', 'belleza', 'Corte, color y peinado.'),
+  ('08', 'Spa Jardín Zen', 'spas', 'Masajes y faciales.'),
+  ('09', 'Gimnasio Fuerza Total', 'deporte_salud', 'Pesas y clases grupales.'),
+  ('10', 'Bar El Rincón', 'bares_snacks', 'Botanas y cerveza artesanal.'),
+  ('11', 'Pizzería Napoli', 'restaurantes', 'Pizza al horno de leña.'),
+  ('12', 'Lavandería Exprés', 'servicios', 'Lavado y planchado el mismo día.'),
+  ('13', 'Barbería Don Ramón', 'barberias', 'Corte clásico y afeitado.'),
+  ('14', 'Uñas y Más', 'belleza', 'Manicure y pedicure.'),
+  ('15', 'Mariscos El Güero', 'restaurantes', 'Cocteles y tostadas de mariscos.'),
+  ('16', 'Papelería Ábaco', 'otros', 'Útiles escolares y copias.')
+) as f (n, name, category, description);
+
 insert into public.loyalty_programs (merchant_id, stamps_required, cycle_months, reward_title, reward_description, terms)
 values
   ('20000000-0000-0000-0000-0000000000c1', 6, 6, 'Bebida gratis', 'Cualquier bebida mediana de la carta.', 'Consumo mínimo de $80 por visita.'),
   ('20000000-0000-0000-0000-0000000000c2', 4, 6, 'Corte gratis', 'Un corte clásico sin costo.', 'Consumo mínimo de $150 por visita.'),
   ('20000000-0000-0000-0000-0000000000c3', 6, 6, 'Orden gratis', 'Una orden de 3 tacos.', 'Consumo mínimo de $60 por visita.');
 
+insert into public.loyalty_programs (merchant_id, reward_title, reward_description, terms)
+select m.id, 'Premio de la casa', 'Un producto de cortesía.', 'Consumo mínimo de $100 por visita.'
+from public.merchants m
+where m.id::text like '20000000-0000-0000-0000-000000000c__';
+
 insert into private.merchant_security (merchant_id, pin_hash)
 select m.id, extensions.crypt('1234', extensions.gen_salt('bf'))
 from public.merchants m
-where m.id in ('20000000-0000-0000-0000-0000000000c1', '20000000-0000-0000-0000-0000000000c2', '20000000-0000-0000-0000-0000000000c3');
+where m.id::text like '20000000-%';
 
 -- C1: wheel (one extra-stamp prize), menu (2 categories, 6 products), 2 weekly offers
 insert into private.wheel_prizes (id, merchant_id, label, prize_type, benefit_title, benefit_description, weight, position)

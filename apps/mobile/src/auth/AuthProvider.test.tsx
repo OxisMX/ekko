@@ -27,11 +27,16 @@ const session = (role: unknown) =>
   ({ access_token: "t", user: { email: "ana@ekko.mx", app_metadata: { role } } }) as unknown as Session;
 
 function Probe() {
-  const { status, errorCode, session, signOut } = useAuth();
+  const { status, errorCode, session, signOut, endSession } = useAuth();
   return (
-    <Text testID="auth" onPress={() => void signOut()}>
-      {`${status}|${errorCode ?? "-"}|${session?.user.email ?? "-"}`}
-    </Text>
+    <>
+      <Text testID="auth" onPress={() => void signOut()}>
+        {`${status}|${errorCode ?? "-"}|${session?.user.email ?? "-"}`}
+      </Text>
+      <Text testID="end-session" onPress={() => endSession("E-19")}>
+        end
+      </Text>
+    </>
   );
 }
 
@@ -82,6 +87,16 @@ describe("AuthProvider", () => {
     await emit("INITIAL_SESSION", session("customer"));
     await emit("SIGNED_OUT", null);
     expect(authText()).toBe("signedOut|E-18|-");
+  });
+
+  it("endSession signs out locally and keeps the server's reason (deleted account, wrong role)", async () => {
+    const { emit } = await renderProvider();
+    await emit("INITIAL_SESSION", session("customer"));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("end-session"));
+    });
+    await waitFor(() => expect(authText()).toBe("signedOut|E-19|-"));
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
   it("does not report E-18 for a user-initiated sign-out", async () => {

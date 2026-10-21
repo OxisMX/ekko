@@ -1,59 +1,194 @@
-import { STAMPS, stampGridRows } from "@ekko/shared";
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Button, Chip } from "../../components/ui";
-import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { ERRORS, MERCHANT_CATEGORIES, type MerchantCategory, merchantCategoryLabel } from "@ekko/shared";
+import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { Alert, FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 
-const DEMO_CATEGORIES = ["Todos", "Cafeterías", "Barberías"] as const;
+import { MerchantCard } from "../../components/catalog";
+import { Chip, EmptyState, ErrorState, FormMessage, MerchantCardSkeleton } from "../../components/ui";
+import { fieldBoxStyle } from "../../components/ui/TextField";
+import { EmailVerificationBanner } from "../../features/auth/EmailVerificationBanner";
+import { type MerchantListItem, toMerchantCard, useMerchants } from "../../features/catalog/catalog";
+import { toAppError } from "../../lib/appError";
+import { reportError } from "../../lib/sentry";
+import { useDebouncedValue } from "../../lib/useDebouncedValue";
+import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 
-// NOTE: demo screen to smoke-test the emulator; replace with the real catalog (A-07).
+const SEARCH_DELAY_MS = 300; // F-06
+
+/** SA-01. WHY the guard: maps_url is merchant data; only https links leave the app. */
+function openMap(url: string) {
+  if (!/^https:\/\//i.test(url)) {
+    reportError(new Error(`Refused non-https maps_url: ${url}`));
+    Alert.alert(ERRORS["E-99"].message, "No pudimos abrir la ubicación de este negocio.");
+    return;
+  }
+  Linking.openURL(url).catch(reportError);
+}
+
+// A-07 Explorar (US-07, F-06).
 export default function ExploreScreen() {
-  const [stamps, setStamps] = useState(0);
-  const [category, setCategory] = useState<string>(DEMO_CATEGORIES[0]);
-  const total = STAMPS.default;
-  const completed = stamps === total;
-  const rows = stampGridRows(total);
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<MerchantCategory | null>(null);
+  const query = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
+  const merchants = useMerchants({ query, category });
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } = merchants;
+  const [pulling, setPulling] = useState(false);
+  const items = useMemo(() => merchants.data?.pages.flatMap((page) => page.items) ?? [], [merchants.data]);
+  const filtered = query !== "" || category !== null;
 
-  const handlePress = () => setStamps(completed ? 0 : stamps + 1);
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setCategory(null);
+  }, []);
+
+  // RR-4: pull-to-refresh. Same query key, so the same session seed and order.
+  const onRefresh = useCallback(() => {
+    setPulling(true);
+    void refetch().finally(() => setPulling(false));
+  }, [refetch]);
+
+  const onEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+
+  const renderItem = useCallback<ListRenderItem<MerchantListItem>>(
+    ({ item }) => (
+      <MerchantCard
+        merchant={toMerchantCard(item)}
+        onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.id, name: item.name } })}
+        onOpenMap={() => openMap(item.maps_url)}
+        testID={`merchant-card-${item.id}`}
+      />
+    ),
+    [router]
+  );
+
+  let body;
+  if (merchants.data) {
+    body = (
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ flexGrow: 1, gap: spacing.lg, padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} colors={[colors.navy]} tintColor={colors.navy} />}
+        ListEmptyComponent={
+          filtered ? (
+            <EmptyState
+              title="Sin resultados"
+              message="No encontramos negocios con esa búsqueda o categoría."
+              actionLabel="Limpiar búsqueda"
+              onAction={clearFilters}
+              testID="explore-empty"
+            />
+          ) : (
+            <EmptyState
+              title="Aún no hay negocios"
+              message="Pronto verás aquí los negocios afiliados."
+              actionLabel="Actualizar"
+              onAction={onRefresh}
+              testID="explore-empty"
+            />
+          )
+        }
+        ListFooterComponent={
+          items.length === 0 ? undefined : (
+            <ListFooter
+              loadingMore={isFetchingNextPage}
+              failed={isFetchNextPageError}
+              done={!hasNextPage}
+              onRetry={() => void fetchNextPage()}
+            />
+          )
+        }
+        testID="explore-list"
+      />
+    );
+  } else if (merchants.isError) {
+    body = <CatalogError key={merchants.errorUpdatedAt} error={merchants.error} onRetry={() => void refetch()} />;
+  } else {
+    body = (
+      // One announcement for the whole placeholder instead of three "Cargando".
+      <View accessible accessibilityLabel="Cargando comercios" testID="explore-loading" style={{ gap: spacing.lg, padding: spacing.lg }}>
+        <MerchantCardSkeleton />
+        <MerchantCardSkeleton />
+        <MerchantCardSkeleton />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.chips}>
-        {DEMO_CATEGORIES.map((name) => (
-          <Chip key={name} label={name} selected={category === name} onPress={() => setCategory(name)} />
-        ))}
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <EmailVerificationBanner />
+      <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
+        <View style={[fieldBoxStyle(false), { marginHorizontal: spacing.lg, paddingHorizontal: spacing.lg }]}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Busca un negocio"
+            placeholderTextColor={colors.textSecondary}
+            accessibilityLabel="Buscar negocios"
+            returnKeyType="search"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+            style={[textStyles.body, { flex: 1, minHeight: 48, color: colors.textPrimary }]}
+            testID="explore-search"
+          />
+        </View>
+        {/* RN-51 / brief §4.2: the 9 categories in one scrollable row. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs }}
+        >
+          <Chip label="Todos" selected={category === null} onPress={() => setCategory(null)} testID="explore-chip-all" />
+          {MERCHANT_CATEGORIES.map((value) => (
+            <Chip
+              key={value}
+              label={merchantCategoryLabel[value]}
+              selected={category === value}
+              onPress={() => setCategory(value)}
+              testID={`explore-chip-${value}`}
+            />
+          ))}
+        </ScrollView>
       </View>
-
-      <View style={styles.card}>
-        {rows.map((count, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
-            {Array.from({ length: count }, (_, i) => {
-              const filled = rows.slice(0, rowIndex).reduce((a, b) => a + b, 0) + i < stamps;
-              return <View key={i} style={[styles.stamp, filled && styles.stampFilled]} />;
-            })}
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.progress} maxFontSizeMultiplier={MAX_FONT_SCALE} testID="stamp-progress">
-        {completed ? "¡Completaste tu tarjeta! Tu recompensa te espera." : `${stamps} de ${total} sellos`}
-      </Text>
-
-      <Button
-        title={completed ? "Reiniciar" : "Registrar visita (demo)"}
-        onPress={handlePress}
-        testID="demo-stamp-button"
-      />
+      <View style={{ flex: 1 }}>{body}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.xl, padding: spacing.lg, backgroundColor: colors.surface },
-  chips: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.sm },
-  card: { gap: spacing.md, padding: spacing.xl, borderRadius: radii.stampContainer, backgroundColor: colors.surfaceCard },
-  row: { flexDirection: "row", justifyContent: "center", gap: spacing.md },
-  stamp: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface },
-  stampFilled: { backgroundColor: colors.accent },
-  progress: { ...textStyles.body, color: colors.textPrimary, textAlign: "center" },
-});
+function CatalogError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  // WHY: computed once per error (keyed by the parent) so an E-99 is reported to Sentry once.
+  const [code] = useState(() => toAppError(error).code);
+  return code === "E-01" ? (
+    <ErrorState onRetry={onRetry} testID="explore-error" />
+  ) : (
+    <ErrorState onRetry={onRetry} title="Algo salió mal" message="No pudimos cargar los negocios. Inténtalo de nuevo." testID="explore-error" />
+  );
+}
+
+type ListFooterProps = { loadingMore: boolean; failed: boolean; done: boolean; onRetry: () => void };
+
+function ListFooter({ loadingMore, failed, done, onRetry }: ListFooterProps) {
+  if (loadingMore) return <MerchantCardSkeleton testID="explore-loading-more" />;
+  if (failed) return <FormMessage variant="error" message={ERRORS["E-01"].message} actionLabel="Reintentar" onAction={onRetry} testID="explore-more-error" />;
+  if (!done) return null;
+  return (
+    <Text
+      maxFontSizeMultiplier={MAX_FONT_SCALE}
+      style={[textStyles.secondary, { color: colors.textSecondary, textAlign: "center", paddingVertical: spacing.md }]}
+      testID="explore-end"
+    >
+      No hay más comercios
+    </Text>
+  );
+}

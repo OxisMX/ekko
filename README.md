@@ -49,3 +49,13 @@ E2E_SUPABASE_ANON_KEY=<anon key> pnpm --filter @ekko/panel test:e2e   # Playwrig
 ```
 
 Las migraciones se crean con `pnpm supabase migration new <nombre>`; nunca se modifica el esquema desde Supabase Studio en staging o producción.
+
+## Alta de comercio
+
+Script de operación de Oxis (US-27, F-30). Copia `scripts/examples/merchant.example.json`, llénalo con los datos del onboarding (`{merchant_id}` en `logo_path`/`cover_path` se sustituye por el id generado) y ejecuta:
+
+```sh
+SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… SUPABASE_DB_URL=… node scripts/onboard-merchant.ts ruta/al/comercio.json
+```
+
+Las tres variables se pasan solo en ese comando (local: `API_URL`, `SERVICE_ROLE_KEY` y `DB_URL` de `pnpm supabase status -o json`); nunca se guardan en el repositorio. El script crea el usuario de Auth con rol `merchant` y, en una sola transacción, el comercio, su tarjeta, el PIN (bcrypt) y los premios de la ruleta; si la transacción falla, borra el usuario. Rechaza el alta si el correo o el mismo nombre + dirección ya existen. El comercio queda con `is_visible = false` hasta terminar la capacitación (F-30, paso 6). El archivo JSON contiene la contraseña y el PIN: no lo subas al repositorio y bórralo tras entregar las credenciales.

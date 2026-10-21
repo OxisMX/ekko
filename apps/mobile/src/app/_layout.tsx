@@ -4,12 +4,13 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
-import { REGISTER_MUTATION_KEY, useMyProfile } from "../features/auth/account";
+import { REGISTER_MUTATION_KEY, useJustSignedUp, useMyProfile } from "../features/auth/account";
 import { useRegisterDeviceOnce } from "../features/auth/deviceRegistration";
 import { decideGate } from "../features/auth/gate";
 import { GatedStack } from "../features/auth/GatedStack";
 import { enforceImageCacheLimit } from "../lib/imageCache";
 import { queryClient } from "../lib/queryClient";
+import { toAppError } from "../lib/appError";
 import { initSentry, wrapRootComponent } from "../lib/sentry";
 import { fontAssets } from "../theme";
 
@@ -18,9 +19,10 @@ initSentry();
 void SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
-  const { status, session } = useAuth();
+  const { status, session, endSession } = useAuth();
   const profile = useMyProfile();
   const finishingSignUp = useIsMutating({ mutationKey: REGISTER_MUTATION_KEY }) > 0;
+  const justSignedUp = useJustSignedUp();
   const route = decideGate({ status, profile: profile.data, profileFailed: profile.isError, finishingSignUp });
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   // NOTE: a font error falls back to the system font instead of blocking the app.
@@ -33,11 +35,18 @@ function RootNavigator() {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
 
+  // WHY: a still-valid JWT can outlive its account (deleted on another device, US-05) or role; the
+  // server answers E-18/E-19 and the user must land on A-02 with the reason, not on a stuck A-04.
+  const profileErrorCode = profile.error ? toAppError(profile.error).code : null;
+  useEffect(() => {
+    if (profileErrorCode === "E-18" || profileErrorCode === "E-19") endSession(profileErrorCode);
+  }, [profileErrorCode, endSession]);
+
   // WHY: text measured with the system font is not re-measured on Android when DM Sans arrives, so the
   // last glyph gets clipped ("Entrai"). Fonts load from the bundle in milliseconds; the auth/profile
   // wait stays behind the splash with the navigator mounted, so deep links (F-09) still resolve.
   if (!fontsReady) return null;
-  return <GatedStack route={route} />;
+  return <GatedStack route={route} afterSignUp={justSignedUp} />;
 }
 
 function RootLayout() {
