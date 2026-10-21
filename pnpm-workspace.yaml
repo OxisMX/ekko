@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - scripts
 
 # WHY: pnpm blocks dependency build scripts by default; only these need them.
 allowBuilds:
