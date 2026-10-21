@@ -4,7 +4,7 @@
 |---|---|
 | Producto | Ekko Rewards |
 | Documento | AppFlow (Flujo de la Aplicación) |
-| Versión | 1.1 (verificación de correo propia en F-04; reautenticación con Apple en F-15) |
+| Versión | 1.2 (verificación de correo con OTP nativo en F-04, ADR-14; reautenticación con Apple en F-15) |
 | Fecha | 20 de octubre de 2026 |
 | Estado | Borrador para aprobación |
 | Documentos base | ekko_prd.md v1.0, ekko_trd.md v1.0, ekko_brief_ux_ui.md v1.0 |
@@ -183,13 +183,13 @@ Las cuentas de Google y Apple se consideran verificadas: no muestran A-05 ni el 
 
 | Paso | Acción | Resultado |
 |---|---|---|
-| 1 | El usuario abre el enlace del correo. | La Edge Function `email-verification` marca el correo como verificado (Backend 6.3; sujeto a SP-7). |
+| 1 | El usuario abre el enlace del correo o ingresa el código de 6 dígitos (A-05). | Supabase valida el OTP y un trigger marca el correo como verificado (Backend 6.3; ADR-14). |
 | 2 | El enlace abre la app (o una página de confirmación si se abre en otro dispositivo). | La app refresca la sesión. |
 | 3 | La app oculta el banner de verificación. | Se habilitan ruleta y canjes. |
 
 Recuperación:
-- "Reenviar correo" desde el banner o A-05, con espera de 60 s entre envíos.
-- Enlace vencido: mensaje "Este enlace venció" y botón para reenviar.
+- "Reenviar correo" desde el banner o A-05, limitado por el rate limit de Supabase Auth (frecuencia por usuario).
+- Enlace o código vencido (1 h, `otp_expiry`): mensaje "Este enlace venció" y botón para reenviar.
 
 Acciones bloqueadas sin verificación: girar la ruleta (A-12 en estado bloqueado) y "Mostrar código" (A-19 en estado bloqueado). Ambas muestran E-06 con el botón de reenvío.
 

@@ -4,7 +4,7 @@
 |---|---|
 | Producto | Ekko Rewards |
 | Documento | Technical Requirements Document (TRD) |
-| Versión | 1.1 (agrega la Edge Function `email-verification` y el spike SP-7) |
+| Versión | 1.2 (resultados de Sprint 0: docs/ekko_spikes.md; elimina la Edge Function `email-verification`, ADR-14) |
 | Fecha | 20 de octubre de 2026 |
 | Estado | Borrador para aprobación |
 | Documento base | ekko_prd.md v1.0 (las referencias RN-xx, US-xx y RNF-xx apuntan a él) |
@@ -78,7 +78,7 @@ flowchart LR
 | App móvil | UI del cliente, cámara, sesión, caché de imágenes, registro del token push y del `device_id`. | Validar reglas de negocio, generar códigos, calcular premios. |
 | Panel web | UI del comercio, generación visual del QR, validador, CRUD, compresión de imágenes. | Decidir vigencias, cuotas o validez de códigos. |
 | Postgres (RPC) | Lógica transaccional: QR, sellos, ciclos, ruleta, cupones, canjes, PIN, cuotas de push, métricas. | Llamadas a servicios externos. |
-| Edge Functions | Integraciones externas: envío push (Expo), revocación de Apple, eliminación de cuenta en Auth, verificación de correo propia. | Reglas de negocio que puedan vivir en SQL. |
+| Edge Functions | Integraciones externas: envío push (Expo), revocación de Apple, eliminación de cuenta en Auth. | Reglas de negocio que puedan vivir en SQL. |
 | Storage | Imágenes públicas de comercios en variantes WebP prerredimensionadas. | Transformaciones al vuelo (requieren plan Pro). |
 | Cloudflare Pages | Hosting del panel, página pública `/v/:token` y archivos de enlaces universales. | Lógica de servidor. |
 
@@ -134,7 +134,7 @@ Las versiones exactas se fijan en el repositorio al iniciar el proyecto, usando 
 | Sesión segura | `expo-secure-store` como almacenamiento de sesión de Supabase | — |
 | Escáner QR | `expo-camera` (escaneo de códigos integrado) | Sin librerías de escaneo adicionales. |
 | Imágenes | `expo-image` | Caché en disco; tope de 20 MB sujeto al spike SP-1. |
-| Login con Google | Google Sign-In nativo con intercambio de ID token en Supabase | Librería definitiva en spike SP-4. |
+| Login con Google | Google Sign-In nativo con intercambio de ID token en Supabase | `@react-native-google-signin/google-signin` (Original) + `signInWithIdToken` (SP-4). Plan B: `signInWithOAuth` + `expo-web-browser` (PKCE). |
 | Login con Apple | `expo-apple-authentication` | Obligatorio en iOS al ofrecer login social. |
 | Notificaciones | `expo-notifications` | Registro del Expo Push Token por dispositivo. |
 | Identificador de dispositivo | `expo-application` (ID de proveedor en iOS, Android ID en Android) | Se envía solo como hash SHA-256 con sal del proyecto (RN-07). |
@@ -164,9 +164,9 @@ Las versiones exactas se fijan en el repositorio al iniciar el proyecto, usando 
 | Base de datos | Supabase Postgres | Zona horaria de cálculo `America/Mexico_City`. |
 | Lógica de negocio | Funciones PL/pgSQL expuestas como RPC | `SECURITY DEFINER` con `search_path` fijo; validan `auth.uid()` y rol. |
 | Autorización | RLS + claim de rol en `app_metadata` (`customer` / `merchant`) | El rol lo asigna solo el servidor. |
-| Autenticación | Supabase Auth: correo, Google, Apple | SMTP externo (RNF-11). |
+| Autenticación | Supabase Auth: correo, Google, Apple | SMTP externo (RNF-11). Verificación de correo con OTP nativo y trigger (ADR-14). |
 | Archivos | Supabase Storage, bucket público de lectura | Escritura restringida por ruta `{merchant_id}/...`. |
-| Integraciones | Supabase Edge Functions (Deno, TypeScript) | Solo: `send-push`, `delete-account`, `email-verification` (esta última sujeta a SP-7). |
+| Integraciones | Supabase Edge Functions (Deno, TypeScript) | Solo: `send-push` y `delete-account`. |
 | Aleatoriedad | `gen_random_bytes` de `pgcrypto` | Tokens QR, códigos de canje y giro de ruleta. |
 | Hash de PIN | `crypt()` con bcrypt de `pgcrypto` | — |
 | Migraciones | Supabase CLI, migraciones SQL versionadas | Sin cambios manuales de esquema en staging ni producción. |
@@ -179,7 +179,7 @@ Las versiones exactas se fijan en el repositorio al iniciar el proyecto, usando 
 | Supabase | Base de datos, Auth, Storage, Realtime, Edge Functions | Gratis (dev/staging); Pro 25 USD/mes en producción antes del primer comercio de pago. |
 | Cloudflare Pages | Panel, `/v/:token`, `.well-known` | Gratis; permite uso comercial. |
 | Expo (EAS + Push API) | Builds, envío a tiendas, OTA, notificaciones | Capa gratuita; build local como respaldo. |
-| SMTP (Resend o Brevo; se fija en ADR) | Verificación y recuperación de contraseña | Capa gratuita. |
+| SMTP (Resend, ADR-09) | Verificación y recuperación de contraseña | Capa gratuita. |
 | Sentry | Monitoreo de errores | Capa gratuita. |
 | Apple Developer | Publicación iOS y Apple Sign-In | 99 USD/año. |
 | Google Play Console | Publicación Android | 25 USD pago único. |
@@ -199,7 +199,7 @@ ekko/
 │   └── shared/                 # Tipos generados, esquemas zod, constantes de reglas
 ├── supabase/
 │   ├── migrations/             # SQL versionado
-│   ├── functions/              # Edge Functions: send-push, delete-account, email-verification
+│   ├── functions/              # Edge Functions: send-push, delete-account
 │   ├── seed.sql                # Datos de desarrollo
 │   └── tests/                  # Pruebas de RPC y RLS (pgTAP)
 ├── scripts/
@@ -386,7 +386,7 @@ La consulta diferida de receipts de Expo queda fuera del MVP; los tokens inváli
 ### 8.2 Caché en el dispositivo (RNF-03)
 
 - `expo-image` con caché en disco.
-- Si el spike SP-1 confirma que no se puede fijar un tope de 20 MB, se implementa una limpieza propia: al iniciar la app se mide el directorio de caché y, si supera 20 MB, se purga.
+- Resultado de SP-1: `expo-image` solo permite fijar el tope en iOS (`Image.configureCache({ maxDiskSize })`); en Android no es configurable. Se fija el tope nativo en iOS y, en ambas plataformas, al iniciar la app se mide el directorio de caché y, si supera 20 MB, se purga por completo (no es LRU; en Android la caché puede superar 20 MB durante una sesión). Detalle en docs/ekko_spikes.md.
 - Datos JSON: solo en memoria (TanStack Query); sin persistencia en disco.
 
 ---
@@ -456,15 +456,17 @@ El detalle se desarrolla en el Plan de Implementación.
 
 ## 14. Spikes técnicos (Sprint 0)
 
-| ID | Pregunta técnica | Criterio de salida | Plan B |
-|---|---|---|---|
-| SP-1 | ¿`expo-image` permite limitar la caché en disco a 20 MB? | Prueba en Android e iOS con medición del directorio. | Limpieza propia al iniciar la app. |
-| SP-2 | ¿Los enlaces universales funcionan servidos desde Cloudflare Pages en ambos sistemas? | QR escaneado con la cámara nativa abre la app en iOS y Android. | Esquema propio (`ekko://`) más página `/v/:token`. |
-| SP-3 | Revocación de token de Apple desde Edge Function. | Revocación exitosa en staging. | Revocación manual documentada. |
-| SP-4 | Librería de Google Sign-In compatible con Expo y Supabase. | Login completo en Android e iOS en dev client. | Flujo web con `expo-auth-session`. |
-| SP-5 | Codificación WebP en Safari de iPad. | Variantes WebP generadas correctamente. | Respaldo a JPEG comprimido. |
-| SP-6 | Tamaño base de la app con las dependencias elegidas. | Tamaño de descarga estimado menor a 25 MB. | Revisión de dependencias. |
-| SP-7 | ¿Supabase Auth permite sesión con correo sin confirmar y confirmación posterior? | Usuario nuevo registra un sello sin verificar y verifica después. | Confirmación nativa desactivada + verificación propia con la Edge Function `email-verification` (Backend 6.3). |
+Resultados y evidencia de cada spike en docs/ekko_spikes.md.
+
+| ID | Pregunta técnica | Criterio de salida | Plan B | Resultado |
+|---|---|---|---|---|
+| SP-1 | ¿`expo-image` permite limitar la caché en disco a 20 MB? | Prueba en Android e iOS con medición del directorio. | Limpieza propia al iniciar la app. | Aplicado: tope nativo en iOS y purga al iniciar en ambas plataformas. |
+| SP-2 | ¿Los enlaces universales funcionan servidos desde Cloudflare Pages en ambos sistemas? | QR escaneado con la cámara nativa abre la app en iOS y Android. | Esquema propio (`ekko://`) más página `/v/:token`. | Diseño cerrado; verificación pendiente de DEP-01 y del primer deploy. |
+| SP-3 | Revocación de token de Apple desde Edge Function. | Revocación exitosa en staging. | Revocación manual documentada. | Diseño cerrado; verificación en staging pendiente de DEP-01. |
+| SP-4 | Librería de Google Sign-In compatible con Expo y Supabase. | Login completo en Android e iOS en dev client. | `signInWithOAuth` + `expo-web-browser` (PKCE). | Librería elegida; nonce pendiente de decisión. |
+| SP-5 | Codificación WebP en Safari de iPad. | Variantes WebP generadas correctamente. | Respaldo a JPEG comprimido. | Resuelto; WebKit/iPad real pendiente (TC-161). |
+| SP-6 | Tamaño base de la app con las dependencias elegidas. | Tamaño de descarga estimado menor a 25 MB. | Revisión de dependencias. | Bundle JS 2.6 MB; binario pendiente de EAS (DEP-05). |
+| SP-7 | ¿Supabase Auth permite sesión con correo sin confirmar y confirmación posterior? | Usuario nuevo registra un sello sin verificar y verifica después. | Verificación propia con Edge Function (ADR-12). | Resuelto: OTP nativo + trigger (ADR-14). |
 
 ---
 
@@ -493,6 +495,9 @@ El detalle se desarrolla en el Plan de Implementación.
 | ADR-06 | Conversión de imágenes en el navegador en lugar de transformación en servidor. |
 | ADR-07 | QR bajo demanda con enlace universal. |
 | ADR-08 | Credencial única por comercio con PIN en servidor. |
-| ADR-09 | Proveedor SMTP (Resend o Brevo). |
+| ADR-09 | Proveedor SMTP: Resend. |
 | ADR-10 | Monorepo con pnpm workspaces. |
 | ADR-11 | Soft delete con anonimización y hashes. |
+| ADR-12 | Verificación de correo propia (obsoleto, reemplazado por ADR-14). |
+| ADR-13 | Reloj controlable para pruebas. |
+| ADR-14 | Verificación de correo con OTP nativo de Supabase y trigger. |

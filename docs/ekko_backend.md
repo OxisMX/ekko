@@ -4,7 +4,7 @@
 |---|---|
 | Producto | Ekko Rewards |
 | Documento | Esquema del Backend |
-| Versión | 1.0 |
+| Versión | 1.1 (resultados de Sprint 0: verificación de correo por ADR-14) |
 | Fecha | 20 de octubre de 2026 |
 | Estado | Borrador para aprobación |
 | Documentos base | ekko_prd.md, ekko_trd.md, ekko_appflow.md (v1.0) |
@@ -91,7 +91,7 @@ erDiagram
 | `first_name` | text | nullable, 2–50 caracteres | Nulo hasta completar el perfil y tras anonimizar. |
 | `last_name` | text | nullable, 2–50 caracteres | — |
 | `birth_date` | date | nullable | Solo se fija una vez (RN-04). |
-| `email_verified_at` | timestamptz | nullable | Verificación propia (ver 6.3). |
+| `email_verified_at` | timestamptz | nullable | Se fija por trigger al verificar el OTP (ver 6.3). |
 | `auth_provider` | text | NOT NULL | `email`, `google` o `apple`. |
 | `status` | customer_status | NOT NULL, default `active` | — |
 | `deleted_at` | timestamptz | nullable | — |
@@ -297,7 +297,6 @@ Restricción: `CHECK` que exige la columna de origen correspondiente a `source`.
 | `merchant_security` | `merchant_id` PK, `pin_hash` (bcrypt), `pin_failed_count`, `pin_locked_until`, `code_failed_count`, `code_window_started_at`, `validator_locked_until` | PIN (RN-63) y antiadivinación del validador (TRD 6.5). |
 | `merchant_admin_sessions` | `id`, `merchant_id`, `auth_session_id` (claim `session_id` del JWT), `expires_at` | Desbloqueo administrativo por dispositivo con expiración deslizante de 5 min. |
 | `wheel_prizes` | `id`, `merchant_id`, `label` (≤ 30), `prize_type`, `benefit_title`, `benefit_description`, `weight` (> 0), `position`, `is_active` | Premios y pesos de la ruleta (RN-33). |
-| `email_verification_tokens` | `token_hash`, `customer_id`, `expires_at`, `used_at` | Verificación de correo propia (ver 6.3). |
 
 ### 2.5 Índices adicionales
 
@@ -710,7 +709,6 @@ Retorna el historial del comercio: `{ id, title, has_coupon, status, recipients_
 | `get_push_recipients(p_campaign_id)` | `send-push` | Tokens activos de los clientes con relación. |
 | `record_push_result(p_campaign_id, p_sent, p_failed, p_invalid_tokens text[])` | `send-push` | Cierra la campaña y desactiva tokens inválidos. |
 | `anonymize_customer(p_customer_id)` | `delete-account` | Anonimización (6.4). |
-| `create_email_verification(p_customer_id)` / `consume_email_verification(p_token)` | `email-verification` | Verificación de correo (6.3). |
 
 Los scripts de operación (`onboard-merchant.ts`, `set-merchant-status.ts`, `reset-pin.ts`) usan la `service_role key` y SQL directo en una transacción.
 
@@ -722,7 +720,6 @@ Los scripts de operación (`onboard-merchant.ts`, `set-merchant-status.ts`, `res
 |---|---|---|---|
 | `send-push` | POST | JWT de comercio | Envío de campañas (TRD 7.4). |
 | `delete-account` | POST | JWT de cliente | Eliminación de cuenta (F-15). |
-| `email-verification` | POST / GET | JWT de cliente (envío) / pública (consumo) | Verificación de correo (6.3). |
 
 ### 5.1 `send-push`
 
@@ -769,18 +766,13 @@ Solicitud:
 
 Proceso:
 1. Valida la confirmación.
-2. Si el proveedor es Apple, la app vuelve a solicitar Apple Sign-In antes de llamar y envía el `authorization_code`; la función lo canjea por un token y lo revoca en la API de Apple (sujeto a SP-3).
+2. Si el proveedor es Apple, la app vuelve a solicitar Apple Sign-In antes de llamar y envía el `authorization_code`; la función lo canjea por un token y lo revoca en la API de Apple (SP-3; diseño en docs/ekko_spikes.md).
 3. `anonymize_customer`.
 4. Elimina el usuario de Supabase Auth.
 
 Respuesta: `{ "deleted": true }`.
 
-### 5.3 `email-verification`
-
-| Ruta | Uso |
-|---|---|
-| `POST /send` | Con JWT de cliente. Genera token (hash guardado, vigencia 24 h), envía el correo con la API del proveedor SMTP. Límite: 1 envío por minuto y 5 por día por cliente. |
-| `GET /confirm?token=...` | Consume el token, fija `email_verified_at` y redirige a una página de confirmación que intenta abrir la app. |
+La verificación de correo no usa Edge Function: ver 6.3 y ADR-14.
 
 ---
 
@@ -795,7 +787,7 @@ Respuesta: `{ "deleted": true }`.
 | Rol | Trigger `AFTER INSERT ON auth.users`: si `raw_app_meta_data` no trae `role = 'merchant'` (solo posible vía API administrativa), asigna `role = 'customer'` y crea la fila en `customers`. |
 | Claims usados | `sub`, `session_id`, `email`, `app_metadata.role`, `app_metadata.merchant_id`. |
 | Política de contraseña | Mínimo 8 caracteres. |
-| SMTP | Proveedor externo (ADR-09) para recuperación de contraseña y verificación. |
+| SMTP | Resend (ADR-09) para recuperación de contraseña y verificación. |
 
 ### 6.2 Políticas RLS
 
@@ -818,13 +810,14 @@ El rol `anon` no tiene acceso a ninguna tabla: la app exige sesión para todo, i
 
 ### 6.3 Verificación de correo
 
-Hallazgo para validar en el Sprint 0 (SP-7): con la confirmación obligatoria de Supabase Auth activada, un usuario no puede iniciar sesión hasta confirmar su correo, lo que contradice RN-05 (registrar sellos sin verificar). Propuesta:
+Mecanismo de ADR-14 (resultado de SP-7):
 
-1. Desactivar la confirmación obligatoria en Supabase Auth.
-2. Verificación propia con la Edge Function `email-verification` y la columna `customers.email_verified_at`.
-3. `app.is_email_verified` controla ruleta y canjes.
-
-Esto agrega una tercera Edge Function a las dos previstas en el TRD. Si el spike encuentra una opción nativa que permita sesión sin confirmar y confirmación posterior, se adopta y se elimina la función.
+1. Autoconfirmación activa en Supabase Auth: el registro devuelve sesión y el cliente puede recibir sellos (RN-05).
+2. La app verifica con `signInWithOtp({ email, shouldCreateUser: false })` y `verifyOtp`. El correo es el nativo de Supabase, con plantilla en español (código de 6 dígitos y enlace), enviado por el SMTP de ADR-09.
+3. Trigger `AFTER INSERT ON auth.mfa_amr_claims` (`SECURITY DEFINER`, migración 009): si `authentication_method = 'otp'`, fija `customers.email_verified_at` del usuario de la sesión. El login con contraseña no la fija.
+4. `app.is_email_verified` controla ruleta y canjes.
+5. Vigencia del OTP = `otp_expiry` de Auth (1 h). Reenvío limitado por el rate limit de Auth; ajustar en Authentication → Rate Limits antes del lanzamiento (30 correos/h por defecto con SMTP propio, compartido con la recuperación de contraseña).
+6. Riesgo: `auth.mfa_amr_claims` es una tabla interna de GoTrue; una prueba pgTAP de contrato verifica sus columnas `session_id` y `authentication_method`.
 
 ### 6.4 Anonimización (RN-08)
 
@@ -845,7 +838,7 @@ Tras eliminar el usuario de Auth, `auth_user_id` queda nulo. Un registro nuevo c
 | Pimienta de hashes | Supabase Vault (lectura solo desde funciones `app`). |
 | `service_role key` | Secretos de Edge Functions, GitHub Actions y equipo de Oxis. |
 | Llave de Apple Sign-In (revocación) | Secretos de Edge Functions. |
-| API key del proveedor SMTP | Configuración de Auth y secretos de Edge Functions. |
+| API key de Resend (SMTP) | Configuración de SMTP de Auth. |
 | Access token de Expo (si se habilita seguridad de push) | Secretos de Edge Functions. |
 
 ---
@@ -909,7 +902,7 @@ Orden inicial de migraciones versionadas (Supabase CLI):
 | 006 | `catalog_tables` | `menu_categories`, `products`, `weekly_offers`, `customer_devices`. |
 | 007 | `indexes` | Índices de la sección 2.5. |
 | 008 | `app_functions` | Funciones auxiliares de la sección 3. |
-| 009 | `auth_trigger` | Trigger de alta de clientes y asignación de rol. |
+| 009 | `auth_trigger` | Trigger de alta de clientes y asignación de rol, y trigger de verificación de correo (ADR-14). |
 | 010 | `customer_rpc` | RPC 4.1 a 4.3. |
 | 011 | `merchant_rpc` | RPC 4.4 y 4.5. |
 | 012 | `internal_rpc` | RPC 4.6. |
@@ -926,7 +919,7 @@ Orden inicial de migraciones versionadas (Supabase CLI):
 
 | Regla | Mecanismo principal |
 |---|---|
-| RN-05 | `app.is_email_verified` en `spin_wheel` y `reveal_coupon_code`. |
+| RN-05 | `app.is_email_verified` en `spin_wheel` y `reveal_coupon_code`; `customers.email_verified_at` la fija el trigger sobre `auth.mfa_amr_claims` (ADR-14). |
 | RN-07, RN-09 | Índices únicos de `wheel_spins` por dispositivo y hash de correo. |
 | RN-13 a RN-17 | `generate_visit_qr`, `claim_visit`, índice único diario de `stamps`. |
 | RN-24 a RN-29 | `app.roll_cycle`, `app.grant_stamps`, copia de configuración en `card_cycles`. |

@@ -4,9 +4,9 @@
 |---|---|
 | Producto | Ekko Rewards |
 | Documento | Architecture Decision Records |
-| Versión | 1.0 |
+| Versión | 1.1 (resultados de Sprint 0: ADR-09 aceptado, ADR-12 obsoleto, ADR-14 nuevo) |
 | Fecha | 20 de octubre de 2026 |
-| Documentos base | ekko_prd.md 1.0, ekko_trd.md 1.1, ekko_backend.md 1.0, ekko_plan_qa.md 1.0 |
+| Documentos base | ekko_prd.md 1.0, ekko_trd.md 1.2, ekko_backend.md 1.1, ekko_plan_qa.md 1.0 |
 
 ---
 
@@ -22,11 +22,12 @@
 | ADR-06 | Procesamiento de imágenes en el navegador | Aceptado |
 | ADR-07 | QR de visita bajo demanda con enlace universal | Aceptado |
 | ADR-08 | Credencial única por comercio con PIN validado en servidor | Aceptado |
-| ADR-09 | Proveedor SMTP externo | Propuesto |
+| ADR-09 | Proveedor SMTP externo (Resend) | Aceptado |
 | ADR-10 | Monorepo con pnpm workspaces | Aceptado |
 | ADR-11 | Soft delete con anonimización y hashes con pimienta | Aceptado |
-| ADR-12 | Verificación de correo propia | Propuesto (sujeto a SP-7) |
+| ADR-12 | Verificación de correo propia | Obsoleto (SP-7; ver ADR-14) |
 | ADR-13 | Reloj controlable para pruebas | Aceptado |
+| ADR-14 | Verificación de correo con OTP nativo de Supabase y trigger | Aceptado |
 
 Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obsoleto**.
 
@@ -198,24 +199,24 @@ Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obs
 
 ---
 
-## ADR-09 — Proveedor SMTP externo
+## ADR-09 — Proveedor SMTP externo (Resend)
 
-**Estado:** Propuesto · **Fecha:** 20/10/2026 · **Origen:** respuesta A.4
+**Estado:** Aceptado · **Fecha:** 20/10/2026 · **Origen:** respuesta A.4; docs/ekko_spikes.md (ADR-09)
 
 **Contexto.** El servicio de correo integrado de Supabase está limitado a unos pocos correos por hora para todo el proyecto, insuficiente para verificación y recuperación de contraseña.
 
-**Decisión propuesta.** Configurar un proveedor SMTP con capa gratuita, a elegir entre Resend y Brevo en el Sprint 0, con el dominio `oxis.mx` y registros SPF, DKIM y DMARC en Cloudflare.
+**Decisión.** Usar Resend (capa gratuita: 100 correos/día, 3 000/mes) como SMTP de Supabase Auth: host `smtp.resend.com`, puerto `465`, usuario `resend`, contraseña = API key de Resend. Subdominio de envío del dominio `oxis.mx` con SPF, DKIM y DMARC en Cloudflare. Las plantillas de correo viven en Supabase Auth.
 
-**Criterios de elección.**
-| Criterio | Peso |
+**Alternativas consideradas.**
+| Alternativa | Motivo de descarte |
 |---|---|
-| Límite diario y mensual de la capa gratuita vigente | Alto |
-| API HTTP para la Edge Function `email-verification` además de SMTP | Alto |
-| Facilidad de verificación del dominio en Cloudflare | Medio |
-| Entregabilidad a Gmail y Outlook | Alto |
-| Plantillas en español | Bajo |
+| Brevo Free (300/día) | Verificación de dominio manual, reseñas de entregabilidad dudosa en el plan gratuito (IPs compartidas) y posible footer de marca. Es la alternativa si se supera el límite de Resend. |
 
-**Consecuencias.** Dependencia de un proveedor adicional y de la configuración de DNS; desbloquea la recuperación de contraseña y la verificación propia (ADR-12).
+**Razones de elección.** Verificación en Cloudflare en minutos (Domain Connect), entregabilidad sin footer de marca y documentación directa con Supabase. El límite de 100/día alcanza para el piloto.
+
+**Disparador de cambio.** Más de ~70 correos/día sostenidos o una campaña de lanzamiento: pasar a Resend Pro o a Brevo Free.
+
+**Consecuencias.** Dependencia de un proveedor adicional y de la configuración de DNS; desbloquea la recuperación de contraseña y la verificación de correo (ADR-14). Con SMTP propio, Supabase limita por defecto a 30 correos/hora (ajustable en Authentication → Rate Limits).
 
 ---
 
@@ -262,7 +263,7 @@ Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obs
 
 ## ADR-12 — Verificación de correo propia
 
-**Estado:** Propuesto (sujeto al spike SP-7) · **Fecha:** 20/10/2026 · **Origen:** Esquema del Backend 6.3
+**Estado:** Obsoleto (SP-7; ver ADR-14) · **Fecha:** 20/10/2026 · **Origen:** Esquema del Backend 6.3
 
 **Contexto.** La regla RN-05 permite registrar sellos antes de verificar el correo, pero exige verificación para ruleta y canjes. Si la confirmación obligatoria de Supabase Auth impide iniciar sesión hasta verificar, el primer sello en caja sería imposible.
 
@@ -293,6 +294,28 @@ Estados posibles: **Propuesto**, **Aceptado**, **Reemplazado por ADR-xx**, **Obs
 - Positivas: pruebas deterministas y rápidas de todas las reglas de tiempo.
 - Negativas: disciplina de código; un uso directo de `now()` rompe la testabilidad.
 - Mitigación: prueba de inventario en CI que falla si una función de los esquemas `public` o `app` llama a `now()` directamente.
+
+---
+
+## ADR-14 — Verificación de correo con OTP nativo de Supabase y trigger
+
+**Estado:** Aceptado · **Fecha:** 20/10/2026 · **Origen:** docs/ekko_spikes.md SP-7
+
+**Contexto.** RN-05 permite registrar sellos antes de verificar el correo, pero exige verificación para ruleta y canjes. SP-7 mostró que con la confirmación obligatoria de Supabase Auth el registro no devuelve sesión y el login con contraseña falla con `email_not_confirmed`; `allow_unverified_email_sign_ins` solo aplica a correos no verificados de proveedores OAuth. Con autoconfirmación hay sesión, y `signInWithOtp({ shouldCreateUser: false })` + `verifyOtp` crean una sesión con `authentication_method = 'otp'` en `auth.mfa_amr_claims`.
+
+**Decisión.** Autoconfirmación activa. La verificación usa `signInWithOtp({ shouldCreateUser: false })` y `verifyOtp`, con el correo nativo de Supabase (plantilla en español con código de 6 dígitos y enlace) enviado por el SMTP de ADR-09. Un trigger `AFTER INSERT ON auth.mfa_amr_claims` con `authentication_method = 'otp'` fija `customers.email_verified_at`; vive en la migración 009. Las cuentas de Google y Apple se consideran verificadas.
+
+**Alternativas consideradas.**
+| Alternativa | Motivo de descarte |
+|---|---|
+| Confirmación nativa obligatoria | Bloquea el primer sello en caja. |
+| `allow_unverified_email_sign_ins` | Solo aplica a correos de proveedores OAuth. |
+| Edge Function propia (ADR-12) | Más código, una tabla de tokens y plantillas propias. |
+
+**Consecuencias.**
+- Positivas: sin Edge Function, tabla de tokens ni RPC propias; rate limit y plantillas nativos.
+- Negativas: dependencia de la tabla interna `auth.mfa_amr_claims` de GoTrue; todo correo de Auth comparte el rate limit de Supabase con SMTP propio (30/h por defecto); la vigencia del OTP es `otp_expiry` de Auth (1 h).
+- Mitigación: prueba pgTAP de contrato sobre las columnas `session_id` y `authentication_method` de `auth.mfa_amr_claims`; ajustar Authentication → Rate Limits antes del lanzamiento.
 
 ---
 

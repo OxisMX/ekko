@@ -4,10 +4,10 @@
 |---|---|
 | Producto | Ekko Rewards |
 | Documento | Plan de Pruebas (QA) |
-| Versión | 1.0 |
+| Versión | 1.1 (verificación de correo con OTP nativo, ADR-14) |
 | Fecha | 20 de octubre de 2026 |
 | Estado | Borrador para aprobación |
-| Documentos base | ekko_prd.md 1.0, ekko_trd.md 1.1, ekko_appflow.md 1.1, ekko_backend.md 1.0, ekko_plan_implementacion.md 1.0 |
+| Documentos base | ekko_prd.md 1.0, ekko_trd.md 1.2, ekko_appflow.md 1.2, ekko_backend.md 1.1, ekko_plan_implementacion.md 1.0 |
 
 ---
 
@@ -146,9 +146,10 @@ Tipo: **DB** = pgTAP, **UT** = unitaria, **CT** = componente, **INT** = integrac
 | TC-009 | Usuario `customer` inicia sesión en el panel. | E-19. | — | E2E | A |
 | TC-010 | El trigger de alta asigna `merchant` solo si viene de la API administrativa. | Un registro público con metadatos manipulados queda como `customer`. | — | DB | C |
 | TC-011 | Recuperar contraseña con correo inexistente. | Mismo mensaje genérico que con uno existente. | — | E2E | M |
-| TC-012 | Verificación de correo: enlace válido, vencido (más de 24 h) y reutilizado. | Válido marca `email_verified_at`; vencido y reutilizado muestran error con reenvío. | RN-05 | INT | A |
-| TC-013 | Reenvío de verificación más de 1 vez por minuto o 5 por día. | Rechazado con mensaje de espera. | — | INT | M |
+| TC-012 | Verificación de correo con OTP nativo: código o enlace válido, vencido (después de `otp_expiry`, 1 h), reutilizado, y login con contraseña. | Válido marca `email_verified_at`; vencido y reutilizado se rechazan con opción de reenvío; el login con contraseña no la marca. | RN-05 | INT | A |
+| TC-013 | Reenvío del OTP más seguido que la frecuencia por usuario de Supabase Auth. | Rechazado con mensaje de espera. | — | INT | M |
 | TC-014 | Inicio de sesión en un segundo dispositivo. | Tarjetas, sellos y cupones idénticos. | RN-06 | MAN | A |
+| TC-015 | Contrato de `auth.mfa_amr_claims`: existen las columnas `session_id` y `authentication_method`, y el trigger fija `email_verified_at` solo con `otp`. | La prueba falla si una actualización de Supabase cambia la tabla. | RN-05 | DB | A |
 
 ### 6.2 Catálogo y comercio
 

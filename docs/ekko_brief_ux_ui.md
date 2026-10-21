@@ -121,21 +121,21 @@ Los valores son una aproximación a las referencias y se ajustan en el archivo d
 | `color.surface.muted` | `#F1F1F1` | Tarjetas de producto, oferta y cupón. |
 | `color.surface.card` | `#E9E6DF` | Fondo de la cuadrícula de sellos cuando el comercio no sube imagen. |
 | `color.text.primary` | `#1E2124` | Títulos y texto principal. |
-| `color.text.secondary` | `#6B6F76` | Texto secundario (oscurecido respecto a la referencia para cumplir contraste AA). |
+| `color.text.secondary` | `#64676E` | Texto secundario (oscurecido para cumplir contraste AA 4.5:1 también sobre `surface.card`). |
 | `color.primary` | `#1E2124` | Botón primario. |
 | `color.navy` | `#1F2A4A` | Chip seleccionado, íconos de acción. |
-| `color.accent` | `#FF7A3D` (por validar) | Sellos recién otorgados, recompensa disponible, ruleta, insignias. |
-| `color.success` | `#1F9D55` | Confirmaciones. |
+| `color.accent` | `#FF7A3D` | Sellos recién otorgados, recompensa disponible, ruleta, insignias. |
+| `color.success` | `#1B8749` | Confirmaciones (oscurecido para cumplir AA como texto sobre blanco). |
 | `color.error` | `#D93A3A` | Errores. |
 | `color.warning` | `#E0A100` | Vencimientos próximos. |
 
-Regla: el acento no se usa en botones genéricos ni en navegación; solo en momentos de recompensa (OD-3).
+Regla: el acento no se usa en botones genéricos ni en navegación; solo en momentos de recompensa (OD-3). El acento nunca se usa para texto (2.59:1 sobre blanco) y no debe ser el único portador de información (sello con forma o ícono, no solo color).
 
 ### 4.4 Tipografía
 
 | Rol | Estilo propuesto |
 |---|---|
-| Familia | Una sola familia geométrica con 3 pesos (Regular, SemiBold, Bold), por ejemplo Poppins o DM Sans; se elige una en el archivo de diseño (DA-3). |
+| Familia | Una sola familia geométrica con 3 pesos (Regular, SemiBold, Bold), DM Sans (fuente variable, DA-3). |
 | Display | 32/36, Bold (títulos de autenticación). |
 | H1 | 24/30, Bold. |
 | H2 | 20/26, SemiBold. |
@@ -359,9 +359,9 @@ Cercano, breve y en segunda persona del singular ("tú"). Sin tecnicismos. Celeb
 
 ## 11. Decisiones abiertas de diseño
 
-| ID | Decisión | Propuesta |
-|---|---|---|
-| DA-1 | Color acento vibrante. | `#FF7A3D` (naranja), contrastante con el azul marino; validar en el archivo de diseño. |
-| DA-2 | Navegación dentro del comercio: menú de 4 botones (referencia) o pestañas. | Pestañas bajo el encabezado, con la tarjeta como vista inicial. |
-| DA-3 | Familia tipográfica única. | Poppins o DM Sans, 3 pesos. |
-| DA-4 | Comportamiento del encabezado del comercio. | Se compacta al desplazarse (portada se oculta, quedan logo y nombre). |
+| ID | Decisión | Propuesta | Estado |
+|---|---|---|---|
+| DA-1 | Color acento vibrante. | `#FF7A3D` (naranja), contrastante con el azul marino; validar en el archivo de diseño. | Cerrada — `#FF7A3D` solo para elementos no textuales; nunca para texto. Contraste no textual 2.08:1 sobre `surface.card` (< 3:1): los sellos se distinguen también por forma/ícono. |
+| DA-2 | Navegación dentro del comercio: menú de 4 botones (referencia) o pestañas. | Pestañas bajo el encabezado, con la tarjeta como vista inicial. | Cerrada — adoptada la propuesta. |
+| DA-3 | Familia tipográfica única. | Poppins o DM Sans, 3 pesos. | Cerrada — DM Sans: fuente variable, un solo archivo cubre los 3 pesos, más liviana que 3 archivos estáticos de Poppins (OD-6). |
+| DA-4 | Comportamiento del encabezado del comercio. | Se compacta al desplazarse (portada se oculta, quedan logo y nombre). | Cerrada — adoptada la propuesta. |
