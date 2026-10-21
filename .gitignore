@@ -17,3 +17,6 @@ graphify-out/.graphify_*
 # playwright
 test-results/
 playwright-report/
+
+# Claude Code: per-developer permissions
+.claude/settings.local.json

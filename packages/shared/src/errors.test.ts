@@ -22,3 +22,12 @@ describe("parseRpcError", () => {
     expect(parseRpcError({ message: "E-14", details: "{not json" })).toEqual({ code: "E-14", details: null });
   });
 });
+
+describe("E-23", () => {
+  it("is a known code that keeps its field detail", () => {
+    expect(parseRpcError({ message: "E-23", details: '{"field":"first_name"}' })).toEqual({
+      code: "E-23",
+      details: { field: "first_name" },
+    });
+  });
+});

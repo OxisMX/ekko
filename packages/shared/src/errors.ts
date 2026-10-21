@@ -21,6 +21,8 @@ export const ERRORS = {
   "E-20": { message: "Ya existe una cuenta con este correo.", action: "Iniciar sesión o recuperar contraseña." },
   "E-21": { message: "No pudimos conectar con Google/Apple.", action: "Reintentar u otro método." },
   "E-22": { message: "No pudimos procesar la imagen.", action: "Otra imagen o reintentar." },
+  // Backend §3.1 (S2): invalid RPC input; details = {"field": "<param without p_>"}.
+  "E-23": { message: "Revisa los datos marcados.", action: "Corregir el campo." },
   "E-99": { message: "Algo salió mal.", action: "Reintentar." },
 } as const satisfies Record<string, { message: string; action: string }>;
 

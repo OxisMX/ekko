@@ -161,7 +161,14 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# WHY: the mobile app's password-recovery deep link (F-05) must be accepted as redirect_to, or Auth
+# silently falls back to site_url. exp:// covers Expo Go / dev client locally; ekko:// the app scheme.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "exp://127.0.0.1:8081/--/**",
+  "exp://localhost:8081/--/**",
+  "ekko://**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -197,7 +204,10 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# NOTE: local value so manual testing against Mailpit is not throttled. Production must raise it
+# (Authentication -> Rate Limits) before launch: OTP verification and password recovery share this
+# quota (ADR-14, backend §6.3).
+email_sent = 30
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -231,7 +241,8 @@ enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+# F-04: 60 s wait between verification/recovery emails per user (TC-013).
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
@@ -246,6 +257,30 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# ADR-09: production SMTP is Resend. Kept commented locally so emails land in Mailpit.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "no-reply@oxis.mx"
+# sender_name = "Ekko Rewards"
+
+# Spanish templates (ADR-14, F-04, F-05). signInWithOtp sends magic_link (6-digit code + link).
+[auth.email.template.magic_link]
+subject = "Tu código de verificación de Ekko Rewards"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.recovery]
+subject = "Restablece tu contraseña de Ekko Rewards"
+content_path = "./supabase/templates/recovery.html"
+
+# Unused while enable_confirmations = false (ADR-14); kept in Spanish in case it is ever sent.
+[auth.email.template.confirmation]
+subject = "Confirma tu correo de Ekko Rewards"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

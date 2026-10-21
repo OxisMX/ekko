@@ -348,6 +348,8 @@ Las RPC devuelven errores con este formato en la respuesta de PostgREST:
 
 El cliente lee `message` como código E-xx (AppFlow, sección 7) y `details` como datos opcionales para el texto (intentos restantes, tiempo de bloqueo, fecha de reinicio).
 
+Nota S2: las RPC lanzan **E-23 "Datos inválidos"** cuando un parámetro no cumple el formato, con `details = {"field": "<parámetro sin p_>"}` (p. ej. `first_name`, `last_name`, `birth_date`, `device_id_digest`, `platform`). Pendiente de agregar al catálogo de errores de AppFlow (sección 7).
+
 ---
 
 ## 4. API — Funciones RPC
@@ -363,7 +365,7 @@ Invocación: `POST /rest/v1/rpc/<nombre>` con el JWT del usuario (`supabase.rpc(
 | `p_last_name` | text |
 | `p_birth_date` | date |
 
-Reglas: valida longitudes y 18+ (E-07). `birth_date` solo se escribe si es nula (RN-04); nombre y apellido sí son editables.
+Reglas: recorta espacios de nombre y apellido y exige 2–50 caracteres en cada uno (si no, E-23 con `field` = `first_name` o `last_name`). Si `birth_date` aún es nula: es obligatoria (E-23 `birth_date`) y exige 18+ con `p_birth_date + interval '18 years' <= app.local_today()` (E-07; cumplir 18 hoy se acepta, mañana no; un 29 de febrero cumple el 28). Si ya está fijada, el valor recibido se ignora sin error ni validación (RN-04, TC-007) y nombre y apellido sí se actualizan.
 Retorna: `{ "profile_complete": true }`.
 
 #### `get_my_profile`
@@ -379,16 +381,17 @@ Retorna:
   "profile_complete": true
 }
 ```
+`email` sale de `auth.users`; `email_verified` = `app.is_email_verified`; `profile_complete` = nombre, apellido y `birth_date` no nulos.
 
 #### `register_device`
 | Parámetro | Tipo | Notas |
 |---|---|---|
 | `p_device_id_digest` | text | SHA-256 calculado en la app; el servidor le aplica la pimienta. |
 | `p_platform` | device_platform | — |
-| `p_expo_push_token` | text, opcional | — |
-| `p_push_enabled` | boolean | — |
+| `p_expo_push_token` | text, opcional (default `null`) | — |
+| `p_push_enabled` | boolean, opcional (default `false`) | — |
 
-Reglas: upsert por `(customer_id, device_hash)`; actualiza `last_seen_at` y limpia `signed_out_at`.
+Reglas: el digest debe ser 64 caracteres hexadecimales en minúsculas (si no, E-23 `device_id_digest`); `device_hash = app.peppered_hash(digest)`. Upsert por `(customer_id, device_hash)`: actualiza `platform`, `push_enabled`, `last_seen_at = app.now()` y limpia `signed_out_at`; el token solo se sobrescribe si llega uno no nulo.
 Retorna: `{ "ok": true }`.
 
 #### `sign_out_device`
@@ -916,6 +919,7 @@ Orden inicial de migraciones versionadas (Supabase CLI):
 Notas de Sprint 1:
 - La migración 008 incluye solo `local_now`, `local_today`, `raise`, `current_customer`, `current_merchant`, `require_active_merchant`, `is_email_verified`, `peppered_hash` y `random_code`. `require_admin_session`, `roll_cycle` y `grant_stamps` llegan con sus RPC (S4, S5 y S8).
 - `get_merchant_session` (4.4) se adelantó a S1 en su propia migración (`merchant_session_rpc`) para el login del panel (F-20).
+- S2: la migración `customer_account_rpc` trae solo `complete_profile`, `get_my_profile` y `register_device` (4.1); el resto de la 010 llega con sus sprints. Plantillas de Auth en español en `supabase/templates/` (`magic_link`, `recovery`, `confirmation`), conectadas en `config.toml`.
 - La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
 
 ---

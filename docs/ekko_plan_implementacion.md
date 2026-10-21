@@ -111,7 +111,7 @@ gantt
 | Sprint | Objetivo | R1 Diseño | R2 Móvil | R3 Panel | R4 Backend/DevOps |
 |---|---|---|---|---|---|
 | S2 | Registro e inicio de sesión | Detalle de comercio, tarjeta y estados (alta fidelidad). | A-02, A-03, A-04, A-06 (US-01, US-02 con Google, US-03). | P-01 completo, manejo de sesión y rol. | `complete_profile`, `get_my_profile`, `register_device`; SMTP; plantilla OTP en español y rate limit de Auth (ADR-14). |
-| S3 | Verificación y catálogo | Escáner, resultado de visita, permisos. | Apple Sign-In; A-05 y banner (F-04); A-07 Explorar con paginación y búsqueda. | Página W-01 y `.well-known`; esqueleto de navegación administrativa. | `list_merchants`; RLS de catálogo; script `onboard-merchant.ts` (versión 1). |
+| S3 | Verificación y catálogo | Escáner, resultado de visita, permisos. | Apple Sign-In y Google (movido desde S2; ADR-15; requiere DEP-01 y DEP-02); A-05 y banner (F-04); A-07 Explorar con paginación y búsqueda; development build (DEP-09). | Página W-01 y `.well-known`; esqueleto de navegación administrativa. | `list_merchants`; RLS de catálogo; script `onboard-merchant.ts` (versión 1). |
 | S4 | Detalle de comercio | Mis Tarjetas y cupones. | A-08 a A-11 (pestañas, encabezado compacto); caché de imágenes. | Modo Caja: generar QR con cuenta regresiva (US-19) sin Realtime. | `get_merchant_detail`, `add_card`, `app.roll_cycle`; `generate_visit_qr`. |
 | S5 | Registro de visita | Celebraciones y animaciones de sello. | A-13, A-14, A-15 (F-08); enlaces universales (F-09). | Realtime y respaldo con `get_qr_status` (F-21). | `claim_visit`, `app.grant_stamps`, índice diario; pruebas de concurrencia. |
 | S6 | Mis Tarjetas y estabilización | Ruleta (alta fidelidad). | A-17; permiso de notificaciones (A-16) y registro de token. | Pruebas en tableta real; ajustes de usabilidad del Modo Caja. | `list_my_cards`; pruebas pgTAP de RN-13 a RN-29; **H1**. |
@@ -163,6 +163,7 @@ gantt
 | DEP-06 | Comercio piloto comprometido | S14 | PO | Confirmar en S10 para no retrasar la beta. |
 | DEP-07 | Asesoría legal | Inicio en S12; entrega en S17 | PO | Aviso de privacidad, términos, contrato con comercios. |
 | DEP-08 | Supabase Pro | S16 | PO | Se adelanta al piloto (antes que el "primer comercio de pago") porque el piloto genera datos reales de clientes. |
+| DEP-09 | Development build con EAS (`expo-dev-client`) | S3 | R2 | **Pendiente.** Expo Go no abre enlaces `ekko://`, así que el enlace de recuperación de contraseña (F-05) no regresa a la app en desarrollo; en Expo Go se prueba abriendo la ruta `exp://…/--/reset-password?code=…` a mano. También la exigen los enlaces universales (SP-2), Apple Sign-In y el push en Android. Depende de DEP-05. |
 
 Ruta crítica: S0 (spikes) → S2–S3 (autenticación, DEP-01, DEP-04) → S4–S5 (QR y `claim_visit`) → S7–S8 (canje y ruleta) → S14–S15 (calidad) → S16 (inicio de los 14 días de Google) → S18 (revisión de tiendas) → S19.
 

@@ -30,7 +30,19 @@ export function resolvePanelRoute({
 
 // WHY: postgrest-js returns fetch failures (offline, timeout) as an error without `code`;
 // real RPC errors always carry one (P0001, PGRST…), so a missing code means E-01.
+// PGRST301/PGRST303 are PostgREST's 401s for an invalid or expired JWT (E-18).
 export function toPanelErrorCode(err: { message?: string; details?: string | null; code?: string }): ErrorCode {
   if (!err.code) return 'E-01'
+  if (err.code === 'PGRST301' || err.code === 'PGRST303') return 'E-18'
   return parseRpcError(err).code
+}
+
+type MerchantSessionQuery = { state: { data?: Pick<MerchantSession, 'is_active'> } }
+const isInactive = (query: MerchantSessionQuery) => query.state.data?.is_active === false
+
+// F-28: while on P-12, poll and refetch on every focus so a merchant reactivated by Oxis
+// returns to P-02 without signing in again.
+export const reactivationRefetch = {
+  refetchInterval: (query: MerchantSessionQuery) => (isInactive(query) ? 60_000 : false),
+  refetchOnWindowFocus: (query: MerchantSessionQuery) => (isInactive(query) ? ('always' as const) : true),
 }

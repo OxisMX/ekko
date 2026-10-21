@@ -13,7 +13,7 @@
 | SP-1 | Tope nativo solo en iOS | Limpieza propia al iniciar (ambas plataformas) + tope nativo en iOS | Confirmar rutas de caché en dispositivo |
 | SP-2 | Diseño cerrado: archivos estáticos con `_headers` | AASA y assetlinks únicos con todas las variantes; `?mode=developer` solo en dev | Team ID (DEP-01) y primer deploy en Cloudflare Pages |
 | SP-3 | Supabase no revoca tokens de Apple | Código fresco al borrar + canje, verificación de `sub` y revocación en `delete-account` | Verificación en staging (DEP-01, cuenta Apple) |
-| SP-4 | Librería elegida; nonce pendiente de decisión | `@react-native-google-signin` Original + `signInWithIdToken` | Decisión PO/seguridad sobre "Skip nonce check"; compatibilidad con SDK 58 |
+| SP-4 | Resuelto por decisión (ADR-15) | Google por `signInWithOAuth` + `expo-web-browser` (PKCE); Apple nativo con nonce | Google Cloud (DEP-02) y Apple Developer (DEP-01) |
 | SP-5 | WebP en Chromium; respaldo JPEG validado | Pipeline `createImageVariants` con detección por `blob.type` | WebKit/iPad real (TC-161) |
 | SP-6 | Bundle JS medido; binario no medido | — | Build de EAS (requiere cuenta, DEP-05) |
 | SP-7 | No existe opción nativa | OTP/enlace nativo de Supabase + trigger (ADR-14) | — |
@@ -183,7 +183,7 @@ Fuentes: https://github.com/supabase/auth/issues/1308 · https://supabase.com/do
 
 ## SP-4 — Google Sign-In en Expo con Supabase
 
-**Estado.** Librería elegida; nonce pendiente de decisión (PO/seguridad). SP-4 no está resuelto del todo.
+**Estado.** Resuelto por decisión del PO (21/10/2026, ADR-15): para no desactivar la verificación de nonce ni pagar la licencia Universal, Google usa el plan B (`signInWithOAuth` + `expo-web-browser`, PKCE) y Apple el flujo nativo con nonce. El análisis original se conserva abajo.
 
 | Opción | Nonce | Expo Go | Costo | Notas |
 |---|---|---|---|---|

@@ -1,4 +1,4 @@
-import { ERRORS } from '@ekko/shared'
+import { ERRORS, type ErrorCode } from '@ekko/shared'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Sentry from '@sentry/react'
 import { isAuthApiError, isAuthRetryableFetchError } from '@supabase/supabase-js'
@@ -19,6 +19,11 @@ function signInErrorMessage(error: unknown): string {
   if (isAuthApiError(error)) return INVALID_CREDENTIALS
   Sentry.captureException(error)
   return ERRORS['E-99'].message
+}
+
+// E-18 adds the recovery action so the notice never leaves the user guessing (RR-5).
+function authNotice(code: ErrorCode): string {
+  return code === 'E-18' ? `${ERRORS[code].message} Inicia sesión de nuevo.` : ERRORS[code].message
 }
 
 const fieldClass =
@@ -42,6 +47,8 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    resetField,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) })
 
@@ -51,10 +58,13 @@ export function LoginPage() {
     setSubmitError(null)
     clearAuthError()
     const { error } = await supabase.auth.signInWithPassword(values)
-    if (error) setSubmitError(signInErrorMessage(error))
+    if (!error) return
+    setSubmitError(signInErrorMessage(error))
+    resetField('password')
+    setFocus('password')
   })
 
-  const formError = submitError ?? (authError ? ERRORS[authError].message : null)
+  const formError = submitError ?? (authError ? authNotice(authError) : null)
 
   return (
     <main className="grid min-h-dvh place-items-center bg-brand p-6">
@@ -85,11 +95,12 @@ export function LoginPage() {
               <input
                 id="email"
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
+                autoFocus
                 aria-invalid={!!errors.email}
                 aria-describedby={errors.email ? 'email-error' : undefined}
                 className={fieldClass}
-                {...register('email')}
+                {...register('email', { onChange: clearAuthError })}
               />
               <FieldError id="email-error" message={errors.email?.message} />
             </div>
@@ -104,7 +115,7 @@ export function LoginPage() {
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? 'password-error' : undefined}
                 className={fieldClass}
-                {...register('password')}
+                {...register('password', { onChange: clearAuthError })}
               />
               <FieldError id="password-error" message={errors.password?.message} />
             </div>
