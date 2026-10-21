@@ -32,5 +32,5 @@ function staticW01(): Plugin {
 export default defineConfig({
   plugins: [react(), tailwindcss(), staticW01()],
   define: { __COMMIT_HASH__: JSON.stringify(commitHash()) },
-  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] },
+  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], env: { VITE_PUBLIC_APP_URL: 'http://localhost:5173' } },
 })

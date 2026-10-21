@@ -27,7 +27,7 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
       <Stack.Protected guard={!decided || route === "tabs"} redirectTo={redirectTo}>
         <Stack.Screen name="(tabs)" />
         {/* WHY: pushed over the tab bar (own header, back to the tab) yet behind the same guard. */}
-        <Stack.Screen name="merchant/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name="merchant/[id]" />
         <Stack.Screen name="verify-email" />
       </Stack.Protected>
       <Stack.Protected guard={!decided || route === "completeProfile"} redirectTo={redirectTo}>

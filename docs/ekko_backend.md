@@ -330,7 +330,8 @@ Restricción: `CHECK` que exige la columna de origen correspondiente a `source`.
 | `app.peppered_hash(text)` | bytea | SHA-256 de `valor || pimienta`; la pimienta se lee de Supabase Vault. |
 | `app.random_code()` | char(6) | Código con `gen_random_bytes` sobre el alfabeto de 31 símbolos. |
 | `app.raise(code text, detail jsonb)` | void | Lanza `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = code, DETAIL = detail::text`. |
-| `app.roll_cycle(customer_id, merchant_id)` | `card_cycles` | Bloquea el ciclo activo; si venció lo cierra como `expired` y abre uno nuevo con la configuración vigente; si no existe, lo crea. |
+| `app.roll_cycle(customer_id, merchant_id)` | `card_cycles` | Bloquea el ciclo activo (`FOR UPDATE`); si venció (`expires_at <= app.now()`) lo cierra como `expired` y abre uno nuevo con la configuración vigente; si no existe, lo crea. Concurrencia: el índice único parcial rechaza el segundo ciclo activo; ante `unique_violation` relee y devuelve el del ganador (verificado con dos sesiones simultáneas). Migración `card_cycle` (S4). |
+| `app.wheel_status(customer, merchant)` | text | Estado de la ruleta para un cliente CON relación: `spun` → `unavailable` (comercio inactivo o sin premios activos) → `needs_verification` → `available`. Migración `merchant_detail_rpc` (S4). |
 | `app.grant_stamps(cycle, n, qr_token_id, is_bonus)` | jsonb | Inserta sellos, actualiza `stamps_count` y, si se completa, cierra el ciclo, emite el cupón de premio (30 días) y abre un ciclo nuevo (RN-26). |
 
 ### 3.1 Contrato de errores
@@ -479,7 +480,7 @@ Retorna:
     "reward_coupon_id": null,
     "stamped_today": true
   },
-  "wheel": { "status": "available | spun | device_used | needs_verification | no_relation" },
+  "wheel": { "status": "available | spun | needs_verification | unavailable | no_relation" },
   "menu": {
     "categories": [{ "id": "uuid", "name": "Cafés", "position": 1 }],
     "products": [{
@@ -493,15 +494,21 @@ Retorna:
 }
 ```
 
-Si no hay relación, `card` contiene la vista previa del programa con `has_relation = false` y `stamps = []`.
+Si no hay relación, `card` contiene la vista previa del programa con `has_relation = false` y `stamps = []` (`cycle_expires_at` y `reward_coupon_id` nulos, `pending_extra_stamps = 0`, `stamped_today = false`).
+
+Notas S4:
+- `merchant.available = is_active AND is_visible` (RN-71). Con relación, el detalle se muestra aunque el comercio sea invisible o inactivo.
+- `card` con relación sale del ciclo activo tras `app.roll_cycle`: `stamps` ordenados por `granted_at`; `reward_coupon_id` = cupón `card_reward` activo y no vencido de la relación (el que vence primero) (RN-27); `stamped_today` = existe un sello no extra con `local_date = app.local_today()`. `background_path` viene de `loyalty_programs.card_background_path`.
+- `wheel.status`: `no_relation` sin relación; con relación, por prioridad `spun` (existe giro) → `unavailable` (nuevo: comercio inactivo o sin premios activos en la ruleta) → `needs_verification` (correo sin verificar) → `available`. `device_used` no lo devuelve esta RPC: el dispositivo solo se conoce al girar (`spin_wheel`, S8, E-09).
+- `menu.products` ordenados por posición de categoría y luego del producto; `is_sold_out = (sold_out_on = app.local_today())`. `offers` por `weekday` y `position`. `coupons`: activos con `expires_at > app.now()`, por `expires_at`, nunca con `code`.
 
 #### `add_card`
 | Parámetro | Tipo |
 |---|---|
 | `p_merchant_id` | uuid |
 
-Reglas: exige comercio activo y visible (E-05). Crea la relación con `origin = 'add_card'` y el primer ciclo. Idempotente.
-Retorna: `{ "created": true, "wheel": { "status": "available" } }`.
+Reglas: exige comercio activo y visible (E-05). Crea la relación con `origin = 'add_card'` y el primer ciclo. Idempotente: si la relación ya existía devuelve `created = false`.
+Retorna: `{ "created": true, "wheel": { "status": "available" } }` (`status` con la regla de `app.wheel_status`).
 
 #### `get_wheel`
 | Parámetro | Tipo |
@@ -607,9 +614,11 @@ Retorna:
 {
   "qr_id": "uuid",
   "token": "base64url-22-caracteres",
-  "expires_at": "2026-10-20T17:30:45Z"
+  "expires_at": "2026-10-20T17:30:45Z",
+  "ttl_seconds": 60
 }
 ```
+Notas S4: invalida (`invalidated_at = app.now()`) solo los tokens pendientes (`used_at`, `invalidated_at` nulos y `expires_at > app.now()`); bloquea la fila del comercio para que dos generaciones simultáneas no dejen dos pendientes. Token = 16 bytes de `gen_random_bytes` en base64url sin relleno (22 caracteres); se guarda `token_hash = sha256(convert_to(token, 'UTF8'))`, por lo que `claim_visit` debe hashear la cadena recibida igual. `ttl_seconds` (nuevo) permite al panel llevar la cuenta regresiva sin depender del reloj de la tableta.
 El panel compone la URL `https://<dominio>/v/<token>` y se suscribe a cambios de `visit_qr_tokens` con `id = qr_id`.
 
 #### `get_qr_status`
@@ -826,6 +835,8 @@ Notas S3 (migración `catalog_rls`, parte de catálogo de la 013):
 - La función vive en el esquema `rls` (no expuesto por la API; `USAGE` solo para `authenticated`) porque la política se evalúa con los privilegios del usuario y `app`/`private` deben seguir cerrados a `authenticated`.
 - Se revocan todos los privilegios de `anon` sobre esas cinco tablas (denegación explícita). Los privilegios por columna llegan con las tablas de su sprint.
 
+Notas S4 (migración `merchant_detail_rpc`): política `visit_qr_tokens_select` (comercio dueño: `merchant_id` de un comercio con `auth_user_id = auth.uid()`). Se revoca todo a `anon` y `authenticated` y se concede `SELECT` solo sobre `id, merchant_id, created_at, expires_at, used_at, invalidated_at`: `token_hash` y `used_by_customer_id` no son legibles.
+
 ### 6.3 Verificación de correo
 
 Mecanismo de ADR-14 (resultado de SP-7):
@@ -937,6 +948,7 @@ Notas de Sprint 1:
 - S2: la migración `customer_account_rpc` trae solo `complete_profile`, `get_my_profile` y `register_device` (4.1); el resto de la 010 llega con sus sprints. Plantillas de Auth en español en `supabase/templates/` (`magic_link`, `recovery`, `confirmation`), conectadas en `config.toml`.
 - La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
 - S3: migración `catalog_rpc` (extensión `unaccent`, `app.search_text`, índice de búsqueda que reemplaza al trigram sobre `name`, `list_merchants`) y `catalog_rls` (esquema `rls`, políticas de catálogo de la 013). `get_merchant_detail` llega en S4. `seed.sql` agrega C5–C16 visibles (solo comercio, tarjeta y PIN) para paginar el catálogo.
+- S4: migración `card_cycle` (`app.roll_cycle`) y `merchant_detail_rpc` (`app.wheel_status`, `add_card`, `get_merchant_detail`, `generate_visit_qr`, política y privilegios por columna de `visit_qr_tokens` de la 013). `seed.sql`: Brownie de C1 agotado el día local de la siembra y Chai el día anterior.
 
 ---
 

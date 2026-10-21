@@ -13,6 +13,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:54321',
       VITE_SUPABASE_ANON_KEY: process.env.E2E_SUPABASE_ANON_KEY ?? 'e2e-dummy-anon-key',
+      VITE_PUBLIC_APP_URL: 'http://localhost:5173',
     },
   },
   projects: [

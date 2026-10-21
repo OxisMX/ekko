@@ -28,6 +28,12 @@ describe("merchantImageUrl", () => {
     ["logo", 3, 256],
     ["cover", 1, 540],
     ["cover", 2.75, 1080],
+    ["card", 1, 540],
+    ["card", 2, 1080],
+    ["product", 1, 360],
+    ["product", 2, 720],
+    ["offer", 1, 540],
+    ["offer", 3, 1080],
   ] as const)("%s at density %s -> %i px", (kind, density, width) => {
     expect(merchantImageUrl(url, path, kind, density)).toBe(
       `${url}/storage/v1/object/public/merchant-media/${path}_${width}.webp`,

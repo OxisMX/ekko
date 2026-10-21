@@ -77,6 +77,19 @@ describe("A-07 Explorar", () => {
     expect(listCalls()[1]).toMatchObject({ p_seed: seed, p_query: "cafe", p_offset: 0 });
   });
 
+  it("scrolls the search and chips with the list, keeping the same search field while it reloads", async () => {
+    await renderExplore();
+    await screen.findByText("Café La Esquina");
+    expect(screen.getByTestId("explore-list")).toContainElement(screen.getByTestId("explore-header"));
+    const input = screen.getByLabelText("Buscar negocios");
+
+    listMerchants.mockReturnValueOnce(new Promise(() => undefined)); // the new query stays loading
+    await fireEvent.changeText(input, "pan");
+    await waitFor(() => expect(listCalls()).toHaveLength(2));
+    expect(screen.getByLabelText("Cargando comercios")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Buscar negocios")).toBe(input);
+  });
+
   it("filters by the chosen category and marks the chip selected", async () => {
     await renderExplore();
     await screen.findByText("Café La Esquina");

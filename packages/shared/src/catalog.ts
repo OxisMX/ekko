@@ -27,10 +27,12 @@ export const merchantCategoryLabel: Record<MerchantCategory, string> = {
   otros: "Otros",
 };
 
-const WIDTHS = { logo: [128, 256], cover: [540, 1080] } as const;
+// TRD §8.1 variants per Storage folder.
+const WIDTHS = { logo: [128, 256], cover: [540, 1080], card: [540, 1080], product: [360, 720], offer: [540, 1080] } as const;
+export type MerchantImageKind = keyof typeof WIDTHS;
 
 /** Backend §7 / TRD §8.1: public WebP variant, the larger one on density ≥ 2 screens. */
-export function merchantImageUrl(supabaseUrl: string, path: string, kind: "logo" | "cover", density: number): string {
+export function merchantImageUrl(supabaseUrl: string, path: string, kind: MerchantImageKind, density: number): string {
   const [small, large] = WIDTHS[kind];
   const base = supabaseUrl.replace(/\/+$/, "");
   return `${base}/storage/v1/object/public/merchant-media/${path}_${density >= 2 ? large : small}.webp`;
