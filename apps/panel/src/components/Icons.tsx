@@ -29,6 +29,13 @@ export const QrIcon = (p: IconProps) => (
   </Svg>
 )
 
+export const CheckCircleIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12.5 2.75 2.75L16 10" />
+  </Svg>
+)
+
 export const LockIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="4" y="11" width="16" height="10" rx="2" />

@@ -1,15 +1,16 @@
 import { ERRORS, type ErrorCode } from '@ekko/shared'
 import * as Sentry from '@sentry/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import { encode } from 'uqr'
 import { ZodError } from 'zod'
 import { useAuth } from '../auth/AuthContext'
 import { toPanelErrorCode } from '../lib/panelRoute'
 import { PUBLIC_APP_URL, visitQrUrl } from '../lib/publicAppUrl'
-import { parseVisitQr, qrAnnouncement, qrReducer, type QrState } from '../lib/qrState'
+import { parseVisitQr, qrAnnouncement, qrReducer, type QrState, type TerminalQrStatus } from '../lib/qrState'
+import { useQrStatusSync } from '../lib/useQrStatusSync'
 import { supabase } from '../lib/supabase'
-import { AlertIcon, QrIcon } from './Icons'
+import { AlertIcon, CheckCircleIcon, QrIcon } from './Icons'
 
 // QR modules drawn as JSX (no innerHTML). The white quiet zone is the stage padding around it.
 export function QrSvg({ value, label, qrId }: { value: string; label: string; qrId?: string }) {
@@ -65,6 +66,21 @@ function useVisitQr() {
     return () => clearInterval(id)
   }, [isActive])
 
+  // F-21 G: Realtime (or the polling fallback) reports the scan; the reducer keeps the first result.
+  const onResolved = useCallback(
+    (qrId: string, status: TerminalQrStatus) => dispatch({ type: 'resolved', qrId, status }),
+    [],
+  )
+  useQrStatusSync(state.status === 'active' ? state.qr.id : null, onResolved)
+
+  // P-02: "Visita registrada" stays 3 s, then the panel is ready for the next customer.
+  const isUsed = state.status === 'used'
+  useEffect(() => {
+    if (!isUsed) return
+    const id = setTimeout(() => dispatch({ type: 'dismiss' }), 3000)
+    return () => clearTimeout(id)
+  }, [isUsed])
+
   const generate = () => {
     dispatch({ type: 'request', now: performance.now() })
     mutation.mutate()
@@ -77,12 +93,14 @@ const BUTTON_LABEL: Record<QrState['status'], string> = {
   pending: 'Generando…',
   active: 'Generar otro',
   expired: 'Generar otro',
+  invalidated: 'Generar otro',
+  used: 'Generar QR',
   error: 'Reintentar',
 }
 
 const errorMessage = (code: ErrorCode) => (code === 'E-05' ? 'Tu negocio no está activo por ahora.' : ERRORS[code].message)
 
-// P-02 left column (US-19, F-21; Realtime confirmation arrives in S5). RT-10: ≥ 280 px QR, white margin, countdown.
+// P-02 left column (US-19, F-21). RT-10: ≥ 280 px QR, white margin, countdown.
 export function VisitQrPanel() {
   const { state, generate } = useVisitQr()
   const secondary = state.status === 'active'
@@ -154,6 +172,24 @@ function QrStage({ state }: { state: QrState }) {
           <QrIcon className="mx-auto size-16 opacity-40" />
           <p className="mt-4 text-2xl font-semibold text-text-primary">QR vencido</p>
           <p className="mt-1 text-sm">Pasaron 60 segundos sin escanearse. Genera otro si el cliente aún lo necesita.</p>
+        </Placeholder>
+      )
+    case 'used':
+      return (
+        <div className="grid size-full place-items-center rounded-2xl bg-success p-8 text-center text-white">
+          <div>
+            <CheckCircleIcon className="mx-auto size-20" />
+            <p className="mt-4 text-3xl font-semibold">Visita registrada</p>
+            <p className="mt-1">El cliente ya tiene su sello.</p>
+          </div>
+        </div>
+      )
+    case 'invalidated':
+      return (
+        <Placeholder>
+          <QrIcon className="mx-auto size-16 opacity-40" />
+          <p className="mt-4 text-2xl font-semibold text-text-primary">QR reemplazado</p>
+          <p className="mt-1 text-sm">Se generó otro QR para este negocio. Genera uno nuevo si el cliente aún lo necesita.</p>
         </Placeholder>
       )
     case 'error':

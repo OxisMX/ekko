@@ -41,10 +41,13 @@ type CardTabProps = {
   addErrorMessage: string | null;
   onAddCard: () => void;
   onViewReward: () => void;
+  onRegisterVisit: () => void;
+  /** The visit just stamped (A-15 → A-09): animate the newest stamp. */
+  highlightLastStamp?: boolean;
 };
 
 // A-09 Tarjeta (US-08, US-09, RN-27, RN-71).
-export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewReward }: CardTabProps) {
+export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewReward, onRegisterVisit, highlightLastStamp = false }: CardTabProps) {
   const { merchant, card } = detail;
   const rewardAvailable = card.reward_coupon_id !== null;
   return (
@@ -60,6 +63,7 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
         pendingExtraStamps={card.pending_extra_stamps}
         rewardAvailable={rewardAvailable}
         available={merchant.available}
+        highlightLast={highlightLastStamp}
         onViewReward={rewardAvailable ? onViewReward : undefined}
         testID="merchant-stamp-card"
       />
@@ -68,6 +72,8 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
           <Button
             title="Agregar a mis tarjetas"
             onPress={onAddCard}
+            // WHY: "Registrar visita" is the primary action here; one primary button per screen.
+            variant="secondary"
             loading={adding}
             disabled={adding || !merchant.available}
             fullWidth
@@ -76,7 +82,8 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
           {addErrorMessage ? <FormMessage variant="error" message={addErrorMessage} testID="merchant-add-card-error" /> : null}
         </View>
       )}
-      {/* TODO(S5): "Registrar visita" button once the scanner (A-12) exists. */}
+      {/* A-13..A-15 (F-08): hidden while the merchant is unavailable — claim_visit would answer E-05. */}
+      {merchant.available ? <Button title="Registrar visita" onPress={onRegisterVisit} fullWidth testID="merchant-register-visit" /> : null}
       {card.reward_description ? <Paragraph>{card.reward_description}</Paragraph> : null}
       {card.terms ? (
         <View style={{ gap: spacing.xs }}>

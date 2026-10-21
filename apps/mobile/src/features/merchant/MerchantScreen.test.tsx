@@ -7,7 +7,7 @@ import MerchantScreen from "../../app/merchant/[id]";
 import { menuChips, type MerchantDetail, productsFor } from "./merchantDetail";
 
 const mockSupabase = { rpc: jest.fn() };
-const mockRouter = { back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
+const mockRouter = { back: jest.fn(), replace: jest.fn(), push: jest.fn(), canGoBack: jest.fn(() => true) };
 
 jest.mock("../../lib/supabase", () => ({
   get supabase() {
@@ -123,6 +123,19 @@ describe("A-08..A-11 Detalle de comercio", () => {
     expect(screen.getByRole("tab", { name: "Promociones", selected: true })).toBeOnTheScreen();
     expect(screen.getByTestId("coupon-highlighted")).toContainElement(screen.getByTestId("coupon-k1"));
     expect(screen.getByTestId("offer-o1")).toBeOnTheScreen();
+  });
+
+  it("'Registrar visita' opens the scanner and is hidden while the merchant is unavailable", async () => {
+    const first = await renderScreen();
+    await fireEvent.press(await screen.findByRole("button", { name: "Registrar visita" }));
+    expect(mockRouter.push).toHaveBeenCalledWith("/scan");
+    await first.unmount();
+
+    const detail = makeDetail();
+    detailResult = { data: { ...detail, merchant: { ...detail.merchant, available: false } }, error: null };
+    await renderScreen();
+    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: "Registrar visita" })).toBeNull();
   });
 
   it("Menú: 'Más pedidos' is the first chip and filters; sold-out products are labelled", async () => {

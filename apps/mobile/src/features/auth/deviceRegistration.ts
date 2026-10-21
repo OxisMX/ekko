@@ -22,10 +22,15 @@ async function readDeviceId(): Promise<string> {
   return generated;
 }
 
-/** F-01 / RN-07: only a SHA-256 of the device ID leaves the phone; the server peppers it again. */
+/** RN-07: only a SHA-256 of the device ID leaves the phone; the server peppers it again. */
+export async function deviceIdDigest(): Promise<string> {
+  return digestStringAsync(CryptoDigestAlgorithm.SHA256, await readDeviceId());
+}
+
+/** F-01: registers this device for the signed-in customer. */
 export async function registerDevice(): Promise<void> {
   if (Platform.OS !== "ios" && Platform.OS !== "android") return;
-  const digest = await digestStringAsync(CryptoDigestAlgorithm.SHA256, await readDeviceId());
+  const digest = await deviceIdDigest();
   // NOTE: the push token (p_expo_push_token / p_push_enabled) arrives in Sprint 6.
   const { error } = await supabase.rpc("register_device", { p_device_id_digest: digest, p_platform: Platform.OS });
   if (error) throw error;

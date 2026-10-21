@@ -19,14 +19,26 @@ const BACK_SIZE = 44; // RT-04
 
 // A-08..A-11 Detalle de comercio (US-08..US-10, US-12, F-06 H–K, DA-2, DA-4).
 export default function MerchantScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // tab/coupon/highlight arrive from A-15 (visit result) via router.dismissTo.
+  const params = useLocalSearchParams<{ id: string; tab?: string; coupon?: string; highlight?: string }>();
+  const { id } = params;
   const merchantId = typeof id === "string" ? id : "";
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const detail = useMerchantDetail(merchantId);
   const addCard = useAddCard(merchantId);
-  const [tab, setTab] = useState<MerchantTabKey>("card");
-  const [highlightCouponId, setHighlightCouponId] = useState<string | null>(null);
+  const linkTab: MerchantTabKey = params.tab === "promos" ? "promos" : "card";
+  const linkCoupon = typeof params.coupon === "string" ? params.coupon : null;
+  const [tab, setTab] = useState<MerchantTabKey>(linkTab);
+  const [highlightCouponId, setHighlightCouponId] = useState<string | null>(linkCoupon);
+  // WHY: dismissTo reuses this screen with new params; adjust state during render, not in an effect.
+  const linkKey = `${linkTab}|${linkCoupon}|${params.highlight}`;
+  const [seenLinkKey, setSeenLinkKey] = useState(linkKey);
+  if (seenLinkKey !== linkKey) {
+    setSeenLinkKey(linkKey);
+    setTab(linkTab);
+    setHighlightCouponId(linkCoupon);
+  }
   const [scrollY] = useState(() => new Animated.Value(0));
   const scrollRef = useRef<ScrollViewInstance>(null);
 
@@ -74,6 +86,8 @@ export default function MerchantScreen() {
             setTab("promos");
             setHighlightCouponId(data.card.reward_coupon_id);
           }}
+          onRegisterVisit={() => router.push("/scan")}
+          highlightLastStamp={params.highlight === "last"}
         />
       );
     } else if (tab === "menu") {

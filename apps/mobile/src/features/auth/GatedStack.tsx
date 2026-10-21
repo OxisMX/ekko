@@ -29,6 +29,9 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
         {/* WHY: pushed over the tab bar (own header, back to the tab) yet behind the same guard. */}
         <Stack.Screen name="merchant/[id]" />
         <Stack.Screen name="verify-email" />
+        {/* A-14 / A-15: full screen over the tabs, no tab bar (F-08). */}
+        <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
+        <Stack.Screen name="visit-result" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!decided || route === "completeProfile"} redirectTo={redirectTo}>
         <Stack.Screen name="complete-profile" />
@@ -38,6 +41,8 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
       </Stack.Protected>
       {/* WHY: unguarded — the recovery link signs the user in, and they must stay here to set the password (F-05). */}
       <Stack.Screen name="reset-password" />
+      {/* WHY: unguarded — a signed-out customer keeps the visit token while logging in (F-09, RR-3). */}
+      <Stack.Screen name="v/[token]" />
     </Stack>
   );
 }
