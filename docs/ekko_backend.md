@@ -784,7 +784,7 @@ La verificación de correo no usa Edge Function: ver 6.3 y ADR-14.
 |---|---|
 | Proveedores | Correo y contraseña, Google, Apple. |
 | Registro público | Habilitado; solo crea clientes. |
-| Rol | Trigger `AFTER INSERT ON auth.users`: si `raw_app_meta_data` no trae `role = 'merchant'` (solo posible vía API administrativa), asigna `role = 'customer'` y crea la fila en `customers`. |
+| Rol | Trigger `BEFORE INSERT ON auth.users` (`app.assign_user_role`): si `raw_app_meta_data` no trae `role = 'merchant'` (solo posible vía API administrativa), fija `role = 'customer'` y quita cualquier `merchant_id`; así el rol ya viaja en el primer token del registro. Un trigger `AFTER INSERT` crea la fila en `customers`. |
 | Claims usados | `sub`, `session_id`, `email`, `app_metadata.role`, `app_metadata.merchant_id`. |
 | Política de contraseña | Mínimo 8 caracteres. |
 | SMTP | Resend (ADR-09) para recuperación de contraseña y verificación. |
@@ -911,7 +911,12 @@ Orden inicial de migraciones versionadas (Supabase CLI):
 | 015 | `realtime` | Publicación. |
 | 016 | `kpi_views` | Vistas de la sección 9. |
 
-`seed.sql` (solo desarrollo y staging): 3 comercios de ejemplo, uno inactivo, con menú, ofertas, premios de ruleta y beneficio de cumpleaños; 2 clientes de prueba (verificado y sin verificar).
+`seed.sql` (solo desarrollo local; staging se llena con los scripts de alta de comercios): datos deterministas del Plan de QA 4.2 — comercios C1, C2 y C3 (inactivo) con menú, ofertas, premios de ruleta y beneficio de cumpleaños, y clientes U1 a U4. Contiene contraseñas conocidas: nunca se ejecuta contra staging ni producción.
+
+Notas de Sprint 1:
+- La migración 008 incluye solo `local_now`, `local_today`, `raise`, `current_customer`, `current_merchant`, `require_active_merchant`, `is_email_verified`, `peppered_hash` y `random_code`. `require_admin_session`, `roll_cycle` y `grant_stamps` llegan con sus RPC (S4, S5 y S8).
+- `get_merchant_session` (4.4) se adelantó a S1 en su propia migración (`merchant_session_rpc`) para el login del panel (F-20).
+- La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
 
 ---
 

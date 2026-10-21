@@ -5,6 +5,7 @@ packages:
 # WHY: pnpm blocks dependency build scripts by default; only these need them.
 allowBuilds:
   "@parcel/watcher": true
+  "@sentry/cli": true
   esbuild: true
   supabase: true
   unrs-resolver: true

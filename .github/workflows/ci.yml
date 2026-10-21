@@ -30,3 +30,6 @@ jobs:
           version: 2.121.0
       - run: supabase db start
       - run: supabase test db
+      # Plan QA §6.2: the committed types must match the migrations.
+      - run: supabase gen types typescript --local --schema public > packages/shared/src/database.types.ts
+      - run: git diff --exit-code packages/shared/src/database.types.ts

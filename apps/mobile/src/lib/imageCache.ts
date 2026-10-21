@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { Platform } from "react-native";
 
 import { type CacheEntry, shouldClear, sumDirectoryBytes } from "./imageCacheSize";
+import { reportError } from "./sentry";
 
 export const IMAGE_CACHE_LIMIT_BYTES = 20 * 1024 * 1024;
 
@@ -45,8 +46,7 @@ export async function enforceImageCacheLimit(
     if (!shouldClear(bytesBefore, limitBytes)) return { bytesBefore, cleared: false };
     return { bytesBefore, cleared: await Image.clearDiskCache() };
   } catch (error) {
-    // NOTE: Sentry replaces this warn in S1.
-    console.warn("enforceImageCacheLimit failed", error);
+    reportError(error);
     return { bytesBefore, cleared: false };
   }
 }

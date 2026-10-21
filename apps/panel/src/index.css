@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
-/* Tokens: brief UX/UI §4.3 */
+/* Tokens: brief UX/UI §4.3, values mirror packages/shared/src/tokens.ts (AA-adjusted). */
 @theme {
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --color-brand: #1e2124;
   --color-pattern: #2c3a5e;
   --color-navy: #1f2a4a;
@@ -10,12 +11,17 @@
   --color-surface-muted: #f1f1f1;
   --color-surface-card: #e9e6df;
   --color-text-primary: #1e2124;
-  --color-text-secondary: #6b6f76;
-  --color-success: #1f9d55;
+  --color-text-secondary: #64676e;
+  --color-success: #1b8749;
   --color-error: #d93a3a;
   --color-warning: #e0a100;
 }
 
 body {
-  @apply bg-surface-muted text-text-primary;
+  @apply bg-surface-muted text-text-primary antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-navy);
+  outline-offset: 2px;
 }
