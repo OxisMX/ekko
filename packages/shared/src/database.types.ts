@@ -351,8 +351,17 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "complete_profile":
+            "add_card":
+{ Args: { "p_merchant_id": string }; Returns: Json
+                           },
+"complete_profile":
 { Args: { "p_birth_date": string,"p_first_name": string,"p_last_name": string }; Returns: Json
+                           },
+"generate_visit_qr":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_merchant_detail":
+{ Args: { "p_merchant_id": string }; Returns: Json
                            },
 "get_merchant_session":
 { Args: Record<PropertyKey, never>; Returns: Json

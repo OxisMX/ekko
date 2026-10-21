@@ -2,7 +2,8 @@ import { Image } from "expo-image";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { MerchantAvatar, initialsOf } from "../merchant/MerchantAvatar";
+import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
 const LOGO_SIZE = 56;
 const LOGO_RING = 3;
@@ -24,16 +25,9 @@ export type MerchantCardProps = {
   testID?: string;
 };
 
-export function initialsOf(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-}
+export { initialsOf };
 
-function PinIcon() {
+export function PinIcon() {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
       <Path
@@ -49,46 +43,14 @@ function PinIcon() {
 }
 
 function MerchantLogo({ name, uri }: { name: string; uri: string | null }) {
-  // WHY: remember which URI failed (not a boolean) so a recycled cell with a new URI retries.
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  const showImage = uri && uri !== failedUri;
   return (
-    <View
-      style={{
-        position: "absolute",
-        left: spacing.lg,
-        bottom: -LOGO_SIZE / 2,
-        width: LOGO_SIZE,
-        height: LOGO_SIZE,
-        borderRadius: LOGO_SIZE / 2,
-        borderWidth: LOGO_RING,
-        borderColor: colors.surface,
-        backgroundColor: showImage ? colors.surface : colors.navy,
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {showImage ? (
-        <Image
-          source={{ uri }}
-          recyclingKey={uri}
-          contentFit="cover"
-          transition={150}
-          onError={() => setFailedUri(uri)}
-          style={{ width: "100%", height: "100%" }}
-          accessible={false}
-        />
-      ) : (
-        <Text
-          testID="merchant-logo-initials"
-          maxFontSizeMultiplier={1}
-          style={[textStyles.body, { fontFamily: fontFamily.bold, color: colors.surface }]}
-        >
-          {initialsOf(name)}
-        </Text>
-      )}
-    </View>
+    <MerchantAvatar
+      name={name}
+      uri={uri}
+      size={LOGO_SIZE}
+      ringWidth={LOGO_RING}
+      style={{ position: "absolute", left: spacing.lg, bottom: -LOGO_SIZE / 2 }}
+    />
   );
 }
 

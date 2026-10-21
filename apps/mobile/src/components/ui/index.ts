@@ -9,3 +9,4 @@ export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ErrorState, type ErrorStateProps } from "./ErrorState";
 export { VerificationBanner, type VerificationBannerProps } from "./VerificationBanner";
 export { CodeField, type CodeFieldProps } from "./CodeField";
+export { SegmentedTabs, SEGMENTED_TABS_HEIGHT, type SegmentedTab, type SegmentedTabsProps } from "./SegmentedTabs";

@@ -1,8 +1,7 @@
 import { ERRORS, MERCHANT_CATEGORIES, type MerchantCategory, merchantCategoryLabel } from "@ekko/shared";
-import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Alert, FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 
 import { MerchantCard } from "../../components/catalog";
 import { Chip, EmptyState, ErrorState, FormMessage, MerchantCardSkeleton } from "../../components/ui";
@@ -10,21 +9,11 @@ import { fieldBoxStyle } from "../../components/ui/TextField";
 import { EmailVerificationBanner } from "../../features/auth/EmailVerificationBanner";
 import { type MerchantListItem, toMerchantCard, useMerchants } from "../../features/catalog/catalog";
 import { toAppError } from "../../lib/appError";
-import { reportError } from "../../lib/sentry";
+import { openExternalUrl } from "../../lib/openExternal";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 
 const SEARCH_DELAY_MS = 300; // F-06
-
-/** SA-01. WHY the guard: maps_url is merchant data; only https links leave the app. */
-function openMap(url: string) {
-  if (!/^https:\/\//i.test(url)) {
-    reportError(new Error(`Refused non-https maps_url: ${url}`));
-    Alert.alert(ERRORS["E-99"].message, "No pudimos abrir la ubicación de este negocio.");
-    return;
-  }
-  Linking.openURL(url).catch(reportError);
-}
 
 // A-07 Explorar (US-07, F-06).
 export default function ExploreScreen() {
@@ -58,16 +47,91 @@ export default function ExploreScreen() {
       <MerchantCard
         merchant={toMerchantCard(item)}
         onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.id, name: item.name } })}
-        onOpenMap={() => openMap(item.maps_url)}
+        onOpenMap={() => openExternalUrl(item.maps_url, "No pudimos abrir la ubicación de este negocio.")}
         testID={`merchant-card-${item.id}`}
       />
     ),
     [router]
   );
 
-  let body;
+  let emptyState;
   if (merchants.data) {
-    body = (
+    emptyState = filtered ? (
+      <EmptyState
+        title="Sin resultados"
+        message="No encontramos negocios con esa búsqueda o categoría."
+        actionLabel="Limpiar búsqueda"
+        onAction={clearFilters}
+        testID="explore-empty"
+      />
+    ) : (
+      <EmptyState
+        title="Aún no hay negocios"
+        message="Pronto verás aquí los negocios afiliados."
+        actionLabel="Actualizar"
+        onAction={onRefresh}
+        testID="explore-empty"
+      />
+    );
+  } else if (merchants.isError) {
+    emptyState = <CatalogError key={merchants.errorUpdatedAt} error={merchants.error} onRetry={() => void refetch()} />;
+  } else {
+    emptyState = (
+      // One announcement for the whole placeholder instead of three "Cargando".
+      <View accessible accessibilityLabel="Cargando comercios" testID="explore-loading" style={{ gap: spacing.lg }}>
+        <MerchantCardSkeleton />
+        <MerchantCardSkeleton />
+        <MerchantCardSkeleton />
+      </View>
+    );
+  }
+
+  // WHY: the banner, search and chips scroll away with the list (ListHeaderComponent). The FlatList stays
+  // mounted in every state (loading/error live in ListEmptyComponent) so the search field never remounts
+  // and keeps focus while a new query loads.
+  const listHeader = (
+    <View style={{ marginHorizontal: -spacing.lg }} testID="explore-header">
+      <EmailVerificationBanner />
+    <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
+      <View style={[fieldBoxStyle(false), { marginHorizontal: spacing.lg, paddingHorizontal: spacing.lg }]}>
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Busca un negocio"
+          placeholderTextColor={colors.textSecondary}
+          accessibilityLabel="Buscar negocios"
+          returnKeyType="search"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[textStyles.body, { flex: 1, minHeight: 48, color: colors.textPrimary }]}
+          testID="explore-search"
+        />
+      </View>
+      {/* RN-51 / brief §4.2: the 9 categories in one scrollable row. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs }}
+      >
+        <Chip label="Todos" selected={category === null} onPress={() => setCategory(null)} testID="explore-chip-all" />
+        {MERCHANT_CATEGORIES.map((value) => (
+          <Chip
+            key={value}
+            label={merchantCategoryLabel[value]}
+            selected={category === value}
+            onPress={() => setCategory(value)}
+            testID={`explore-chip-${value}`}
+          />
+        ))}
+      </ScrollView>
+    </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -76,27 +140,10 @@ export default function ExploreScreen() {
         onEndReachedThreshold={0.5}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ flexGrow: 1, gap: spacing.lg, padding: spacing.lg }}
+        contentContainerStyle={{ flexGrow: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: 0 }}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} colors={[colors.navy]} tintColor={colors.navy} />}
-        ListEmptyComponent={
-          filtered ? (
-            <EmptyState
-              title="Sin resultados"
-              message="No encontramos negocios con esa búsqueda o categoría."
-              actionLabel="Limpiar búsqueda"
-              onAction={clearFilters}
-              testID="explore-empty"
-            />
-          ) : (
-            <EmptyState
-              title="Aún no hay negocios"
-              message="Pronto verás aquí los negocios afiliados."
-              actionLabel="Actualizar"
-              onAction={onRefresh}
-              testID="explore-empty"
-            />
-          )
-        }
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={emptyState}
         ListFooterComponent={
           items.length === 0 ? undefined : (
             <ListFooter
@@ -109,59 +156,6 @@ export default function ExploreScreen() {
         }
         testID="explore-list"
       />
-    );
-  } else if (merchants.isError) {
-    body = <CatalogError key={merchants.errorUpdatedAt} error={merchants.error} onRetry={() => void refetch()} />;
-  } else {
-    body = (
-      // One announcement for the whole placeholder instead of three "Cargando".
-      <View accessible accessibilityLabel="Cargando comercios" testID="explore-loading" style={{ gap: spacing.lg, padding: spacing.lg }}>
-        <MerchantCardSkeleton />
-        <MerchantCardSkeleton />
-        <MerchantCardSkeleton />
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <EmailVerificationBanner />
-      <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
-        <View style={[fieldBoxStyle(false), { marginHorizontal: spacing.lg, paddingHorizontal: spacing.lg }]}>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Busca un negocio"
-            placeholderTextColor={colors.textSecondary}
-            accessibilityLabel="Buscar negocios"
-            returnKeyType="search"
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
-            style={[textStyles.body, { flex: 1, minHeight: 48, color: colors.textPrimary }]}
-            testID="explore-search"
-          />
-        </View>
-        {/* RN-51 / brief §4.2: the 9 categories in one scrollable row. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs }}
-        >
-          <Chip label="Todos" selected={category === null} onPress={() => setCategory(null)} testID="explore-chip-all" />
-          {MERCHANT_CATEGORIES.map((value) => (
-            <Chip
-              key={value}
-              label={merchantCategoryLabel[value]}
-              selected={category === value}
-              onPress={() => setCategory(value)}
-              testID={`explore-chip-${value}`}
-            />
-          ))}
-        </ScrollView>
-      </View>
-      <View style={{ flex: 1 }}>{body}</View>
     </View>
   );
 }

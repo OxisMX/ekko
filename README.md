@@ -31,6 +31,7 @@ Variables de entorno: copia `apps/mobile/.env.example` a `apps/mobile/.env` y `a
 | `VITE_SUPABASE_URL` | `apps/panel/.env.local` | URL de Supabase |
 | `VITE_SUPABASE_ANON_KEY` | `apps/panel/.env.local` | Anon key |
 | `VITE_SENTRY_DSN` | `apps/panel/.env.local` | Opcional |
+| `VITE_PUBLIC_APP_URL` | `apps/panel/.env.local` | Origen del QR de visita, sin `/` final (local: `http://localhost:5173`; staging: `https://staging.ekko.oxis.mx`; producción: `https://ekko.oxis.mx`) |
 
 ```sh
 pnpm --filter @ekko/panel dev                  # panel en http://localhost:5173

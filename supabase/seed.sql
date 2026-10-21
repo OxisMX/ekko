@@ -148,7 +148,8 @@ select m.id, extensions.crypt('1234', extensions.gen_salt('bf'))
 from public.merchants m
 where m.id::text like '20000000-%';
 
--- C1: wheel (one extra-stamp prize), menu (2 categories, 6 products), 2 weekly offers
+-- C1: wheel (one extra-stamp prize), menu (2 categories, 6 products), 2 weekly offers.
+-- Brownie is sold out on the seed's local day and Chai was sold out the day before (RN-56).
 insert into private.wheel_prizes (id, merchant_id, label, prize_type, benefit_title, benefit_description, weight, position)
 values
   ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-0000000000c1', '10% de descuento', 'coupon', '10% de descuento', 'En tu siguiente consumo.', 60, 1),
@@ -166,6 +167,9 @@ insert into public.products (merchant_id, category_id, name, description, price,
   ('20000000-0000-0000-0000-0000000000c1', '40000000-0000-0000-0000-000000000002', 'Pay de queso', 'Rebanada con mermelada de frutos rojos.', 70, true, 1),
   ('20000000-0000-0000-0000-0000000000c1', '40000000-0000-0000-0000-000000000002', 'Brownie', 'Chocolate amargo y nuez.', 50, false, 2),
   ('20000000-0000-0000-0000-0000000000c1', '40000000-0000-0000-0000-000000000002', 'Galleta', 'Chispas de chocolate.', 30, false, 3);
+
+update public.products set sold_out_on = case name when 'Brownie' then app.local_today() else app.local_today() - 1 end
+where merchant_id = '20000000-0000-0000-0000-0000000000c1' and name in ('Brownie', 'Chai');
 
 insert into public.weekly_offers (merchant_id, title, description, weekday, position) values
   ('20000000-0000-0000-0000-0000000000c1', 'Lunes de latte', 'Latte a $45 todo el día.', 1, 1),
