@@ -1,10 +1,15 @@
-import { colors, radii, spacing, STAMPS, stampGridRows } from "@ekko/shared";
+import { STAMPS, stampGridRows } from "@ekko/shared";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, Chip } from "../../components/ui";
+import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+
+const DEMO_CATEGORIES = ["Todos", "Cafeterías", "Barberías"] as const;
 
 // NOTE: demo screen to smoke-test the emulator; replace with the real catalog (A-07).
 export default function ExploreScreen() {
   const [stamps, setStamps] = useState(0);
+  const [category, setCategory] = useState<string>(DEMO_CATEGORIES[0]);
   const total = STAMPS.default;
   const completed = stamps === total;
   const rows = stampGridRows(total);
@@ -13,6 +18,12 @@ export default function ExploreScreen() {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.chips}>
+        {DEMO_CATEGORIES.map((name) => (
+          <Chip key={name} label={name} selected={category === name} onPress={() => setCategory(name)} />
+        ))}
+      </View>
+
       <View style={styles.card}>
         {rows.map((count, rowIndex) => (
           <View key={rowIndex} style={styles.row}>
@@ -24,30 +35,25 @@ export default function ExploreScreen() {
         ))}
       </View>
 
-      <Text style={styles.progress} testID="stamp-progress">
+      <Text style={styles.progress} maxFontSizeMultiplier={MAX_FONT_SCALE} testID="stamp-progress">
         {completed ? "¡Completaste tu tarjeta! Tu recompensa te espera." : `${stamps} de ${total} sellos`}
       </Text>
 
-      <Pressable
+      <Button
+        title={completed ? "Reiniciar" : "Registrar visita (demo)"}
         onPress={handlePress}
-        accessibilityRole="button"
         testID="demo-stamp-button"
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-      >
-        <Text style={styles.buttonText}>{completed ? "Reiniciar" : "Registrar visita (demo)"}</Text>
-      </Pressable>
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.xl, padding: spacing.lg, backgroundColor: colors.surface },
+  chips: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.sm },
   card: { gap: spacing.md, padding: spacing.xl, borderRadius: radii.stampContainer, backgroundColor: colors.surfaceCard },
   row: { flexDirection: "row", justifyContent: "center", gap: spacing.md },
   stamp: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface },
   stampFilled: { backgroundColor: colors.accent },
-  progress: { fontSize: 16, color: colors.textPrimary, textAlign: "center" },
-  button: { minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.xl, borderRadius: radii.button, backgroundColor: colors.primary },
-  buttonPressed: { opacity: 0.8 },
-  buttonText: { color: colors.surface, fontSize: 16, fontWeight: "600" },
+  progress: { ...textStyles.body, color: colors.textPrimary, textAlign: "center" },
 });

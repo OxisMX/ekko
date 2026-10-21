@@ -7,7 +7,11 @@ const VARIANTS = {
   production: { name: "Ekko Rewards", id: "mx.oxis.ekko" },
 } as const;
 
-const variant = VARIANTS[process.env.APP_VARIANT as keyof typeof VARIANTS] ?? VARIANTS.production;
+const appVariant: keyof typeof VARIANTS =
+  process.env.APP_VARIANT && Object.hasOwn(VARIANTS, process.env.APP_VARIANT)
+    ? (process.env.APP_VARIANT as keyof typeof VARIANTS)
+    : "production";
+const variant = VARIANTS[appVariant];
 
 const config: ExpoConfig = {
   name: variant.name,
@@ -31,7 +35,12 @@ const config: ExpoConfig = {
     ["expo-splash-screen", { image: "./assets/images/splash-icon.png", imageWidth: 76, backgroundColor: "#FFFFFF" }],
     // WHY: RNF-01 asks for iOS 15.0, but Expo SDK 58 enforces a 16.4 minimum; revisit if RNF-01 must hold.
     ["expo-build-properties", { ios: { deploymentTarget: "16.4" }, android: { minSdkVersion: 26 } }],
+    // NOTE: source-map upload stays off until the Sentry account exists. Then add `organization`
+    // and `project` here, set SENTRY_AUTH_TOKEN as an EAS secret, and drop `disableAutoUpload`.
+    ["@sentry/react-native/expo", { disableAutoUpload: true }],
   ],
+  // Read at runtime via expo-constants (Sentry `environment`).
+  extra: { appVariant },
   experiments: { typedRoutes: true },
 };
 
