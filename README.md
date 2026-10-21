@@ -21,7 +21,7 @@ pnpm db:start           # Supabase local; muestra la URL y la anon key
 pnpm db:reset           # aplica migraciones + seed.sql
 ```
 
-Variables de entorno (archivos `.env` ignorados por git; solo valores públicos, nunca la `service_role`):
+Variables de entorno: copia `apps/mobile/.env.example` a `apps/mobile/.env` y `apps/panel/.env.example` a `apps/panel/.env.local`, y pon la anon key que muestra `pnpm supabase status` (ambos ignorados por git; solo valores públicos, nunca la `service_role`):
 
 | Variable | Dónde | Uso |
 |---|---|---|
