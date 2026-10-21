@@ -223,7 +223,9 @@ enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
-# NOTE: email confirmation stays off until SP-7 (own email verification, ADR-12) is resolved.
+# WHY: must stay off in every environment (ADR-14, SP-7): a new customer needs a session to get
+# their first stamp at the till (RN-05). Ownership is proven later with the native email OTP and
+# customers.email_verified_at is set by a trigger on auth.mfa_amr_claims (migration 009).
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
