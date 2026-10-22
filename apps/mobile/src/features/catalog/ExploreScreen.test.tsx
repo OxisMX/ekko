@@ -8,7 +8,7 @@ import type { MerchantListItem } from "./catalog";
 
 const mockSupabase = { rpc: jest.fn(), auth: { signInWithOtp: jest.fn() } };
 const mockAuth = { status: "signedIn", session: { user: { id: "u1", email: "ana@ekko.mx" } }, errorCode: null, signOut: jest.fn() };
-const mockRouter = { push: jest.fn(), replace: jest.fn() };
+const mockRouter = { push: jest.fn(), replace: jest.fn(), navigate: jest.fn() };
 
 jest.mock("../../lib/supabase", () => ({
   get supabase() {

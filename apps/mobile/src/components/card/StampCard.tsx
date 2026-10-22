@@ -51,6 +51,20 @@ export function GiftIcon({ size, testID }: { size: number; testID?: string }) {
   );
 }
 
+export function StarIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
+      <Path
+        d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8-4.2-4.1 5.9-.9z"
+        fill={colors.navy}
+        stroke={colors.navy}
+        strokeWidth={1.2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // PX-6: short entrance (scale 0.9 → 1 + fade, 250 ms); §9: skipped entirely with reduce motion.
 function NewStampEntrance({ children }: { children: React.ReactNode }) {
   const reduce = useReduceMotion();
@@ -92,6 +106,12 @@ function StampSlot({ stamp, isLast, isNew, merchantName, logoUri, grayscale }: S
     face = (
       <View testID={isNew ? "stamp-new" : "stamp-granted"} style={[circle, { borderWidth: ring, borderColor: colors.accent, alignItems: "center", justifyContent: "center" }]}>
         <MerchantAvatar name={merchantName} uri={logoUri} size={STAMP_MAX} grayscale={grayscale} style={{ width: "100%", height: "100%" }} />
+        {/* RN-36: a bonus stamp carries a star (not only a colour) so it reads apart from a visit stamp. */}
+        {stamp.isBonus ? (
+          <View testID="stamp-bonus" style={styles.bonusStar}>
+            <StarIcon size={14} />
+          </View>
+        ) : null}
       </View>
     );
     if (isNew) face = <NewStampEntrance>{face}</NewStampEntrance>;
@@ -128,9 +148,11 @@ export function StampCard({
   const granted = Math.min(stamps.length, stampsRequired);
   const expires = formatDate(cycleExpiresAt);
   const progressText = `${granted} de ${stampsRequired} sellos`;
+  const bonusCount = stamps.slice(0, granted).filter((s) => s.isBonus).length;
   const summary = [
     `${merchantName}: ${progressText}, premio ${rewardTitle}, vence el ${expires}`,
-    pendingExtraStamps > 0 ? "+1 en tu próxima visita" : null,
+    bonusCount > 0 ? `${bonusCount} ${bonusCount === 1 ? "sello extra" : "sellos extra"}` : null,
+    pendingExtraStamps > 0 ? "+1 sello extra en tu próxima visita" : null,
     available ? null : "No disponible",
   ]
     .filter(Boolean)
@@ -193,9 +215,10 @@ export function StampCard({
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {pendingExtraStamps > 0 ? (
               // Accent as a badge background (non-text); the label itself is dark text (§4.3).
-              <View testID="stamp-extra-badge" style={[styles.pill, { backgroundColor: colors.accent }]}>
+              <View testID="stamp-extra-badge" style={[styles.pill, { backgroundColor: colors.accent, flexDirection: "row", alignItems: "center", gap: spacing.xs }]}>
+                <StarIcon size={14} />
                 <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>
-                  +1 en tu próxima visita
+                  +1 sello extra en tu próxima visita
                 </Text>
               </View>
             ) : null}
@@ -247,6 +270,17 @@ export function StampCard({
 }
 
 const styles = StyleSheet.create({
+  bonusStar: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.accent,
+  },
   pill: {
     alignSelf: "flex-start",
     paddingHorizontal: spacing.md,

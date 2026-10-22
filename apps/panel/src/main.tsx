@@ -12,6 +12,7 @@ import { queryClient } from './lib/queryClient.ts'
 import { initSentry } from './lib/sentry.ts'
 import { CashierModePage } from './pages/CashierModePage.tsx'
 import { InactivePage } from './pages/InactivePage.tsx'
+import { CardConfigPage } from './pages/CardConfigPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
 
 initSentry()
@@ -28,7 +29,11 @@ const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { index: true, element: <Navigate to="metricas" replace /> },
-          ...ADMIN_SECTIONS.map((section) => ({ path: section.path, element: <AdminPlaceholderPage section={section} /> })),
+          { path: 'tarjeta', element: <CardConfigPage /> },
+          ...ADMIN_SECTIONS.filter((section) => section.path !== 'tarjeta').map((section) => ({
+            path: section.path,
+            element: <AdminPlaceholderPage section={section} />,
+          })),
         ],
       },
     ],

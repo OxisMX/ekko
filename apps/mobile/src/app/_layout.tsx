@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import { REGISTER_MUTATION_KEY, useJustSignedUp, useMyProfile } from "../features/auth/account";
 import { useRegisterDeviceOnce } from "../features/auth/deviceRegistration";
+import { useEnsureBirthdayCouponsOnce } from "../features/birthday/birthdayCoupons";
 import { decideGate } from "../features/auth/gate";
 import { GatedStack } from "../features/auth/GatedStack";
 import { usePendingVisitRedirect } from "../features/visit/pendingVisit";
@@ -31,6 +32,7 @@ function RootNavigator() {
   const ready = route !== "loading" && fontsReady;
 
   useRegisterDeviceOnce(route === "tabs" ? (session?.user.id ?? null) : null);
+  useEnsureBirthdayCouponsOnce(route === "tabs" ? (session?.user.id ?? null) : null);
   usePendingVisitRedirect(route);
 
   useEffect(() => {

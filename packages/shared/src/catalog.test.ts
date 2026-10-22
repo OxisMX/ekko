@@ -40,6 +40,12 @@ describe("merchantImageUrl", () => {
     );
   });
 
+  it("keeps the .jpg extension of a JPEG fallback path", () => {
+    expect(merchantImageUrl(url, "merchants/m1/card/abc.jpg", "card", 2)).toBe(
+      `${url}/storage/v1/object/public/merchant-media/merchants/m1/card/abc_1080.jpg`,
+    );
+  });
+
   it("tolerates a trailing slash on the base URL", () => {
     expect(merchantImageUrl(`${url}/`, path, "logo", 1)).toBe(
       `${url}/storage/v1/object/public/merchant-media/${path}_128.webp`,

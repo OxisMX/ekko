@@ -148,6 +148,11 @@ export function VisitResult({
             </Text>
           </View>
         ) : null}
+        {extra ? (
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary, textAlign: "center" }]}>
+            Incluye tu sello extra
+          </Text>
+        ) : null}
       </View>
       <View style={{ alignSelf: "stretch", gap: spacing.md, marginTop: spacing.sm }}>
         <Button title={primaryLabel ?? defaultPrimary} onPress={onPrimary} fullWidth />

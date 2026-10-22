@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { FlatList, type ListRenderItem, RefreshControl, View } from "react-native";
 
@@ -21,7 +21,15 @@ type TabKey = (typeof TABS)[number]["key"];
 // A-12 Mis Tarjetas (US-10, RN-71).
 export function MyCardsScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<TabKey>("cards");
+  // F-12: the birthday greeting opens this screen straight on the coupons tab.
+  const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<TabKey>(initialTab === "coupons" ? "coupons" : "cards");
+  // The tab screen stays mounted, so a later navigation with ?tab=coupons must also switch (adjust state during render).
+  const [seenParam, setSeenParam] = useState(initialTab);
+  if (initialTab !== seenParam) {
+    setSeenParam(initialTab);
+    if (initialTab === "coupons") setTab("coupons");
+  }
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>

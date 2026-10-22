@@ -20,7 +20,8 @@ const formatCountdown = (ms: number) => {
 // RT-12: admin sections say they are unlocked and how long is left; RT-13: sober, no circle pattern.
 // Side rail from 1024 px (RT-09), scrollable top tabs below.
 export function AdminLayout() {
-  const { merchant, admin_unlocked_until } = useMerchantSession()
+  const merchantSession = useMerchantSession()
+  const { merchant, admin_unlocked_until } = merchantSession
   const navigate = useNavigate()
   const patchSession = useMerchantSessionPatch()
   const now = useNow()
@@ -124,7 +125,7 @@ export function AdminLayout() {
           </nav>
           <div className="flex flex-1 flex-col">
             <main className="flex flex-1 flex-col p-6">
-              <Outlet />
+              <Outlet context={{ merchantSession }} />
             </main>
             <footer className="px-6 pb-4 text-xs text-text-secondary">
               Ekko Rewards · Panel del comercio · versión <span className="font-mono">{__COMMIT_HASH__}</span>

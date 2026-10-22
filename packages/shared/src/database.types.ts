@@ -363,7 +363,13 @@ isOneToOne: false
 "confirm_redemption":
 { Args: { "p_coupon_id": string }; Returns: Json
                            },
+"ensure_birthday_coupons":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "generate_visit_qr":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_card_config":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "get_merchant_detail":
@@ -407,6 +413,9 @@ isOneToOne: false
                            },
 "unlock_admin":
 { Args: { "p_pin": string }; Returns: Json
+                           },
+"update_card_config":
+{ Args: { "p_card_background_path": string,"p_cycle_months": number,"p_push_coupon_validity_hours": number,"p_reward_description": string,"p_reward_title": string,"p_stamps_required": number,"p_terms": string }; Returns: Json
                            }
           }
           Enums: {
