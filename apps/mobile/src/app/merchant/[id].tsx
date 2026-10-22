@@ -10,6 +10,7 @@ import { ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../.
 import { CardTab, MenuTab, MERCHANT_TABS, type MerchantTabKey, PromosTab, ReviewTab } from "../../features/merchant/MerchantTabs";
 import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { imageUri, useAddCard, useMerchantDetail } from "../../features/merchant/merchantDetail";
+import { wheelHref } from "../../features/wheel/wheel";
 import { toAppError } from "../../lib/appError";
 import { openExternalUrl } from "../../lib/openExternal";
 import { colors, spacing } from "../../theme";
@@ -81,13 +82,21 @@ export default function MerchantScreen() {
           adding={addCard.isPending}
           addErrorMessage={addErrorCode && addErrorCode !== "E-05" ? (ERRORS[addErrorCode as keyof typeof ERRORS]?.message ?? ERRORS["E-99"].message) : null}
           onAddCard={() => {
-            if (!addCard.isPending) addCard.mutate(undefined, { onSuccess: (result) => result.created && void maybeShowPushExplainer(router) });
+            if (!addCard.isPending) addCard.mutate(undefined, {
+              onSuccess: (result) => {
+                if (!result.created) return;
+                // WHY: A-16 and A-12 can't be stacked reliably; the wheel goes first and opens A-16 when closed.
+                if (result.wheel.status === "available") router.push(wheelHref(merchantId, true));
+                else void maybeShowPushExplainer(router);
+              },
+            });
           }}
           onViewReward={() => {
             setTab("promos");
             setHighlightCouponId(data.card.reward_coupon_id);
           }}
           onRegisterVisit={() => router.push("/scan")}
+          onSpinWheel={() => router.push(wheelHref(merchantId))}
           highlightLastStamp={params.highlight === "last"}
         />
       );

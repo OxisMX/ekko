@@ -5,7 +5,7 @@ import VisitResultScreen from "../../app/visit-result";
 
 const TOKEN = "AbCdEfGhIjKlMnOpQr_-12";
 const mockSupabase = { rpc: jest.fn() };
-const mockRouter = { replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
+const mockRouter = { replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), push: jest.fn(), canGoBack: jest.fn(() => true) };
 const mockEndSession = jest.fn();
 let mockParams: Record<string, string>;
 
@@ -57,6 +57,14 @@ describe("A-15 visit result", () => {
     expect(mockSupabase.rpc).toHaveBeenCalledWith("claim_visit", { p_token: TOKEN, p_device_id_digest: "digest" });
     await fireEvent.press(screen.getByRole("button", { name: "Ver mi tarjeta" }));
     expect(mockRouter.dismissTo).toHaveBeenCalledWith({ pathname: "/merchant/[id]", params: { id: "m1", highlight: "last" } });
+  });
+
+  it("a visit that created the relation opens the welcome wheel after the card (F-07)", async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: { ...success, relation_created: true, wheel_status: "available" }, error: null });
+    await renderScreen();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver mi tarjeta" }));
+    expect(mockRouter.dismissTo).toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1", explainer: "1" } });
   });
 
   it("a completed card opens Promociones on the reward coupon", async () => {

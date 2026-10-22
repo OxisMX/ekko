@@ -515,7 +515,8 @@ Retorna: `{ "created": true, "wheel": { "status": "available" } }` (`status` con
 |---|---|
 | `p_merchant_id` | uuid |
 
-Retorna los segmentos activos sin pesos: `{ "segments": [{ "index": 0, "label": "Postre gratis" }] }`.
+Retorna los segmentos activos sin pesos: `{ "segments": [{ "index": 0, "label": "Postre gratis" }], "status": "available" }`.
+Notas S8: `index` es la posición dentro de los segmentos activos ordenados por `position`. `status` como `app.wheel_status`, o `no_relation` sin relación (sin lanzar error, igual que `get_merchant_detail`); E-05 solo si el comercio no existe o no es visible/activo y no hay relación.
 
 #### `spin_wheel`
 | Parámetro | Tipo |
@@ -524,6 +525,7 @@ Retorna los segmentos activos sin pesos: `{ "segments": [{ "index": 0, "label": 
 | `p_device_id_digest` | text |
 
 Reglas: exige relación (E-05 si el comercio está inactivo), correo verificado (E-06) y que no exista giro por cuenta, dispositivo o hash de correo (E-09). Selección ponderada con `gen_random_bytes`. Premio `coupon`: cupón de 48 h. Premio `extra_stamp`: incrementa `pending_extra_stamps`.
+Notas S8: orden de errores E-23 (`device_id_digest`) → E-05 (sin relación, comercio inactivo o sin segmentos activos) → E-06 → E-09 (la violación de unicidad concurrente también es E-09). `email_hash = app.peppered_hash(lower(trim(email)))` del usuario Auth.
 Retorna:
 ```json
 {
@@ -672,11 +674,11 @@ Notas S7: cupón inexistente o de otro comercio: E-12; ya canjeado por este come
 |---|---|
 | `p_pin` | text (4 dígitos) |
 
-Reglas: bloqueado: E-15 con `locked_until`. PIN incorrecto: incrementa fallos; al quinto fija bloqueo de 15 min; lanza E-14 con `remaining`. Correcto: reinicia contador y crea o extiende la sesión del `session_id` actual.
-Retorna: `{ "admin_unlocked_until": "..." }`.
+Reglas: PIN que no sea 4 dígitos: E-23 `field = pin` (no cuenta). Bloqueado: lanza E-15 con `locked_until`. PIN incorrecto: incrementa fallos; al quinto fija bloqueo de 15 min. Correcto: reinicia contador y crea o extiende 5 min la sesión del `session_id` actual (E-19 si el JWT no lo trae). Un bloqueo vencido reinicia el conteo.
+WHY no lanza en PIN incorrecto: un `raise` revertiría el contador (igual que `lookup_redemption`). Retorna: éxito `{ "ok": true, "admin_unlocked_until": "..." }`; fallo `{ "ok": false, "error": "E-14", "remaining": n }`; el intento que bloquea `{ "ok": false, "error": "E-15", "locked_until": "..." }`. Usa `app.current_merchant()` (comercio inactivo permitido).
 
 #### `lock_admin`
-Cierra la sesión administrativa del dispositivo actual.
+Cierra la sesión administrativa del `session_id` actual (borra la fila). Retorna `{ "ok": true }`.
 
 #### `get_card_config` / `update_card_config`
 | Parámetro (`update`) | Tipo | Validación |

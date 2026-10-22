@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { VisitResult, type VisitResultKind, type VisitResultProps } from "../components/visit";
 import { useClaimVisit, visitErrorKind } from "../features/visit/claimVisit";
 import { maybeShowPushExplainer } from "../features/notifications/pushExplainer";
+import { wheelHref } from "../features/wheel/wheel";
 import { setPendingVisit } from "../features/visit/pendingVisit";
 import { isVisitToken } from "../features/visit/visitToken";
 import { toAppError } from "../lib/appError";
@@ -56,10 +57,11 @@ export default function VisitResultScreen() {
     // Back to the merchant's card (popping to it when the scan started there), newest stamp animated.
     const openMerchant = (params: Record<string, string>) => {
       router.dismissTo({ pathname: "/merchant/[id]", params: { id: data.merchant_id, ...params } } as Href);
-      // A-16 once, after the result is closed; the explainer decides whether it still applies.
-      void maybeShowPushExplainer(router);
+      // F-07: a visit that created the relation offers the welcome wheel; it opens A-16 when closed.
+      // Otherwise A-16 once, after the result is closed; the explainer decides whether it still applies.
+      if (data.relation_created && data.wheel_status === "available") router.push(wheelHref(data.merchant_id, true));
+      else void maybeShowPushExplainer(router);
     };
-    // TODO(S8): relation_created → the welcome wheel (F-07) after closing.
     const common = { merchantName: data.merchant_name, stampsCount: data.stamps_count, stampsRequired: data.stamps_required, stampsAdded: data.stamps_added };
     props = data.cycle_completed
       ? {

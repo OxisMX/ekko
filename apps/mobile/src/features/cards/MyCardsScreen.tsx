@@ -8,6 +8,7 @@ import { Button, EmptyState, ErrorState, SegmentedTabs, Skeleton } from "../../c
 import { toAppError } from "../../lib/appError";
 import { colors, spacing } from "../../theme";
 import { imageUri } from "../merchant/merchantDetail";
+import { wheelHref, wheelIsOffered } from "../wheel/wheel";
 import { type MyCoupon, useMyCoupons } from "../coupons/myCoupons";
 import { type MyCard, useMyCards } from "./myCards";
 
@@ -68,7 +69,8 @@ function CardsList() {
         stampsRequired={item.stamps_required}
         cycleExpiresAt={item.cycle_expires_at}
         rewardAvailable={item.reward_available}
-        wheelAvailable={item.wheel_status === "available"}
+        wheelAvailable={wheelIsOffered(item.wheel_status)}
+        onWheelPress={() => router.push(wheelHref(item.merchant_id))}
         available={item.merchant_available}
         onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.merchant_id, name: item.merchant_name } })}
         testID={`my-card-${item.merchant_id}`}

@@ -4,6 +4,7 @@ import * as Linking from "expo-linking";
 import { Alert } from "react-native";
 
 import MerchantScreen from "../../app/merchant/[id]";
+import { maybeShowPushExplainer } from "../notifications/pushExplainer";
 import { menuChips, type MerchantDetail, productsFor } from "./merchantDetail";
 
 const mockSupabase = { rpc: jest.fn() };
@@ -21,7 +22,7 @@ jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useLocalSearchPar
 jest.mock("expo-linking", () => ({ openURL: jest.fn(() => Promise.resolve()) }));
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
 
-function makeDetail(overrides: { card?: Partial<MerchantDetail["card"]>; menu?: MerchantDetail["menu"]; coupons?: MerchantDetail["coupons"] } = {}): MerchantDetail {
+function makeDetail(overrides: { wheelStatus?: string; card?: Partial<MerchantDetail["card"]>; menu?: MerchantDetail["menu"]; coupons?: MerchantDetail["coupons"] } = {}): MerchantDetail {
   return {
     merchant: {
       id: "m1",
@@ -53,7 +54,7 @@ function makeDetail(overrides: { card?: Partial<MerchantDetail["card"]>; menu?: 
       stamped_today: false,
       ...overrides.card,
     },
-    wheel: { status: "spun" },
+    wheel: { status: overrides.wheelStatus ?? "spun" },
     menu: overrides.menu ?? {
       categories: [
         { id: "c2", name: "Postres", position: 2 },
@@ -113,6 +114,35 @@ describe("A-08..A-11 Detalle de comercio", () => {
     await fireEvent.press(screen.getByText("Agregar a mis tarjetas"));
     expect(rpcCalls("add_card")).toEqual([{ p_merchant_id: "m1" }]);
     await waitFor(() => expect(rpcCalls("get_merchant_detail")).toHaveLength(2));
+  });
+
+  it("add_card with an available wheel opens A-12 before A-16", async () => {
+    detailResult = { data: makeDetail({ card: { has_relation: false, stamps: [], cycle_expires_at: null } }), error: null };
+    await renderScreen();
+    await fireEvent.press(await screen.findByText("Agregar a mis tarjetas"));
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1", explainer: "1" } }));
+    expect(maybeShowPushExplainer).not.toHaveBeenCalled();
+  });
+
+  it("add_card without an available wheel goes straight to A-16", async () => {
+    detailResult = { data: makeDetail({ card: { has_relation: false, stamps: [], cycle_expires_at: null } }), error: null };
+    addCardResult = { data: { created: true, wheel: { status: "unavailable" } }, error: null };
+    await renderScreen();
+    await fireEvent.press(await screen.findByText("Agregar a mis tarjetas"));
+    await waitFor(() => expect(maybeShowPushExplainer).toHaveBeenCalled());
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it("'Gira tu ruleta' shows for available / needs_verification only and opens A-12", async () => {
+    const first = await renderScreen();
+    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
+    expect(screen.queryByText("Gira tu ruleta")).toBeNull();
+    await first.unmount();
+
+    detailResult = { data: makeDetail({ wheelStatus: "needs_verification" }), error: null };
+    await renderScreen();
+    await fireEvent.press(await screen.findByText("Gira tu ruleta"));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1" } });
   });
 
   it("'Ver recompensa' switches to Promociones and highlights the reward coupon", async () => {

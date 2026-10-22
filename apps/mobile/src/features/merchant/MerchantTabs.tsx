@@ -7,6 +7,7 @@ import { OfferCard, ProductCard } from "../../components/merchant";
 import { Button, Chip, EmptyState, FormMessage } from "../../components/ui";
 import { openExternalUrl } from "../../lib/openExternal";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { wheelIsOffered } from "../wheel/wheel";
 import { imageUri, menuChips, type MerchantDetail, previewExpiry, productsFor } from "./merchantDetail";
 
 export type MerchantTabKey = "card" | "menu" | "promos" | "review";
@@ -42,12 +43,13 @@ type CardTabProps = {
   onAddCard: () => void;
   onViewReward: () => void;
   onRegisterVisit: () => void;
+  onSpinWheel: () => void;
   /** The visit just stamped (A-15 → A-09): animate the newest stamp. */
   highlightLastStamp?: boolean;
 };
 
 // A-09 Tarjeta (US-08, US-09, RN-27, RN-71).
-export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewReward, onRegisterVisit, highlightLastStamp = false }: CardTabProps) {
+export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewReward, onRegisterVisit, onSpinWheel, highlightLastStamp = false }: CardTabProps) {
   const { merchant, card } = detail;
   const rewardAvailable = card.reward_coupon_id !== null;
   return (
@@ -84,6 +86,8 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
       )}
       {/* A-13..A-15 (F-08): hidden while the merchant is unavailable — claim_visit would answer E-05. */}
       {merchant.available ? <Button title="Registrar visita" onPress={onRegisterVisit} fullWidth testID="merchant-register-visit" /> : null}
+      {/* F-07: A-12 itself explains the unverified case (E-06). */}
+      {merchant.available && wheelIsOffered(detail.wheel.status) ? <Button title="Gira tu ruleta" onPress={onSpinWheel} variant="secondary" fullWidth testID="merchant-spin-wheel" /> : null}
       {card.reward_description ? <Paragraph>{card.reward_description}</Paragraph> : null}
       {card.terms ? (
         <View style={{ gap: spacing.xs }}>

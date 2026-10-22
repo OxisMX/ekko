@@ -1,9 +1,12 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { MerchantSession } from '../lib/panelRoute'
 import { AdminLayout, AdminPlaceholderPage } from './AdminLayout'
 import { ADMIN_SECTIONS } from './adminSections'
+
+vi.mock('../lib/supabase', () => ({ supabase: { rpc: vi.fn().mockResolvedValue({ data: { ok: true }, error: null }) } }))
 
 function renderAdmin(path: string, adminUnlockedUntil: string | null) {
   const merchantSession: MerchantSession = {
@@ -30,7 +33,11 @@ function renderAdmin(path: string, adminUnlockedUntil: string | null) {
     ],
     { initialEntries: [path] },
   )
-  render(<RouterProvider router={router} />)
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
 }
 
 const inFiveMinutes = () => new Date(Date.now() + 5 * 60_000).toISOString()
@@ -57,7 +64,7 @@ describe('AdminLayout', () => {
   it('shows the unlocked indicator and a way back to Modo Caja (RT-12)', () => {
     renderAdmin('/admin/metricas', inFiveMinutes())
     expect(screen.getByText('Sección administrativa desbloqueada')).toBeInTheDocument()
-    expect(screen.getByText(/Tiempo restante/)).toBeInTheDocument()
+    expect(screen.getByText(/Tiempo restante/)).toHaveTextContent(/[45]:\d\d/)
     expect(screen.getByRole('link', { name: 'Volver a Modo Caja' })).toHaveAttribute('href', '/')
   })
 
