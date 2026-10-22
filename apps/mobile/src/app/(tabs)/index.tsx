@@ -6,6 +6,7 @@ import { FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextIn
 import { MerchantCard } from "../../components/catalog";
 import { Chip, EmptyState, ErrorState, FormMessage, MerchantCardSkeleton } from "../../components/ui";
 import { fieldBoxStyle } from "../../components/ui/TextField";
+import { BirthdayGreeting } from "../../features/birthday/BirthdayGreeting";
 import { EmailVerificationBanner } from "../../features/auth/EmailVerificationBanner";
 import { type MerchantListItem, toMerchantCard, useMerchants } from "../../features/catalog/catalog";
 import { toAppError } from "../../lib/appError";
@@ -92,6 +93,7 @@ export default function ExploreScreen() {
   const listHeader = (
     <View style={{ marginHorizontal: -spacing.lg }} testID="explore-header">
       <EmailVerificationBanner />
+      <BirthdayGreeting />
     <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
       <View style={[fieldBoxStyle(false), { marginHorizontal: spacing.lg, paddingHorizontal: spacing.lg }]}>
         <TextInput

@@ -35,5 +35,8 @@ export type MerchantImageKind = keyof typeof WIDTHS;
 export function merchantImageUrl(supabaseUrl: string, path: string, kind: MerchantImageKind, density: number): string {
   const [small, large] = WIDTHS[kind];
   const base = supabaseUrl.replace(/\/+$/, "");
-  return `${base}/storage/v1/object/public/merchant-media/${path}_${density >= 2 ? large : small}.webp`;
+  // NOTE: a JPEG fallback (browsers without WebP encoding, e.g. Safari) stores "<base>.jpg" (backend §7).
+  const ext = path.endsWith(".jpg") ? "jpg" : "webp";
+  const stem = ext === "jpg" ? path.slice(0, -4) : path;
+  return `${base}/storage/v1/object/public/merchant-media/${stem}_${density >= 2 ? large : small}.${ext}`;
 }

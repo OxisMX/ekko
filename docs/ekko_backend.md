@@ -404,7 +404,7 @@ Reglas: borra `expo_push_token` y fija `signed_out_at` (F-16).
 
 #### `ensure_birthday_coupons`
 Sin parámetros. Reglas: si el mes local coincide con el de `birth_date`, crea un cupón por cada relación con comercio activo y `birthday_benefit` no nulo, sin duplicar por año (RN-43 a RN-45). Vence el último día del mes a las 23:59:59 locales.
-Retorna: `{ "created": 2 }`.
+Retorna: `{ "created": 2 }`. Cupón: título `Regalo de cumpleaños`, descripción = `birthday_benefit` (texto); idempotente vía `coupons_birthday_once_idx` + `ON CONFLICT DO NOTHING`; sin `birth_date` → `created: 0`.
 
 #### `list_my_redemptions`
 | Parámetro | Tipo |
@@ -691,7 +691,8 @@ Cierra la sesión administrativa del `session_id` actual (borra la fila). Retorn
 | `p_card_background_path` | text, nullable | Debe pertenecer a la carpeta del comercio. |
 | `p_push_coupon_validity_hours` | smallint | 24–48 |
 
-Reglas: los ciclos activos conservan su copia (RN-29).
+Reglas: los ciclos activos conservan su copia (RN-29). Ambas exigen sesión administrativa (E-16); `update` además comercio activo (E-05, RN-71). Textos con trim y no vacíos. Valor inválido: E-23 con `details.field` ∈ `stamps_required`, `cycle_months`, `reward_title`, `reward_description`, `terms`, `push_coupon_validity_hours`, `card_background_path` (esta última también si el objeto no existe en Storage: se acepta la ruta base `merchants/{id}/card/{archivo}` si algún objeto la tiene como prefijo).
+`push_coupon_validity_hours` vive en `merchants`; `update` lo escribe ahí. Retorno de ambas: `{ stamps_required, cycle_months, reward_title, reward_description, terms, card_background_path, push_coupon_validity_hours }`.
 
 #### Menú
 | RPC | Parámetros | Reglas |
@@ -898,6 +899,8 @@ Políticas de `storage.objects` para `merchant-media`:
 | INSERT | Rol `merchant`, primer segmento de carpeta igual a su `merchant_id`, carpeta `card`, `product` u `offer`, y sesión administrativa vigente. Tipos `image/webp` o `image/jpeg`; tamaño ≤ 300 KB. |
 | UPDATE | No permitida (archivos inmutables; cada cambio sube un UUID nuevo). |
 | DELETE | Mismo criterio que INSERT. |
+
+Implementación: bucket creado en la migración `20261028000000` (público, 300 KB, webp/jpeg); las políticas INSERT/DELETE llaman a `rls.can_write_merchant_media(name)` (SECURITY DEFINER, no extiende la sesión administrativa; comercio activo y sesión vigente).
 
 Logos y portadas los sube Oxis con `service_role`. La app construye la URL pública como `<storage_url>/merchant-media/<path>_<ancho>.webp`; si la variante WebP no existe, el registro guarda la extensión real en la ruta.
 

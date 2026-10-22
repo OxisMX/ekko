@@ -6,6 +6,7 @@ import CardsTab from "../../app/(tabs)/cards";
 import type { MyCard } from "./myCards";
 
 const mockSupabase = { rpc: jest.fn() };
+let mockParams: { tab?: string } = {};
 const mockRouter = { push: jest.fn(), navigate: jest.fn() };
 
 jest.mock("../../lib/supabase", () => ({
@@ -17,6 +18,7 @@ jest.mock("../../lib/supabase", () => ({
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
+  useLocalSearchParams: () => mockParams,
   useFocusEffect: (effect: () => void) => mockUseEffect(effect, [effect]),
 }));
 
@@ -48,6 +50,17 @@ beforeEach(() => {
 });
 
 describe("A-12 Mis Tarjetas", () => {
+  beforeEach(() => {
+    mockParams = {};
+  });
+
+  it("opens on the coupons tab when asked to (F-12)", async () => {
+    mockParams = { tab: "coupons" };
+    mockSupabase.rpc.mockResolvedValue({ data: [], error: null });
+    await renderCards();
+    expect(await screen.findByTestId("coupons-empty")).toBeOnTheScreen();
+  });
+
   it("shows a loading placeholder, then the card with progress and expiry", async () => {
     await renderCards();
     expect(screen.getByLabelText("Cargando tarjetas")).toBeOnTheScreen();

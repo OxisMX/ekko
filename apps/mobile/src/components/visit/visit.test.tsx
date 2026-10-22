@@ -13,6 +13,7 @@ describe("VisitResult", () => {
     expect(screen.getByRole("header", { name: "¡Sello registrado!" })).toBeOnTheScreen();
     expect(screen.getByText("Llevas 4 de 8.")).toBeOnTheScreen();
     expect(screen.getByText("+2 sellos")).toBeOnTheScreen();
+    expect(screen.getByText("Incluye tu sello extra")).toBeOnTheScreen();
     expect(screen.getByText("Café Luna")).toBeOnTheScreen();
     expect(screen.getByTestId("visit-result-celebration")).toBeOnTheScreen();
     expect(screen.queryByRole("alert")).toBeNull();

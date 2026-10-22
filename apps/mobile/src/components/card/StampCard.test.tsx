@@ -77,8 +77,18 @@ describe("StampCard", () => {
 
   it("shows the extra-stamp badge only when one is pending", async () => {
     await render(<StampCard {...base} />);
-    expect(screen.queryByText("+1 en tu próxima visita")).toBeNull();
+    expect(screen.queryByText("+1 sello extra en tu próxima visita")).toBeNull();
     await render(<StampCard {...base} pendingExtraStamps={1} />);
-    expect(screen.getByText("+1 en tu próxima visita")).toBeOnTheScreen();
+    expect(screen.getByText("+1 sello extra en tu próxima visita")).toBeOnTheScreen();
+  });
+
+  it("marks bonus stamps with a star and names them in the label (RN-36)", async () => {
+    const stamps = [
+      { grantedAt: "2026-01-01T12:00:00Z", isBonus: false },
+      { grantedAt: "2026-01-02T12:00:00Z", isBonus: true },
+    ];
+    await render(<StampCard {...base} stamps={stamps} testID="card" />);
+    expect(screen.getAllByTestId("stamp-bonus")).toHaveLength(1);
+    expect(screen.getByLabelText(/1 sello extra/)).toBeOnTheScreen();
   });
 });
