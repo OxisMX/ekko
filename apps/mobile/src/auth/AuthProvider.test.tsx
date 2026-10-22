@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Text } from "react-native";
 
+import { reportError } from "../lib/sentry";
 import { AuthProvider, useAuth } from "./AuthProvider";
 
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
@@ -21,6 +22,8 @@ const mockAuth = {
 
 // WHY: getter, because jest.mock is hoisted above `mockAuth` and the factory runs at import time.
 jest.mock("../lib/supabase", () => ({ supabase: { get auth() { return mockAuth; } } }));
+const mockSignOutDevice = jest.fn();
+jest.mock("../features/auth/deviceRegistration", () => ({ signOutDevice: () => mockSignOutDevice() }));
 jest.mock("../lib/sentry", () => ({ reportError: jest.fn() }));
 
 const session = (role: unknown) =>
@@ -40,9 +43,12 @@ function Probe() {
   );
 }
 
+let queryClient: QueryClient;
+
 async function renderProvider() {
+  queryClient = new QueryClient();
   const view = await render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Probe />
       </AuthProvider>
@@ -56,6 +62,7 @@ const authText = () => screen.getByTestId("auth").props.children as string;
 beforeEach(() => {
   jest.clearAllMocks();
   mockAuth.listener = null;
+  mockSignOutDevice.mockResolvedValue(undefined);
 });
 
 describe("AuthProvider", () => {
@@ -106,5 +113,25 @@ describe("AuthProvider", () => {
 
     expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(authText()).toBe("signedOut|-|-");
+  });
+
+  it("F-16: releases the device before the session ends and clears the cache", async () => {
+    const { emit } = await renderProvider();
+    await emit("INITIAL_SESSION", session("customer"));
+    const clear = jest.spyOn(queryClient, "clear");
+    await fireEvent.press(screen.getByTestId("auth"));
+
+    expect(mockSignOutDevice.mock.invocationCallOrder[0]).toBeLessThan(mockAuth.signOut.mock.invocationCallOrder[0]!);
+    expect(clear).toHaveBeenCalled();
+  });
+
+  it("F-16: a failing sign_out_device is reported but does not block the sign-out", async () => {
+    mockSignOutDevice.mockRejectedValue(new Error("offline"));
+    const { emit } = await renderProvider();
+    await emit("INITIAL_SESSION", session("customer"));
+    await fireEvent.press(screen.getByTestId("auth"));
+
+    await waitFor(() => expect(authText()).toBe("signedOut|-|-"));
+    expect(reportError).toHaveBeenCalled();
   });
 });

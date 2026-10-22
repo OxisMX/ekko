@@ -42,6 +42,23 @@ export async function registerDevice(): Promise<void> {
   if (error) throw error;
 }
 
+/** F-16: deactivates this device's push token (RN-07). The caller decides what a failure means. */
+const SIGN_OUT_DEVICE_TIMEOUT_MS = 3000;
+
+export async function signOutDevice(): Promise<void> {
+  // WHY the timeout: sign-out waits for this call; on a dead connection it must not hang the button.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SIGN_OUT_DEVICE_TIMEOUT_MS);
+  try {
+    const { error } = await supabase
+      .rpc("sign_out_device", { p_device_id_digest: await deviceIdDigest() })
+      .abortSignal(controller.signal);
+    if (error) throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // WHY: module scope = once per app start (F-01), per account in case another one signs in later.
 let registeredUserId: string | null = null;
 

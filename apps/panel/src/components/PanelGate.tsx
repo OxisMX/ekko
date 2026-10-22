@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
-import { panelRedirect, reactivationRefetch, resolvePanelRoute, toPanelErrorCode, type MerchantSession } from '../lib/panelRoute'
+import { panelRedirect, sessionRefetch, resolvePanelRoute, toPanelErrorCode, type MerchantSession } from '../lib/panelRoute'
 import { supabase } from '../lib/supabase'
 import { AlertIcon } from './Icons'
 import type { PanelOutletContext } from './panelOutlet'
@@ -16,7 +16,7 @@ export function PanelGate() {
   const query = useQuery({
     queryKey: ['merchant-session', session?.user.id],
     enabled: !!session,
-    ...reactivationRefetch,
+    ...sessionRefetch,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_merchant_session')
       if (error) throw error

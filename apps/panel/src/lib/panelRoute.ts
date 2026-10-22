@@ -54,12 +54,9 @@ export function toPanelErrorCode(err: { message?: string; details?: string | nul
   return parseRpcError(err).code
 }
 
-type MerchantSessionQuery = { state: { data?: Pick<MerchantSession, 'is_active'> } }
-const isInactive = (query: MerchantSessionQuery) => query.state.data?.is_active === false
-
-// F-28: while on P-12, poll and refetch on every focus so a merchant reactivated by Oxis
-// returns to P-02 without signing in again.
-export const reactivationRefetch = {
-  refetchInterval: (query: MerchantSessionQuery) => (isInactive(query) ? 60_000 : false),
-  refetchOnWindowFocus: (query: MerchantSessionQuery) => (isInactive(query) ? ('always' as const) : true),
-}
+// F-28/RN-71: the same session query detects both ways: active→inactive (Modo Caja or admin
+// goes to P-12) and inactive→active (P-12 returns to P-02) with no manual reload.
+// WHY 60 s: one tiny RPC per tablet per minute is negligible cost, and a deactivation reaches
+// the screen in about a minute. 'always' refetches on focus/visibility even inside staleTime.
+export const SESSION_POLL_MS = 60_000
+export const sessionRefetch = { refetchInterval: SESSION_POLL_MS, refetchOnWindowFocus: 'always' as const }

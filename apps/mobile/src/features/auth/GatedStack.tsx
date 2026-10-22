@@ -29,6 +29,8 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
         {/* WHY: pushed over the tab bar (own header, back to the tab) yet behind the same guard. */}
         <Stack.Screen name="merchant/[id]" />
         <Stack.Screen name="verify-email" />
+        {/* A-21: redemption history pushed from Perfil. */}
+        <Stack.Screen name="redemptions" options={{ headerShown: true, title: "Historial de canjes" }} />
         {/* A-14 / A-15: full screen over the tabs, no tab bar (F-08). */}
         <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
         {/* A-16: notifications explainer over whatever screen triggered it. */}

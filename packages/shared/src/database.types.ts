@@ -396,6 +396,9 @@ isOneToOne: false
 "list_my_coupons":
 { Args: { "p_merchant_id"?: string }; Returns: Json
                            },
+"list_my_redemptions":
+{ Args: { "p_limit"?: number,"p_offset"?: number }; Returns: Json
+                           },
 "lock_admin":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -407,6 +410,9 @@ isOneToOne: false
                            },
 "reveal_coupon_code":
 { Args: { "p_coupon_id": string }; Returns: Json
+                           },
+"sign_out_device":
+{ Args: { "p_device_id_digest": string }; Returns: Json
                            },
 "spin_wheel":
 { Args: { "p_device_id_digest": string,"p_merchant_id": string }; Returns: Json

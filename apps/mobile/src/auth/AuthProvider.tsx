@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import { signOutDevice } from "../features/auth/deviceRegistration";
 import { reportError } from "../lib/sentry";
 import { supabase } from "../lib/supabase";
 import { isCustomerSession } from "./roleGuard";
@@ -31,7 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signedIn = useRef(false);
 
   const signOut = useCallback(async () => {
-    // NOTE: F-16 also deactivates this device's push token before signing out — Sprint 6.
+    // WHY: single point for F-16 (also reached by endSession, E-18/E-19). The device must be released
+    // while the JWT is still valid, so it goes first; it is best effort so a network failure never
+    // traps the user in the app. The cache is cleared by the SIGNED_OUT listener below.
+    await signOutDevice().catch(reportError);
     expectingSignOut.current = true;
     const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error) throw error;

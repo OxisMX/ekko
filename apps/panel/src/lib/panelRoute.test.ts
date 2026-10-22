@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canAccessAdmin, panelRedirect, reactivationRefetch, resolvePanelRoute, toPanelErrorCode } from './panelRoute'
+import { canAccessAdmin, panelRedirect, resolvePanelRoute, toPanelErrorCode } from './panelRoute'
 
 const as = (role?: string) => ({ user: { app_metadata: role ? { role } : {} } }) as never
 
@@ -24,20 +24,6 @@ describe('toPanelErrorCode', () => {
     [{ message: 'boom', code: 'PGRST116' }, 'E-99'],
   ])('%o → %s', (err, expected) => {
     expect(toPanelErrorCode(err)).toBe(expected)
-  })
-})
-
-describe('reactivationRefetch (F-28)', () => {
-  const q = (is_active?: boolean) => ({ state: { data: is_active === undefined ? undefined : { is_active } } })
-
-  it('polls every 60 s and always refetches on focus while inactive', () => {
-    expect(reactivationRefetch.refetchInterval(q(false))).toBe(60_000)
-    expect(reactivationRefetch.refetchOnWindowFocus(q(false))).toBe('always')
-  })
-
-  it.each([true, undefined])('does not poll when is_active is %s', (isActive) => {
-    expect(reactivationRefetch.refetchInterval(q(isActive))).toBe(false)
-    expect(reactivationRefetch.refetchOnWindowFocus(q(isActive))).toBe(true)
   })
 })
 
