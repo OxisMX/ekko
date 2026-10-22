@@ -400,7 +400,8 @@ Retorna: `{ "ok": true }`.
 |---|---|
 | `p_device_id_digest` | text |
 
-Reglas: borra `expo_push_token` y fija `signed_out_at` (F-16).
+Reglas: mismo digest que `register_device` (E-23 `device_id_digest`); borra `expo_push_token` y fija `signed_out_at = app.now()` de la fila `(customer_id, device_hash)` (F-16). Si la fila no existe, no falla. Un `register_device` posterior la reactiva.
+Retorna: `{ "ok": true }`.
 
 #### `ensure_birthday_coupons`
 Sin parámetros. Reglas: si el mes local coincide con el de `birth_date`, crea un cupón por cada relación con comercio activo y `birthday_benefit` no nulo, sin duplicar por año (RN-43 a RN-45). Vence el último día del mes a las 23:59:59 locales.
@@ -412,7 +413,8 @@ Retorna: `{ "created": 2 }`. Cupón: título `Regalo de cumpleaños`, descripci�
 | `p_offset` | integer, default 0 |
 | `p_limit` | integer, default 20 (máx. 50) |
 
-Retorna: arreglo de `{ coupon_id, merchant_name, title, source, redeemed_at }`.
+Reglas: cupones `redeemed` del cliente, `redeemed_at` descendente; incluye comercios inactivos. `p_offset < 0` o `p_limit` fuera de 1–50: E-23 (`offset` / `limit`), no se recorta.
+Retorna: arreglo de `{ coupon_id, merchant_name, title, source, redeemed_at }` (`[]` si no hay).
 
 ### 4.2 Cliente — catálogo y comercio
 

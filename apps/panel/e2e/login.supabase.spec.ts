@@ -26,6 +26,17 @@ test('comercio inactivo ve P-12', async ({ page }) => {
   await signIn(page, 'c3@ekko.test')
   await expect(page).toHaveURL(/\/inactiva$/)
   await expect(page.getByText('Tu suscripción no está activa. Contacta a Oxis para reactivarla.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Generar QR' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Administrar' })).toHaveCount(0)
+})
+
+test('comercio inactivo no llega a Modo Caja ni a /admin por URL directa', async ({ page }) => {
+  await signIn(page, 'c3@ekko.test')
+  await expect(page).toHaveURL(/\/inactiva$/)
+  for (const path of ['/', '/admin/tarjeta']) {
+    await page.goto(path)
+    await expect(page).toHaveURL(/\/inactiva$/)
+  }
 })
 
 test('cuenta de cliente es rechazada con E-19', async ({ page }) => {
