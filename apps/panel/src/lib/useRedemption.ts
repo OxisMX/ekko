@@ -46,7 +46,7 @@ export class RedemptionError extends Error {
   }
 }
 
-function toRedemptionError(err: { message?: string; details?: string | null; code?: string }) {
+export function toRedemptionError(err: { message?: string; details?: string | null; code?: string }) {
   // WHY: fetch failures (offline) carry no `code`; real RPC errors always do.
   if (!err.code) return new RedemptionError('E-01')
   if (err.code === 'PGRST301' || err.code === 'PGRST303') return new RedemptionError('E-18')

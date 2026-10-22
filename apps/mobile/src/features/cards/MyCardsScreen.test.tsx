@@ -66,6 +66,14 @@ describe("A-12 Mis Tarjetas", () => {
     expect(screen.getByLabelText("Café La Esquina. 3 de 6 sellos. Vence el 12 abr. Recompensa disponible. Gira tu ruleta")).toBeOnTheScreen();
   });
 
+  it("the wheel badge opens A-12, also while the email is unverified", async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: [card({ wheel_status: "needs_verification" })], error: null });
+    await renderCards();
+    await fireEvent.press(await screen.findByText("Gira tu ruleta"));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1" } });
+    expect(mockRouter.push).not.toHaveBeenCalledWith(expect.objectContaining({ pathname: "/merchant/[id]" }));
+  });
+
   it("opens the merchant detail when a card is pressed", async () => {
     await renderCards();
     fireEvent.press(await screen.findByTestId("my-card-m1"));

@@ -15,15 +15,21 @@ export type CardRowProps = {
   cycleExpiresAt: string;
   rewardAvailable: boolean;
   wheelAvailable: boolean;
+  /** Makes the wheel badge open A-12 directly (F-07). */
+  onWheelPress?: () => void;
   /** RN-71: false dims the row and removes the action. */
   available: boolean;
   onPress: () => void;
   testID?: string;
 };
 
-function Badge({ label, filled }: { label: string; filled?: boolean }) {
+function Badge({ label, filled, onPress }: { label: string; filled?: boolean; onPress?: () => void }) {
   return (
-    <View
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      hitSlop={onPress ? 8 : undefined}
       style={{
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
@@ -36,12 +42,12 @@ function Badge({ label, filled }: { label: string; filled?: boolean }) {
       <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary }]}>
         {label}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
 // A-12 row: compact progress as dots plus the "n de m" text, so it never depends on color alone.
-export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cycleExpiresAt, rewardAvailable, wheelAvailable, available, onPress, testID }: CardRowProps) {
+export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cycleExpiresAt, rewardAvailable, wheelAvailable, onWheelPress, available, onPress, testID }: CardRowProps) {
   const progress = `${stampsCount} de ${stampsRequired} sellos`;
   const expiry = `Vence el ${formatShortDate(cycleExpiresAt)}`;
   const label = available
@@ -90,7 +96,7 @@ export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cy
             {rewardAvailable || wheelAvailable ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs }}>
                 {rewardAvailable ? <Badge label="Recompensa disponible" filled /> : null}
-                {wheelAvailable ? <Badge label="Gira tu ruleta" /> : null}
+                {wheelAvailable ? <Badge label="Gira tu ruleta" onPress={onWheelPress} /> : null}
               </View>
             ) : null}
           </>

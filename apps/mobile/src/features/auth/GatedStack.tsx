@@ -35,6 +35,8 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
         <Stack.Screen name="notifications-permission" options={{ presentation: "modal" }} />
         {/* A-19: redeem code over Mis Tarjetas / the merchant detail. */}
         <Stack.Screen name="coupon/[id]" options={{ presentation: "modal" }} />
+        {/* A-12: welcome wheel over the card / Mis Tarjetas. */}
+        <Stack.Screen name="wheel/[merchantId]" options={{ presentation: "modal" }} />
         <Stack.Screen name="visit-result" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!decided || route === "completeProfile"} redirectTo={redirectTo}>

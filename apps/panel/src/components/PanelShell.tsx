@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { canAccessAdmin } from '../lib/panelRoute'
 import { LockIcon, LogoutIcon } from './Icons'
 import { useMerchantSession } from './panelOutlet'
+import { PinDialog } from './PinDialog'
 
 function initials(name: string) {
   return name
@@ -14,17 +17,16 @@ function initials(name: string) {
 
 // Header + footer shared by P-02 and P-12 (RT-13: sober, no circle pattern in work areas).
 export function PanelShell({ showAdmin, children }: { showAdmin: boolean; children: ReactNode }) {
-  const { merchant } = useMerchantSession()
+  const { merchant, admin_unlocked_until } = useMerchantSession()
   const { signOut } = useAuth()
+  const navigate = useNavigate()
+  const [pinOpen, setPinOpen] = useState(false)
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center gap-4 border-b border-black/10 bg-surface px-6 py-3">
         {/* TODO(S3): render logo_path from Storage; initials until image URLs exist. */}
-        <div
-          aria-hidden="true"
-          className="grid size-12 shrink-0 place-items-center rounded-xl bg-navy text-lg font-bold text-white"
-        >
+        <div aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-xl bg-navy text-lg font-bold text-white">
           {initials(merchant.name)}
         </div>
         <div className="min-w-0 flex-1">
@@ -34,21 +36,20 @@ export function PanelShell({ showAdmin, children }: { showAdmin: boolean; childr
           </h1>
         </div>
         {showAdmin && (
-          // TODO(S8): open P-04 PIN unlock.
           <button
             type="button"
-            aria-disabled="true"
-            aria-describedby="admin-hint"
-            title="Disponible próximamente"
-            className="flex h-12 cursor-not-allowed items-center gap-2 rounded-xl border border-black/15 px-4 text-left text-text-secondary"
+            onClick={() =>
+              canAccessAdmin({
+                adminUnlockedUntil: admin_unlocked_until,
+                now: Date.now(),
+              })
+                ? navigate('/admin')
+                : setPinOpen(true)
+            }
+            className="flex h-12 items-center gap-2 rounded-xl border border-black/15 px-4 font-semibold transition-colors hover:bg-surface-muted"
           >
             <LockIcon className="size-5" />
-            <span className="leading-tight">
-              <span className="block font-semibold">Administrar</span>
-              <span id="admin-hint" className="block text-xs">
-                Disponible próximamente
-              </span>
-            </span>
+            Administrar
           </button>
         )}
         <button
@@ -64,6 +65,7 @@ export function PanelShell({ showAdmin, children }: { showAdmin: boolean; childr
       <footer className="px-6 pb-4 text-xs text-text-secondary">
         Ekko Rewards · Panel del comercio · versión <span className="font-mono">{__COMMIT_HASH__}</span>
       </footer>
+      {pinOpen && <PinDialog cancelLabel="Volver a Modo Caja" onCancel={() => setPinOpen(false)} onUnlocked={() => navigate('/admin')} />}
     </div>
   )
 }

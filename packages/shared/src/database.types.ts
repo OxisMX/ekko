@@ -378,6 +378,9 @@ isOneToOne: false
 "get_qr_status":
 { Args: { "p_qr_id": string }; Returns: Json
                            },
+"get_wheel":
+{ Args: { "p_merchant_id": string }; Returns: Json
+                           },
 "list_merchants":
 { Args: { "p_category"?: Database["public"]['Enums']["merchant_category"],"p_limit"?: number,"p_offset"?: number,"p_query"?: string,"p_seed": string }; Returns: Json
                            },
@@ -387,6 +390,9 @@ isOneToOne: false
 "list_my_coupons":
 { Args: { "p_merchant_id"?: string }; Returns: Json
                            },
+"lock_admin":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "lookup_redemption":
 { Args: { "p_code": string }; Returns: Json
                            },
@@ -395,6 +401,12 @@ isOneToOne: false
                            },
 "reveal_coupon_code":
 { Args: { "p_coupon_id": string }; Returns: Json
+                           },
+"spin_wheel":
+{ Args: { "p_device_id_digest": string,"p_merchant_id": string }; Returns: Json
+                           },
+"unlock_admin":
+{ Args: { "p_pin": string }; Returns: Json
                            }
           }
           Enums: {

@@ -18,7 +18,7 @@ const claimSchema = z.object({
   cycle_completed: z.boolean(),
   reward_coupon_id: z.string().nullable(),
   relation_created: z.boolean(),
-  // The wheel (F-07) is Sprint 8; its shape is not consumed yet.
+  // F-07: only compared with "available" to offer the welcome wheel.
   wheel_status: z.unknown(),
 });
 
