@@ -9,6 +9,7 @@ const mockRouter = { replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), 
 const mockEndSession = jest.fn();
 let mockParams: Record<string, string>;
 
+jest.mock("../notifications/pushExplainer", () => ({ maybeShowPushExplainer: jest.fn() }));
 jest.mock("../../lib/supabase", () => ({
   get supabase() {
     return mockSupabase;

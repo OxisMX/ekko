@@ -378,6 +378,9 @@ isOneToOne: false
 "list_merchants":
 { Args: { "p_category"?: Database["public"]['Enums']["merchant_category"],"p_limit"?: number,"p_offset"?: number,"p_query"?: string,"p_seed": string }; Returns: Json
                            },
+"list_my_cards":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "register_device":
 { Args: { "p_device_id_digest": string,"p_expo_push_token"?: string,"p_platform": Database["public"]['Enums']["device_platform"],"p_push_enabled"?: boolean }; Returns: Json
                            }

@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 
 import { reportError } from "../../lib/sentry";
 import { supabase } from "../../lib/supabase";
+import { readPushRegistration } from "../notifications/pushToken";
 
 const FALLBACK_ID_KEY = "ekko.device-id";
 
@@ -31,8 +32,13 @@ export async function deviceIdDigest(): Promise<string> {
 export async function registerDevice(): Promise<void> {
   if (Platform.OS !== "ios" && Platform.OS !== "android") return;
   const digest = await deviceIdDigest();
-  // NOTE: the push token (p_expo_push_token / p_push_enabled) arrives in Sprint 6.
-  const { error } = await supabase.rpc("register_device", { p_device_id_digest: digest, p_platform: Platform.OS });
+  const push = await readPushRegistration();
+  const { error } = await supabase.rpc("register_device", {
+    p_device_id_digest: digest,
+    p_platform: Platform.OS,
+    p_push_enabled: push.enabled,
+    p_expo_push_token: push.token ?? undefined,
+  });
   if (error) throw error;
 }
 

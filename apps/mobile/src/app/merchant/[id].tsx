@@ -8,6 +8,7 @@ import Svg, { Path } from "react-native-svg";
 import { HEADER_EXPANDED_HEIGHT, MerchantHeader } from "../../components/merchant";
 import { ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../../components/ui";
 import { CardTab, MenuTab, MERCHANT_TABS, type MerchantTabKey, PromosTab, ReviewTab } from "../../features/merchant/MerchantTabs";
+import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { imageUri, useAddCard, useMerchantDetail } from "../../features/merchant/merchantDetail";
 import { toAppError } from "../../lib/appError";
 import { openExternalUrl } from "../../lib/openExternal";
@@ -80,7 +81,7 @@ export default function MerchantScreen() {
           adding={addCard.isPending}
           addErrorMessage={addErrorCode && addErrorCode !== "E-05" ? (ERRORS[addErrorCode as keyof typeof ERRORS]?.message ?? ERRORS["E-99"].message) : null}
           onAddCard={() => {
-            if (!addCard.isPending) addCard.mutate();
+            if (!addCard.isPending) addCard.mutate(undefined, { onSuccess: (result) => result.created && void maybeShowPushExplainer(router) });
           }}
           onViewReward={() => {
             setTab("promos");

@@ -43,6 +43,8 @@ const config: ExpoConfig = {
         recordAudioAndroid: false,
       },
     ],
+    // A-16: push token registration. Handling incoming pushes arrives in Sprint 12.
+    "expo-notifications",
     ["expo-splash-screen", { image: "./assets/images/splash-icon.png", imageWidth: 76, backgroundColor: "#FFFFFF" }],
     // WHY: RNF-01 asks for iOS 15.0, but Expo SDK 58 enforces a 16.4 minimum; revisit if RNF-01 must hold.
     ["expo-build-properties", { ios: { deploymentTarget: "16.4" }, android: { minSdkVersion: 26 } }],

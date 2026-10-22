@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { VisitResultKind } from "../../components/visit";
 import { supabase } from "../../lib/supabase";
 import { deviceIdDigest } from "../auth/deviceRegistration";
+import { myCardsKey } from "../cards/myCards";
 import { merchantDetailKey } from "../merchant/merchantDetail";
 
 // Backend claim_visit. NOTE: parsed with zod because the RPC is not in database.types.ts yet.
@@ -39,6 +40,7 @@ export function useClaimVisit() {
     mutationFn: claimVisit,
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: merchantDetailKey(result.merchant_id) });
+      void queryClient.invalidateQueries({ queryKey: myCardsKey });
       // Explorar may show the card/progress for this merchant.
       void queryClient.invalidateQueries({ queryKey: ["merchants"] });
     },

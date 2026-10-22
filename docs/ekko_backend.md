@@ -583,7 +583,7 @@ Retorna arreglo de:
   "cycle_expires_at": "...", "reward_available": true, "wheel_status": "available"
 }
 ```
-Aplica reinicio perezoso de ciclos vencidos.
+Aplica reinicio perezoso de ciclos vencidos (`app.roll_cycle` por relación). Incluye también los comercios no disponibles (RN-71, `merchant_available = false`). Orden: `reward_available` desc, `merchant_available` desc, `customer_merchants.created_at` desc. Sin relaciones retorna `[]`. `stamps_count` cuenta los sellos del ciclo activo, bonus incluidos.
 
 #### `list_my_coupons`
 | Parámetro | Tipo |
@@ -959,6 +959,7 @@ Notas de Sprint 1:
 - La 009 asigna el rol con un trigger `BEFORE INSERT ON auth.users` (el rol ya viaja en el primer token del registro, verificado contra Auth local) y crea la fila de `customers` con un trigger `AFTER INSERT`; no se usa Custom Access Token Hook.
 - S3: migración `catalog_rpc` (extensión `unaccent`, `app.search_text`, índice de búsqueda que reemplaza al trigram sobre `name`, `list_merchants`) y `catalog_rls` (esquema `rls`, políticas de catálogo de la 013). `get_merchant_detail` llega en S4. `seed.sql` agrega C5–C16 visibles (solo comercio, tarjeta y PIN) para paginar el catálogo.
 - S5: migraciones `claim_visit` (columna `visit_qr_tokens.claim_result`, `app.grant_stamps`, `claim_visit`, `get_qr_status`) y `realtime` (015). Concurrencia TC-044 fuera de pgTAP: `supabase/tests/concurrency/tc044_claim_visit.sh` (dos sesiones `psql` vía `docker exec`; limpia lo que crea).
+- S6: migración `my_cards_rpc` (`list_my_cards`). Tests `11_my_cards` y `12_card_rules` (RN-22, RN-24, RN-29, RN-30 y cierre de ciclo; el resto de RN-13..RN-30 ya estaba cubierto en 01, 02, 08, 09, 10).
 - S4: migración `card_cycle` (`app.roll_cycle`) y `merchant_detail_rpc` (`app.wheel_status`, `add_card`, `get_merchant_detail`, `generate_visit_qr`, política y privilegios por columna de `visit_qr_tokens` de la 013). `seed.sql`: Brownie de C1 agotado el día local de la siembra y Chai el día anterior.
 
 ---

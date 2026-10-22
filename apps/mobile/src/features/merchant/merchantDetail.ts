@@ -4,6 +4,7 @@ import { PixelRatio } from "react-native";
 import { z } from "zod";
 
 import { supabase, supabaseUrl } from "../../lib/supabase";
+import { myCardsKey } from "../cards/myCards";
 
 // Backend §4.2 get_merchant_detail. NOTE: parsed with zod because the RPC is not in database.types.ts
 // yet; once `pnpm db:types` includes it, the cast in `callRpc` can go.
@@ -97,7 +98,10 @@ export function useAddCard(merchantId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => callRpc("add_card", merchantId, addCardSchema),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: merchantDetailKey(merchantId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: myCardsKey });
+      return queryClient.invalidateQueries({ queryKey: merchantDetailKey(merchantId) });
+    },
   });
 }
 
