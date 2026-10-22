@@ -360,6 +360,9 @@ isOneToOne: false
 "complete_profile":
 { Args: { "p_birth_date": string,"p_first_name": string,"p_last_name": string }; Returns: Json
                            },
+"confirm_redemption":
+{ Args: { "p_coupon_id": string }; Returns: Json
+                           },
 "generate_visit_qr":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -381,8 +384,17 @@ isOneToOne: false
 "list_my_cards":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"list_my_coupons":
+{ Args: { "p_merchant_id"?: string }; Returns: Json
+                           },
+"lookup_redemption":
+{ Args: { "p_code": string }; Returns: Json
+                           },
 "register_device":
 { Args: { "p_device_id_digest": string,"p_expo_push_token"?: string,"p_platform": Database["public"]['Enums']["device_platform"],"p_push_enabled"?: boolean }; Returns: Json
+                           },
+"reveal_coupon_code":
+{ Args: { "p_coupon_id": string }; Returns: Json
                            }
           }
           Enums: {

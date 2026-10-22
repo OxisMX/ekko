@@ -24,6 +24,8 @@ export type CouponCardProps = {
   now?: Date;
   actionLabel?: string;
   onAction?: () => void;
+  /** Adds the "Mostrar código" action (US-13). */
+  onShowCode?: () => void;
   testID?: string;
 };
 
@@ -39,7 +41,7 @@ export function relativeExpiry(expiresAt: string, now: Date): string {
   return `Vence en ${days} ${days === 1 ? "día" : "días"}`;
 }
 
-export function CouponCard({ title, merchantName, source, expiresAt, terms, now = new Date(), actionLabel, onAction, testID }: CouponCardProps) {
+export function CouponCard({ title, merchantName, source, expiresAt, terms, now = new Date(), actionLabel, onAction, onShowCode, testID }: CouponCardProps) {
   const left = new Date(expiresAt).getTime() - now.getTime();
   const expiringSoon = left > 0 && left < DAY;
   const expiry = `${relativeExpiry(expiresAt, now)} · ${formatDate(expiresAt)}`;
@@ -90,6 +92,7 @@ export function CouponCard({ title, merchantName, source, expiresAt, terms, now 
           </Text>
         ) : null}
       </View>
+      {onShowCode ? <Button title="Mostrar código" onPress={onShowCode} fullWidth style={{ marginTop: spacing.sm }} testID={testID ? `${testID}-show-code` : undefined} /> : null}
       {actionLabel && onAction ? <Button title={actionLabel} onPress={onAction} fullWidth style={{ marginTop: spacing.sm }} /> : null}
     </View>
   );

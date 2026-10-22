@@ -3,20 +3,37 @@ import { useCallback, useRef, useState } from "react";
 import { FlatList, type ListRenderItem, RefreshControl, View } from "react-native";
 
 import { CardRow } from "../../components/card";
-import { Button, EmptyState, ErrorState, Skeleton } from "../../components/ui";
+import { CouponCard } from "../../components/coupon";
+import { Button, EmptyState, ErrorState, SegmentedTabs, Skeleton } from "../../components/ui";
 import { toAppError } from "../../lib/appError";
 import { colors, spacing } from "../../theme";
 import { imageUri } from "../merchant/merchantDetail";
+import { type MyCoupon, useMyCoupons } from "../coupons/myCoupons";
 import { type MyCard, useMyCards } from "./myCards";
+
+const TABS = [
+  { key: "cards", label: "Tarjetas" },
+  { key: "coupons", label: "Cupones" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 // A-12 Mis Tarjetas (US-10, RN-71).
 export function MyCardsScreen() {
   const router = useRouter();
-  const cards = useMyCards();
-  const { refetch } = cards;
-  const [pulling, setPulling] = useState(false);
+  const [tab, setTab] = useState<TabKey>("cards");
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+        <Button title="Registrar visita" onPress={() => router.push("/scan")} fullWidth testID="cards-scan" />
+      </View>
+      <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} testID="cards-tabs" />
+      {tab === "cards" ? <CardsList /> : <CouponsList />}
+    </View>
+  );
+}
 
-  // Refetch each time the tab regains focus, but not on the first focus (the query just started).
+// Refetch each time the tab regains focus, but not on the first focus (the query just started).
+function useRefetchOnFocus(refetch: () => unknown) {
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -24,11 +41,23 @@ export function MyCardsScreen() {
       else void refetch();
     }, [refetch])
   );
+}
 
+function usePullToRefresh(refetch: () => Promise<unknown>) {
+  const [pulling, setPulling] = useState(false);
   const onRefresh = useCallback(() => {
     setPulling(true);
     void refetch().finally(() => setPulling(false));
   }, [refetch]);
+  return <RefreshControl refreshing={pulling} onRefresh={onRefresh} colors={[colors.navy]} tintColor={colors.navy} />;
+}
+
+function CardsList() {
+  const router = useRouter();
+  const cards = useMyCards();
+  const { refetch } = cards;
+  useRefetchOnFocus(refetch);
+  const refreshControl = usePullToRefresh(refetch);
 
   const renderItem = useCallback<ListRenderItem<MyCard>>(
     ({ item }) => (
@@ -72,29 +101,82 @@ export function MyCardsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <FlatList
-        data={cards.data ?? []}
-        keyExtractor={(item) => item.merchant_id}
-        renderItem={renderItem}
-        contentContainerStyle={{ flexGrow: 1, gap: spacing.md, padding: spacing.lg }}
-        refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} colors={[colors.navy]} tintColor={colors.navy} />}
-        ListHeaderComponent={
-          <Button title="Registrar visita" onPress={() => router.push("/scan")} fullWidth style={{ marginBottom: spacing.sm }} testID="cards-scan" />
-        }
-        ListEmptyComponent={emptyState}
-        testID="cards-list"
-      />
-    </View>
+    <FlatList
+      data={cards.data ?? []}
+      keyExtractor={(item) => item.merchant_id}
+      renderItem={renderItem}
+      contentContainerStyle={{ flexGrow: 1, gap: spacing.md, padding: spacing.lg }}
+      refreshControl={refreshControl}
+      ListEmptyComponent={emptyState}
+      testID="cards-list"
+    />
   );
 }
 
-function CardsError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+// A-18 Cupones (US-13, RN-71): an unavailable merchant's coupon is still usable.
+function CouponsList() {
+  const router = useRouter();
+  const coupons = useMyCoupons();
+  const { refetch } = coupons;
+  useRefetchOnFocus(refetch);
+  const refreshControl = usePullToRefresh(refetch);
+
+  const renderItem = useCallback<ListRenderItem<MyCoupon>>(
+    ({ item }) => (
+      <CouponCard
+        title={item.title}
+        merchantName={item.merchant_available ? item.merchant_name : `${item.merchant_name} · No disponible por ahora`}
+        source={item.source}
+        expiresAt={item.expires_at}
+        terms={item.terms ?? undefined}
+        onShowCode={() => router.push({ pathname: "/coupon/[id]", params: { id: item.id, merchantId: item.merchant_id } })}
+        testID={`my-coupon-${item.id}`}
+      />
+    ),
+    [router]
+  );
+
+  let emptyState;
+  if (coupons.data) {
+    emptyState = (
+      <EmptyState
+        title="Aún no tienes cupones"
+        message="Gánalos al completar tu tarjeta de sellos, girar la ruleta de bienvenida o recibir promociones de tus negocios."
+        actionLabel="Explorar comercios"
+        onAction={() => router.navigate("/")}
+        testID="coupons-empty"
+      />
+    );
+  } else if (coupons.isError) {
+    emptyState = <CardsError key={coupons.errorUpdatedAt} error={coupons.error} onRetry={() => void refetch()} what="tus cupones" testID="coupons-error" />;
+  } else {
+    emptyState = (
+      <View accessible accessibilityLabel="Cargando cupones" testID="coupons-loading" style={{ gap: spacing.lg }}>
+        <Skeleton height={140} radius={16} />
+        <Skeleton height={140} radius={16} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={coupons.data ?? []}
+      keyExtractor={(item) => item.id}
+      renderItem={renderItem}
+      contentContainerStyle={{ flexGrow: 1, gap: spacing.md, padding: spacing.lg }}
+      refreshControl={refreshControl}
+      ListEmptyComponent={emptyState}
+      testID="coupons-list"
+    />
+  );
+}
+
+function CardsError({ error, onRetry, what = "tus tarjetas", testID = "cards-error" }: { error: unknown; onRetry: () => void; what?: string; testID?: string }) {
   // WHY: computed once per error (keyed by the parent) so an E-99 is reported to Sentry once.
   const [code] = useState(() => toAppError(error).code);
   return code === "E-01" ? (
-    <ErrorState onRetry={onRetry} testID="cards-error" />
+    <ErrorState onRetry={onRetry} testID={testID} />
   ) : (
-    <ErrorState onRetry={onRetry} title="Algo salió mal" message="No pudimos cargar tus tarjetas. Inténtalo de nuevo." testID="cards-error" />
+    <ErrorState onRetry={onRetry} title="Algo salió mal" message={`No pudimos cargar ${what}. Inténtalo de nuevo.`} testID={testID} />
   );
 }

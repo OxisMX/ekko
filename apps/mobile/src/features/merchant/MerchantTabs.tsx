@@ -138,7 +138,17 @@ export function MenuTab({ menu, onShowCard }: { menu: MerchantDetail["menu"]; on
 }
 
 // A-11 Promociones y cupones (US-12, RN-57..RN-59).
-export function PromosTab({ detail, highlightCouponId, onShowMenu }: { detail: MerchantDetail; highlightCouponId: string | null; onShowMenu: () => void }) {
+export function PromosTab({
+  detail,
+  highlightCouponId,
+  onShowMenu,
+  onShowCode,
+}: {
+  detail: MerchantDetail;
+  highlightCouponId: string | null;
+  onShowMenu: () => void;
+  onShowCode: (couponId: string) => void;
+}) {
   const { offers, coupons } = detail;
   if (offers.length === 0 && coupons.length === 0) {
     return (
@@ -175,8 +185,14 @@ export function PromosTab({ detail, highlightCouponId, onShowMenu }: { detail: M
             testID={highlighted ? "coupon-highlighted" : undefined}
             style={highlighted ? { borderRadius: radii.card, borderWidth: 3, borderColor: colors.accent } : undefined}
           >
-            {/* TODO(S7): "Mostrar código" action. */}
-            <CouponCard title={coupon.title} source={coupon.source} expiresAt={coupon.expires_at} terms={coupon.terms ?? undefined} testID={`coupon-${coupon.id}`} />
+            <CouponCard
+              title={coupon.title}
+              source={coupon.source}
+              expiresAt={coupon.expires_at}
+              terms={coupon.terms ?? undefined}
+              onShowCode={() => onShowCode(coupon.id)}
+              testID={`coupon-${coupon.id}`}
+            />
           </View>
         );
       })}

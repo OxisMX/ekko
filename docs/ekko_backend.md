@@ -641,8 +641,9 @@ Notas S5: requiere `app.current_merchant()` (también comercios inactivos: un QR
 |---|---|
 | `p_code` | text (normalizado a mayúsculas) |
 
-Reglas: validador bloqueado: E-13. Busca `(merchant_id, code)`. No encontrado: incrementa contador de fallos (10 en 5 min bloquean 5 min) y lanza E-12 con intentos restantes. Vencido: E-10. Usado: E-11. Permitido con comercio inactivo (RN-71).
-Retorna:
+Reglas: validador bloqueado (`validator_locked_until > now`): lanza E-13 con `details {locked_until}`. Busca `(merchant_id, code)` (código normalizado con trim y mayúsculas; el de otro comercio cuenta como no encontrado). Usado: E-11. Vencido: E-10 (ambos se lanzan y no cuentan como fallo). Permitido con comercio inactivo (RN-71).
+Notas S7 (antiadivinación, RN-39): "no encontrado" NO lanza, porque un `raise` revertiría el incremento del contador. Retorna `{"ok": false, "error": "E-12", "remaining": n}` o, si ese intento activó el bloqueo, `{"ok": false, "error": "E-13", "locked_until": "..."}`. Ventana de 5 min desde `code_window_started_at` (vencida: el contador reinicia a 1); al llegar a 10 fallos, `validator_locked_until = now + 5 min`. Un acierto NO reinicia el contador (alternar aciertos y fallos no evade el límite). La fila de `merchant_security` se bloquea con `FOR UPDATE` para serializar intentos concurrentes.
+Retorna en éxito (`"ok": true` más):
 ```json
 {
   "coupon_id": "uuid",
@@ -662,6 +663,7 @@ Retorna:
 
 Reglas: bloquea el cupón; valida comercio, vigencia y estado. Marca `redeemed`. Idempotente si ya fue canjeado por este mismo comercio en los últimos 60 s.
 Retorna: `{ "redeemed_at": "..." }`.
+Notas S7: cupón inexistente o de otro comercio: E-12; ya canjeado por este comercio hace menos de 60 s: mismo `redeemed_at`; si no, E-11; vencido: E-10. Permitido con comercio inactivo (RN-71). Orden de errores en `reveal_coupon_code`: E-12, E-06, E-11, E-10.
 
 ### 4.5 Comercio — administración (requieren sesión administrativa)
 
