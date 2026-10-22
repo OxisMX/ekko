@@ -363,7 +363,13 @@ isOneToOne: false
 "confirm_redemption":
 { Args: { "p_coupon_id": string }; Returns: Json
                            },
+"create_push_campaign":
+{ Args: { "p_auth_session_id": string,"p_merchant_id": string,"p_payload": Json }; Returns: Json
+                           },
 "delete_menu_category":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"delete_offer":
 { Args: { "p_id": string }; Returns: undefined
                            },
 "delete_product":
@@ -387,6 +393,14 @@ isOneToOne: false
 "get_my_profile":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"get_push_recipients":
+{ Args: { "p_campaign_id": string }; Returns: {
+              "coupon_id": string,"customer_id": string,"token": string
+            }[]
+                           },
+"get_push_status":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "get_qr_status":
 { Args: { "p_qr_id": string }; Returns: Json
                            },
@@ -408,11 +422,20 @@ isOneToOne: false
 "list_my_redemptions":
 { Args: { "p_limit"?: number,"p_offset"?: number }; Returns: Json
                            },
+"list_offers_admin":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"list_push_campaigns":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "lock_admin":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "lookup_redemption":
 { Args: { "p_code": string }; Returns: Json
+                           },
+"record_push_result":
+{ Args: { "p_campaign_id": string,"p_failed": number,"p_invalid_tokens": (string)[],"p_sent": number }; Returns: Json
                            },
 "register_device":
 { Args: { "p_device_id_digest": string,"p_expo_push_token"?: string,"p_platform": Database["public"]['Enums']["device_platform"],"p_push_enabled"?: boolean }; Returns: Json
@@ -437,6 +460,9 @@ isOneToOne: false
                            },
 "upsert_menu_category":
 { Args: { "p_id"?: string,"p_name"?: string,"p_position"?: number }; Returns: Json
+                           },
+"upsert_offer":
+{ Args: { "p_description"?: string,"p_id"?: string,"p_image_path"?: string,"p_position"?: number,"p_title"?: string,"p_weekday"?: number }; Returns: Json
                            },
 "upsert_product":
 { Args: { "p_category_id"?: string,"p_description"?: string,"p_id"?: string,"p_image_path"?: string,"p_name"?: string,"p_position"?: number,"p_price"?: number }; Returns: Json

@@ -8,6 +8,7 @@ import { maybeShowPushExplainer } from "../notifications/pushExplainer";
 import { menuChips, type MerchantDetail, productsFor } from "./merchantDetail";
 
 const mockSupabase = { rpc: jest.fn() };
+let mockParams: Record<string, string> = { id: "m1" };
 const mockRouter = { back: jest.fn(), replace: jest.fn(), push: jest.fn(), canGoBack: jest.fn(() => true) };
 
 jest.mock("../notifications/pushExplainer", () => ({ maybeShowPushExplainer: jest.fn() }));
@@ -18,7 +19,7 @@ jest.mock("../../lib/supabase", () => ({
   supabaseUrl: "https://x.supabase.co",
 }));
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useLocalSearchParams: () => ({ id: "m1" }) }));
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useLocalSearchParams: () => mockParams }));
 jest.mock("expo-linking", () => ({ openURL: jest.fn(() => Promise.resolve()) }));
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
 
@@ -87,6 +88,7 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = { id: "m1" };
   detailResult = { data: makeDetail(), error: null };
   addCardResult = { data: { created: true, wheel: { status: "available" } }, error: null };
   mockSupabase.rpc.mockImplementation((name: string) => Promise.resolve(name === "add_card" ? addCardResult : detailResult));
@@ -206,6 +208,16 @@ describe("A-08..A-11 Detalle de comercio", () => {
 
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
     expect(alert).toHaveBeenCalledWith("Este negocio no está disponible por ahora.");
+  });
+
+  it("E-05 from a push goes to Mis cupones instead of back (F-13)", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    mockParams = { id: "m1", from: "push", tab: "promos" };
+    detailResult = { data: null, error: { message: "E-05", details: null, code: "P0001" } };
+    await renderScreen();
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/cards", params: { tab: "coupons" } }));
+    expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
   it("network failure shows a retryable error", async () => {

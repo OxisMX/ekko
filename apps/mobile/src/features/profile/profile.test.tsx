@@ -63,6 +63,20 @@ describe("A-20 Perfil", () => {
     expect(screen.queryByText(/Eliminar cuenta/)).toBeNull();
   });
 
+  it("shows the dev push simulator only in __DEV__", async () => {
+    const view = await renderWith(<ProfileScreen />);
+    expect(await screen.findByTestId("profile-dev-push")).toBeOnTheScreen();
+    await view.unmount();
+    Object.assign(globalThis, { __DEV__: false });
+    try {
+      await renderWith(<ProfileScreen />);
+      expect(await screen.findByTestId("profile-name")).toBeOnTheScreen();
+      expect(screen.queryByTestId("profile-dev-push")).toBeNull();
+    } finally {
+      Object.assign(globalThis, { __DEV__: true });
+    }
+  });
+
   it("offers to activate notifications when they can still be asked", async () => {
     permission("denied", true);
     mockRequestPush.mockResolvedValue(true);
