@@ -6,11 +6,12 @@ jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 
 describe("shouldShowPushExplainer (A-16)", () => {
   it.each([
-    ["undetermined", false, true],
-    ["undetermined", true, false],
-    ["granted", false, false],
-    ["denied", false, false],
-  ])("permission %s, seen %s -> %s", (permission, seen, expected) => {
-    expect(shouldShowPushExplainer({ permission, seen })).toBe(expected);
+    ["undetermined", true, false, true],
+    ["denied", true, false, true], // Android: never asked yet
+    ["undetermined", true, true, false],
+    ["granted", true, false, false],
+    ["denied", false, false, false],
+  ])("permission %s, canAskAgain %s, seen %s -> %s", (permission, canAskAgain, seen, expected) => {
+    expect(shouldShowPushExplainer({ permission, canAskAgain, seen })).toBe(expected);
   });
 });

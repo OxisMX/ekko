@@ -8,9 +8,14 @@ import { reportError } from "../../lib/sentry";
 export type PushRegistration = { enabled: boolean; token: string | null };
 
 // WHY: Android 8+ needs the channel to exist before a token is issued or a permission asked (13+).
+// Expo Go rejects creating channels; that must not block the permission prompt.
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync("default", { name: "Ekko", importance: AndroidImportance.DEFAULT });
+  try {
+    await Notifications.setNotificationChannelAsync("default", { name: "Ekko", importance: AndroidImportance.DEFAULT });
+  } catch (error) {
+    if (__DEV__) console.warn(error);
+  }
 }
 
 /** A-16: asks the OS for the permission. Never throws; a failure counts as "not granted". */
