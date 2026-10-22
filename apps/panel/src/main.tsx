@@ -13,6 +13,8 @@ import { initSentry } from './lib/sentry.ts'
 import { CashierModePage } from './pages/CashierModePage.tsx'
 import { InactivePage } from './pages/InactivePage.tsx'
 import { CardConfigPage } from './pages/CardConfigPage.tsx'
+import { MenuPage } from './pages/MenuPage.tsx'
+import { ProductFormPage } from './pages/ProductFormPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
 
 initSentry()
@@ -30,7 +32,10 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="metricas" replace /> },
           { path: 'tarjeta', element: <CardConfigPage /> },
-          ...ADMIN_SECTIONS.filter((section) => section.path !== 'tarjeta').map((section) => ({
+          { path: 'menu', element: <MenuPage /> },
+          { path: 'menu/nuevo', element: <ProductFormPage /> },
+          { path: 'menu/:productId', element: <ProductFormPage /> },
+          ...ADMIN_SECTIONS.filter((section) => !['tarjeta', 'menu'].includes(section.path)).map((section) => ({
             path: section.path,
             element: <AdminPlaceholderPage section={section} />,
           })),

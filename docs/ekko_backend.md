@@ -704,6 +704,9 @@ Reglas: los ciclos activos conservan su copia (RN-29). Ambas exigen sesión admi
 | `upsert_product` | `p_id` (opcional), `p_category_id`, `p_name`, `p_description`, `p_price`, `p_image_path`, `p_position` | La categoría y la imagen deben ser del comercio. |
 | `delete_product` | `p_id` | — |
 | `set_product_flags` | `p_id`, `p_sold_out_today` (boolean), `p_is_featured` (boolean) | `p_sold_out_today = true` fija `sold_out_on = app.local_today()`; `false` lo limpia. |
+| `list_menu_admin` | — | Panel P-07: `{ categories: [{ id, name, position, products: [...] }] }` ordenado por posición; exige sesión administrativa (como `get_card_config`). |
+
+Todas exigen sesión administrativa (E-16); las de escritura, además comercio activo (E-05). Un id de otro comercio se trata como inexistente: E-23 `{field:'id'}`. Otros campos E-23: `name`, `category_id`, `description`, `price` (0–99999999.99, 2 decimales), `image_path` (`merchants/{id}/product/<base>` con objeto subido), `category_not_empty`. `position` nula = máximo + 1 al crear (dentro de la categoría para productos). Los productos devuelven `{ id, category_id, name, description, price, image_path, is_featured, is_sold_out, position }`.
 
 #### Ofertas
 | RPC | Parámetros |

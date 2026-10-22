@@ -72,3 +72,12 @@ node scripts/reset-pin.ts --merchant correo [--pin 1234]                        
 ```
 
 `inactive` pone `is_visible = false` (el catálogo filtra por `is_visible`, RN-71); `active` lo vuelve a mostrar en el catálogo salvo `--visible false` (F-32). `reset-pin` reinicia contador y bloqueo y cierra sesiones administrativas; entrega el PIN generado por el canal acordado y no lo guardes.
+
+Limpieza mensual de huérfanos de Storage (`merchant-media`), con `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_DB_URL`:
+
+```sh
+node scripts/clean-orphan-media.ts            # simulacro: imprime cantidad y lista
+node scripts/clean-orphan-media.ts --apply    # borra
+```
+
+Huérfano = objeto sin referencia en `merchants`, `loyalty_programs`, `products` ni `weekly_offers` y con más de 24 h (una subida en curso aún no está guardada).
