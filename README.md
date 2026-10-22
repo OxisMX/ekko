@@ -38,6 +38,8 @@ pnpm --filter @ekko/panel dev                  # panel en http://localhost:5173
 cd apps/mobile && pnpm start --localhost       # app; en emulador Android: adb reverse tcp:8081 tcp:8081 y tcp:54321 tcp:54321
 ```
 
+En un teléfono físico (cualquier red, con Expo Go): `scripts/dev-tunnel.sh` abre túneles temporales de Cloudflare para la API local y Metro, y muestra el QR. Requiere `cloudflared`; usa `METRO_PORT=8082` si el Metro del emulador ocupa 8081. Mientras corre, la API local es pública en una URL aleatoria: ciérralo al terminar.
+
 Cuentas de prueba locales (`seed.sql`, contraseña `ekko-local-123`, PIN `1234`): comercios `c1@ekko.test` (activo), `c2@ekko.test`, `c3@ekko.test` (inactivo); clientes `u1@ekko.test` … `u4@ekko.test`. El detalle de cada estado está en la cabecera de `supabase/seed.sql`.
 
 ## Verificación
