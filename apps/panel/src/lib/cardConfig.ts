@@ -64,8 +64,8 @@ function storageErrorAsRpc(err: { message: string; statusCode?: string }) {
 }
 
 // Immutable paths: every change gets a new uuid (backend §7), stored without the `_{width}` suffix.
-export async function uploadCardBackground(merchantId: string, variants: ImageVariant[]) {
-  const base = `merchants/${merchantId}/card/${crypto.randomUUID()}`
+export async function uploadMerchantImage(merchantId: string, folder: 'card' | 'product', variants: ImageVariant[]) {
+  const base = `merchants/${merchantId}/${folder}/${crypto.randomUUID()}`
   for (const { width, blob, format } of variants) {
     const { error } = await supabase.storage
       .from('merchant-media')
@@ -75,3 +75,5 @@ export async function uploadCardBackground(merchantId: string, variants: ImageVa
   // A JPEG fallback keeps its real extension in the stored path (backend §7).
   return { data: variants.some((v) => v.format === 'jpeg') ? `${base}.jpg` : base, error: null }
 }
+
+export const uploadCardBackground = (merchantId: string, variants: ImageVariant[]) => uploadMerchantImage(merchantId, 'card', variants)
