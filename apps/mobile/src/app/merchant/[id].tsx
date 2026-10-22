@@ -94,7 +94,14 @@ export default function MerchantScreen() {
     } else if (tab === "menu") {
       content = <MenuTab menu={data.menu} onShowCard={() => changeTab("card")} />;
     } else if (tab === "promos") {
-      content = <PromosTab detail={data} highlightCouponId={highlightCouponId} onShowMenu={() => changeTab("menu")} />;
+      content = (
+        <PromosTab
+          detail={data}
+          highlightCouponId={highlightCouponId}
+          onShowMenu={() => changeTab("menu")}
+          onShowCode={(couponId) => router.push({ pathname: "/coupon/[id]", params: { id: couponId, merchantId } })}
+        />
+      );
     } else {
       content = <ReviewTab reviewsUrl={merchant.reviews_url} />;
     }
