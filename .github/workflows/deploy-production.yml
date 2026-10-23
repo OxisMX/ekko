@@ -1,0 +1,27 @@
+# Approval: the `production` GitHub Environment must have required reviewers (docs/ekko_despliegue.md).
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish-ota:
+        description: Publicar un EAS Update al canal production (solo JS; ya probado en staging)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # WHY: skip cleanly (no red runs) until accounts and secrets exist; set repo variable DEPLOY_ENABLED=true to turn on.
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: production
+      pages-branch: main
+      # WHY manual only: plan §6.3 says every production OTA goes through staging first, so a person decides when to ship it.
+      publish-ota: ${{ github.event_name == 'workflow_dispatch' && inputs.publish-ota }}
+    secrets: inherit

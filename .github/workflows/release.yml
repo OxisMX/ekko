@@ -1,0 +1,81 @@
+name: Release móvil
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-mobile
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: apps/mobile
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verificar secretos y variables
+        env:
+          NAMES: EXPO_TOKEN
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          missing=""
+          for name in $NAMES; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan secretos o variables:$missing. Ver docs/ekko_despliegue.md"
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # 9.0.0
+        with:
+          eas-version: 25.x
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile
+      - run: eas build --platform all --profile production --non-interactive --no-wait
+
+  # WHY a separate approved job: submit sends the binaries to the stores. Approve it only after the
+  # EAS builds finished (the "latest" build must be complete); required reviewers live on the environment.
+  submit:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Verificar secretos y variables
+        env:
+          NAMES: EXPO_TOKEN EXPO_ASC_APP_ID
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ASC_APP_ID: ${{ vars.EXPO_ASC_APP_ID }}
+        run: |
+          missing=""
+          for name in $NAMES; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan secretos o variables en el entorno 'production':$missing. Ver docs/ekko_despliegue.md"
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # 9.0.0
+        with:
+          eas-version: 25.x
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile
+      - name: Enviar a las tiendas
+        env:
+          EXPO_ASC_APP_ID: ${{ vars.EXPO_ASC_APP_ID }}
+        run: eas submit --platform all --profile production --latest --non-interactive

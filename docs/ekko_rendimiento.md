@@ -120,7 +120,8 @@ Pendiente del proyecto Pro (DEP-08): verificar respaldos diarios reales, restaur
 ### App móvil (SP-6, SP-1, NF-04, NF-10..12)
 
 - Bundle Hermes: 5.6 MB en Android y en iOS (JS minificado 4.6 MB). Mayores paquetes: Sentry ~1.5 MB en total (incluye `replay` y `feedback`, que no se usan), react-native 673 KB, zod 525 KB, expo-router 476 KB, código propio 168 KB.
-- Reducciones posibles, no aplicadas: importar solo lo usado de Sentry; `zod/mini` exigiría reescribir los esquemas compartidos con el panel.
+- Bloque A (deploy-prep): `metro.config.js` con `getSentryExpoConfig` sin Web Replay ni Feedback → bundle Hermes Android **5.22 MB** (antes 5.64 MB, −417 KB). Lo restante de Sentry son dependencias duras del SDK.
+- Reducciones posibles, no aplicadas: `zod/mini` exigiría reescribir los esquemas compartidos con el panel.
 - Binario (NF-10, meta < 25 MB): pendiente del build de EAS (DEP-05).
 - SP-1: limpieza de caché al iniciar y tope nativo en iOS ya implementados (`src/lib/imageCache.ts`); falta confirmar en dispositivo los nombres de directorio.
 - NF-04 Explorar: `FlatList` con `initialNumToRender=4` y `windowSize=7` para no decodificar 10 portadas a la vez; sin medición en dispositivo.

@@ -1,0 +1,21 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # WHY: a manual run from another branch must never push its migrations to the shared staging database.
+    # WHY: skip cleanly (no red runs) until accounts and secrets exist; set repo variable DEPLOY_ENABLED=true to turn on.
+    if: github.ref == 'refs/heads/develop' && vars.DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: staging
+      pages-branch: develop
+      publish-ota: true
+    secrets: inherit
