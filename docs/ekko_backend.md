@@ -1006,7 +1006,7 @@ Notas de Sprint 1:
 
 | Regla | Mecanismo principal |
 |---|---|
-| RN-05 | `app.is_email_verified` en `spin_wheel` y `reveal_coupon_code`; `customers.email_verified_at` la fija el trigger sobre `auth.mfa_amr_claims` (ADR-14). |
+| RN-05 | `app.is_email_verified` en `spin_wheel` y `reveal_coupon_code`; `customers.email_verified_at` la fija el trigger sobre `auth.mfa_amr_claims` (ADR-14). Cuentas Google/Apple cuentan como verificadas: `auth_provider` in (`google`,`apple`) en `is_email_verified`, y el trigger `mark_email_verified_by_provider` sobre `auth.identities` cubre cuentas de correo que vinculan un proveedor. |
 | RN-07, RN-09 | Índices únicos de `wheel_spins` por dispositivo y hash de correo. |
 | RN-13 a RN-17 | `generate_visit_qr`, `claim_visit`, índice único diario de `stamps`. |
 | RN-24 a RN-29 | `app.roll_cycle`, `app.grant_stamps`, copia de configuración en `card_cycles`. |

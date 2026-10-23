@@ -6,7 +6,7 @@ import { type ComponentRef, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Switch, Text, TextInput, View } from "react-native";
 
-import { AuthLayout } from "../../components/auth";
+import { AuthLayout, SocialButtons } from "../../components/auth";
 import { Button, DateField, FormMessage, PasswordField, TextField } from "../../components/ui";
 import { FieldError } from "../../components/ui/TextField";
 import { useRegister } from "../../features/auth/account";
@@ -41,6 +41,7 @@ export default function RegisterScreen() {
 
   return (
     <AuthLayout testID="register-screen" title="Crear cuenta" subtitle="Junta sellos y gana recompensas.">
+      <SocialButtons testIDPrefix="register" />
       <Controller
         control={control}
         name="first_name"

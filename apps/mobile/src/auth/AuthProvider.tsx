@@ -5,6 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 
 import { takePendingPush } from "../features/notifications/pushNavigation";
 import { takePendingVisit } from "../features/visit/pendingVisit";
+import { clearSocialNameDraft } from "../features/auth/socialSignIn";
 import { signOutDevice } from "../features/auth/deviceRegistration";
 import { reportError } from "../lib/sentry";
 import { supabase } from "../lib/supabase";
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         if (signedIn.current && !expectingSignOut.current) setErrorCode("E-18");
         expectingSignOut.current = false;
+        clearSocialNameDraft();
         queryClient.clear(); // F-16: the in-memory cache belongs to the previous user.
       }
 

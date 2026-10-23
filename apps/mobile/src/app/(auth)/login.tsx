@@ -8,7 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { TextInput } from "react-native";
 
 import { useAuth } from "../../auth/AuthProvider";
-import { AuthLayout } from "../../components/auth";
+import { AuthLayout, SocialButtons } from "../../components/auth";
 import { Button, FormMessage, PasswordField, TextField } from "../../components/ui";
 import { TextLink } from "../../features/auth/TextLink";
 import { toAppError } from "../../lib/appError";
@@ -25,7 +25,7 @@ function describeSignInError(error: unknown): FormError {
   return { message: ERRORS[code].message, retry: code === "E-01" || code === "E-99" };
 }
 
-// A-02 (brief §4.2). Google/Apple buttons arrive with F-03 in a later sprint.
+// A-02 (brief §4.2).
 export default function LoginScreen() {
   const router = useRouter();
   const { status, errorCode, accountDeleted } = useAuth();
@@ -58,6 +58,7 @@ export default function LoginScreen() {
     >
       {accountDeleted ? <FormMessage variant="info" message="Tu cuenta fue eliminada." testID="login-account-deleted" /> : null}
       {errorCode ? <FormMessage variant="error" message={ERRORS[errorCode].message} testID="login-auth-error" /> : null}
+      <SocialButtons testIDPrefix="login" />
       <Controller
         control={control}
         name="email"

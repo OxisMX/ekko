@@ -2,10 +2,11 @@ import { ERRORS, type ErrorCode } from "@ekko/shared";
 import { FunctionsFetchError, FunctionsHttpError } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text } from "react-native";
+import { Platform, ScrollView, Text } from "react-native";
 
 import { type AuthErrorCode, useAuth } from "../../auth/AuthProvider";
 import { Button, FormMessage, TextField } from "../../components/ui";
+import { requestAppleAuthorizationCode } from "../auth/socialSignIn";
 import { reportError } from "../../lib/sentry";
 import { supabase } from "../../lib/supabase";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
@@ -24,10 +25,21 @@ async function readErrorCode(error: unknown): Promise<ErrorCode> {
   return "E-99";
 }
 
+type AppleCode = string | null | "cancelled" | "unsupported";
+
+async function readAppleCode(hasAppleIdentity: boolean): Promise<AppleCode> {
+  if (!hasAppleIdentity) return null;
+  // WHY: Sign in with Apple exists on iOS only; an Apple account opened elsewhere cannot revoke its token.
+  if (Platform.OS !== "ios") return "unsupported";
+  return (await requestAppleAuthorizationCode()) ?? "cancelled";
+}
+
 // A-22 Eliminar cuenta (F-15, US-05). RN-09: re-registering with the same email does not restore used wheels.
 export function DeleteAccountScreen() {
   const router = useRouter();
-  const { finishAccountDeletion, endSession } = useAuth();
+  const { session, finishAccountDeletion, endSession } = useAuth();
+  const hasAppleIdentity = session?.user.identities?.some((identity) => identity.provider === "apple") ?? false;
+  const [appleNotice, setAppleNotice] = useState(false);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
@@ -37,9 +49,29 @@ export function DeleteAccountScreen() {
     if (!confirmed || busy) return;
     setBusy(true);
     setErrorCode(null);
-    // NOTE: F-15 Apple branch plugs in here with F-03: re-authenticate with Apple and send
-    // `apple_authorization_code` in the body (cancelled -> return to Perfil without invoking).
-    const { error } = await supabase.functions.invoke("delete-account", { body: { confirmation: CONFIRMATION_WORD } });
+    setAppleNotice(false);
+    // F-15 Apple branch: Apple needs a fresh authorization code to revoke the token.
+    const appleCode = await readAppleCode(hasAppleIdentity).catch((error: unknown) => {
+      reportError(error);
+      return "failed" as const;
+    });
+    if (appleCode === "failed") {
+      setErrorCode("E-21");
+      setBusy(false);
+      return;
+    }
+    if (appleCode === "cancelled") {
+      setBusy(false);
+      return;
+    }
+    if (appleCode === "unsupported") {
+      setAppleNotice(true);
+      setBusy(false);
+      return;
+    }
+    const { error } = await supabase.functions.invoke("delete-account", {
+      body: { confirmation: CONFIRMATION_WORD, ...(appleCode ? { apple_authorization_code: appleCode } : {}) },
+    });
     if (!error) {
       // The gate sends the user to A-02, which shows "Tu cuenta fue eliminada.".
       await finishAccountDeletion().catch(reportError);
@@ -71,6 +103,13 @@ export function DeleteAccountScreen() {
         autoCorrect={false}
         testID="delete-account-input"
       />
+      {appleNotice ? (
+        <FormMessage
+          variant="info"
+          message="Para eliminar una cuenta creada con Apple, hazlo desde un iPhone o iPad, o escribe a soporte."
+          testID="delete-account-apple-notice"
+        />
+      ) : null}
       {errorCode ? (
         <FormMessage
           variant="error"
