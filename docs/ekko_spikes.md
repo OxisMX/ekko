@@ -31,6 +31,8 @@
 
 **Decisión.** Plan B en ambas plataformas (`apps/mobile/src/lib/imageCache.ts`): al iniciar la app se mide el directorio de caché (`image_manager_disk_cache` en Android, `com.hackemist.SDImageCache` en iOS) y, si supera 20 MB, se ejecuta `Image.clearDiskCache()`. En iOS además se fija el tope nativo. Es una purga completa, no LRU: en Android la caché puede superar 20 MB durante una sesión hasta el siguiente arranque.
 
+**Estado (Sprint 15).** Implementado y con pruebas unitarias: `enforceImageCacheLimit()` se invoca al arrancar desde `src/app/_layout.tsx` (sin bloquear el primer render, nunca lanza), mide ambos directorios, purga con `Image.clearDiskCache()` si superan 20 MB y fija `Image.configureCache({ maxDiskSize })` en iOS. Sin cambios de código necesarios. NF-11/NF-12 requieren dispositivo (manual).
+
 **Pendiente.** En emulador y dispositivo: navegar imágenes, listar `Paths.cache` y confirmar los nombres de directorio (provienen de los valores por defecto de Glide y SDWebImage, no de código del repositorio); probar la purga con un límite temporal pequeño.
 
 ---
@@ -238,7 +240,9 @@ Errores de origen verificados: archivo que no es imagen → `NOT_AN_IMAGE`; más
 
 ## SP-6 — Tamaño base de la app
 
-**Medido.** Bundle JavaScript de Android (Hermes) con las dependencias actuales: 2.6 MB.
+**Medido (Sprint 15, `expo export --source-maps`).** Bundle JS Hermes: Android 5.6 MB, iOS 5.6 MB (la cifra anterior de 2.6 MB ya no aplica: crecieron las dependencias). JS minificado sin bytecode (Android): 4.6 MB. Peso por paquete (minificado, aproximado por módulo): react-native 673 KB, zod 525 KB, expo-router 476 KB, familia Sentry ~1.5 MB (core 494, conventions 341, react-native 315, replay 124, browser 108, browser-utils 55, feedback 48, react 44), código propio 168 KB, react-native-svg 123 KB, @supabase/auth-js 123 KB, react-hook-form 88 KB.
+
+**Evitables (no aplicado: fuera del alcance del sprint).** (1) Sentry es ~1/3 del JS; `replay` y `feedback` no se usan y entran por el índice de `@sentry/react-native`; evaluar si el SDK permite excluirlos o si basta con el tamaño actual. (2) `zod` clásico pesa 525 KB; `zod/mini` lo reduciría mucho pero exige reescribir los esquemas compartidos con el panel.
 
 **No medido.** El tamaño de descarga real depende del binario nativo. No hay JDK ni NDK en el entorno de desarrollo y la build local descargaría varios GB de SDK, así que la medición se hace con `eas build --profile production` en cuanto exista la cuenta de Expo (DEP-05), leyendo el tamaño reportado por las tiendas (RNF-02).
 

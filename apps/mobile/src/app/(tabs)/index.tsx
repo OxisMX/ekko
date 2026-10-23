@@ -140,6 +140,10 @@ export default function ExploreScreen() {
         renderItem={renderItem}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
+        // WHY: NF-04 — a card is ~1/3 of a screen; the defaults (10 initial, window 21) decode every cover of the
+        // first page at once and keep ~20 screens of images mounted. These render what is visible first.
+        initialNumToRender={4}
+        windowSize={7}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ flexGrow: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: 0 }}
