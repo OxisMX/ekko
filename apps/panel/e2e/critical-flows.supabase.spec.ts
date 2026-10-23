@@ -46,7 +46,7 @@ test('E2E-05: c1 sends a push with coupon and u1 sees the coupon in list_my_coup
   await page.getByLabel('Beneficio').fill(title)
   await page.getByLabel('Restricciones').fill('Una por cliente')
   await page.getByLabel('Términos').fill('Válido en sucursal')
-  await page.getByLabel('Vigencia (horas)').fill('24')
+  await page.getByLabel('Vigencia del cupón').selectOption('24')
   await page.getByRole('button', { name: 'Enviar notificación' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Enviar ahora' }).click()
   await expect(page.getByText(/Enviada a \d+ clientes/)).toBeVisible()

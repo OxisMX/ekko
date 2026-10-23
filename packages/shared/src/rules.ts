@@ -1,7 +1,7 @@
 // WHY: the DB is authoritative (TRD §4); these mirror its rules only for form validation and UI.
 export const STAMPS = { min: 4, max: 10, default: 6 } as const;
 export const CYCLE_MONTHS = { min: 3, max: 12, default: 6 } as const;
-export const PUSH_COUPON_VALIDITY_HOURS = { min: 24, max: 48 } as const;
+export const PUSH_COUPON_VALIDITY_OPTIONS = [48, 36, 24, 12, 6] as const;
 export const PUSH_MONTHLY_LIMIT = 5;
 export const QR_TTL_SECONDS = 60;
 export const REDEMPTION_CODE_LENGTH = 6;

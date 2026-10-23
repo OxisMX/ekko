@@ -29,7 +29,7 @@ describe("CodeField", () => {
 
   it("shows the error", async () => {
     await render(<Harness onComplete={jest.fn()} error="El código no es válido." />);
-    expect(screen.getByText("Error: El código no es válido.")).toBeOnTheScreen();
+    expect(screen.getByText("El código no es válido.")).toBeOnTheScreen();
     expect(screen.getByLabelText(LABEL).props.accessibilityHint).toBe("El código no es válido.");
   });
 });

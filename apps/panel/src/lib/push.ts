@@ -1,3 +1,4 @@
+import { PUSH_COUPON_VALIDITY_OPTIONS } from '@ekko/shared'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { supabase } from './supabase'
@@ -5,7 +6,7 @@ import { supabase } from './supabase'
 export const PUSH_STATUS_KEY = ['push-status']
 export const PUSH_CAMPAIGNS_KEY = ['push-campaigns']
 // Limits mirror the send-push body contract (US-25, RN-46..RN-49).
-export const PUSH_LIMITS = { title: 50, body: 150, couponTitle: 60, couponDescription: 200, couponTerms: 1000, hours: [24, 48] } as const
+export const PUSH_LIMITS = { title: 50, body: 150, couponTitle: 60, couponDescription: 200, couponTerms: 1000 } as const
 
 export const pushStatusSchema = z.object({
   remaining_this_month: z.number(),
@@ -44,7 +45,7 @@ export type PushForm = {
 export type PushField = 'title' | 'body' | 'couponTitle' | 'couponDescription' | 'couponTerms' | 'couponHours'
 
 const text = (label: string, max: number) => z.string().trim().min(1, `Escribe ${label}.`).max(max, `Máximo ${max} caracteres.`)
-const [minHours, maxHours] = PUSH_LIMITS.hours
+const hoursMessage = 'Vigencia: elige 6, 12, 24, 36 o 48 horas.'
 const messageSchema = z.object({ title: text('el título', PUSH_LIMITS.title), body: text('el mensaje', PUSH_LIMITS.body) })
 const couponSchema = z.object({
   couponTitle: text('el beneficio', PUSH_LIMITS.couponTitle),
@@ -52,10 +53,8 @@ const couponSchema = z.object({
   couponTerms: text('los términos', PUSH_LIMITS.couponTerms),
   couponHours: z
     .string()
-    .trim()
-    .regex(/^\d+$/, `Vigencia: entre ${minHours} y ${maxHours} horas.`)
-    .transform(Number)
-    .pipe(z.number().min(minHours, `Vigencia: entre ${minHours} y ${maxHours} horas.`).max(maxHours, `Vigencia: entre ${minHours} y ${maxHours} horas.`)),
+    .refine((h) => (PUSH_COUPON_VALIDITY_OPTIONS as readonly number[]).includes(Number(h)), hoursMessage)
+    .transform(Number),
 })
 
 export type PushBody = { title: string; body: string; coupon?: { title: string; description: string; terms: string; validity_hours: number } }

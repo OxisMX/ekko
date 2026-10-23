@@ -10,6 +10,7 @@ const page = (count: number, has_more: boolean): MerchantsPage => ({
     description: "",
     logo_path: "",
     cover_path: "",
+    is_favorite: false,
     maps_url: "https://maps.google.com",
   })),
   has_more,

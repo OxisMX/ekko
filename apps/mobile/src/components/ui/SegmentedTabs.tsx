@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { colors, fontFamily, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 
-// RT-04: 44 pt targets + 3 pt underline + hairline.
-export const SEGMENTED_TABS_HEIGHT = 48;
+// RT-04: 52 pt targets (larger than the 44 pt minimum, easier to hit) + 3 pt underline.
+const TAB_MIN_HEIGHT = 52;
+export const SEGMENTED_TABS_HEIGHT = TAB_MIN_HEIGHT + 4;
 const UNDERLINE = 3;
 
 export type SegmentedTab<K extends string = string> = { key: K; label: string };
@@ -18,7 +19,8 @@ export type SegmentedTabsProps<K extends string = string> = {
 export function SegmentedTabs<K extends string>({ tabs, value, onChange, testID }: SegmentedTabsProps<K>) {
   return (
     <View testID={testID} style={{ height: SEGMENTED_TABS_HEIGHT, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.surfaceMuted }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" contentContainerStyle={{ paddingHorizontal: spacing.sm }}>
+      {/* WHY: segments share the full width (flex 1) instead of scrolling; labels shrink before they clip. */}
+      <View accessibilityRole="tablist" style={{ flex: 1, flexDirection: "row" }}>
         {tabs.map((tab) => {
           const selected = tab.key === value;
           return (
@@ -32,10 +34,11 @@ export function SegmentedTabs<K extends string>({ tabs, value, onChange, testID 
                 if (!selected) onChange(tab.key);
               }}
               style={({ pressed }) => ({
-                minWidth: 44,
-                minHeight: 44,
-                paddingHorizontal: spacing.md,
+                flex: 1,
+                minHeight: TAB_MIN_HEIGHT,
+                paddingHorizontal: spacing.xs,
                 justifyContent: "center",
+                alignItems: "center",
                 borderBottomWidth: UNDERLINE,
                 borderBottomColor: selected ? colors.navy : "transparent",
                 opacity: pressed ? 0.7 : 1,
@@ -44,14 +47,15 @@ export function SegmentedTabs<K extends string>({ tabs, value, onChange, testID 
               <Text
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 numberOfLines={1}
-                style={[textStyles.secondary, { fontFamily: selected ? fontFamily.semibold : fontFamily.regular, color: selected ? colors.navy : colors.textSecondary }]}
+                adjustsFontSizeToFit
+                style={[textStyles.body, { fontFamily: selected ? fontFamily.semibold : fontFamily.regular, color: selected ? colors.navy : colors.textSecondary }]}
               >
                 {tab.label}
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }

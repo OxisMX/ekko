@@ -14,6 +14,7 @@ export type MerchantListItem = {
   logo_path: string;
   cover_path: string;
   maps_url: string;
+  is_favorite: boolean;
 };
 export type MerchantsPage = { items: MerchantListItem[]; has_more: boolean };
 
@@ -58,6 +59,7 @@ export function toMerchantCard(item: MerchantListItem): MerchantCardData {
   const density = PixelRatio.get();
   return {
     id: item.id,
+    isFavorite: item.is_favorite,
     name: item.name,
     categoryLabel: merchantCategoryLabel[item.category],
     description: item.description,

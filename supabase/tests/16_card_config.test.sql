@@ -14,8 +14,8 @@ create function pg_temp.as_c1() returns void language sql as $$
   select pg_temp.login('10000000-0000-0000-0000-0000000000c1', '20000000-0000-0000-0000-0000000000c1', 'aaaaaaaa-0000-0000-0000-000000000001');
 $$;
 create function pg_temp.upd(p_stamps smallint default 8, p_title text default '  Premio  ', p_path text default null,
-  p_hours smallint default 30, p_terms text default 'Términos') returns jsonb language sql as $$
-  select public.update_card_config(p_stamps, 6::smallint, p_title, 'Desc', p_terms, p_path, p_hours);
+  p_hours smallint default 24, p_terms text default 'Términos') returns jsonb language sql as $$
+  select public.update_card_config(p_stamps, 6::smallint, p_title, 'Desc', p_terms, p_path, p_hours, null);
 $$;
 create function pg_temp.seed_object(p_name text) returns void language sql security definer as $$
   insert into storage.objects (bucket_id, name) values ('merchant-media', p_name);
@@ -25,7 +25,7 @@ create function pg_temp.c1_cycle_stamps() returns smallint language sql security
 $$;
 
 select ok(not has_function_privilege('anon', 'public.get_card_config()', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.update_card_config(smallint,smallint,text,text,text,text,smallint)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.update_card_config(smallint,smallint,text,text,text,text,smallint,text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.get_card_config()', 'EXECUTE'), 'privileges');
 
 set local role authenticated;
@@ -36,12 +36,12 @@ select throws_ok($$ select public.get_card_config() $$, 'P0001', 'E-16', 'get re
 select throws_ok($$ select pg_temp.upd() $$, 'P0001', 'E-16', 'update requires admin session');
 select ok((public.unlock_admin('1234') ->> 'ok')::boolean, 'unlock');
 
-select is(public.get_card_config() - 'card_background_path',
+select is(public.get_card_config() - 'card_background_path' - 'stamp_image_path',
   '{"stamps_required":6,"cycle_months":6,"reward_title":"Bebida gratis","reward_description":"Cualquier bebida mediana de la carta.","terms":"Consumo mínimo de $80 por visita.","push_coupon_validity_hours":48}'::jsonb,
   'get returns the seeded config');
 
-select is(public.update_card_config(5::smallint, 6::smallint, '  Premio  ', 'Desc', 'T', null, 30::smallint),
-  '{"stamps_required":5,"cycle_months":6,"reward_title":"Premio","reward_description":"Desc","terms":"T","card_background_path":null,"push_coupon_validity_hours":30}'::jsonb,
+select is(public.update_card_config(5::smallint, 6::smallint, '  Premio  ', 'Desc', 'T', null, 24::smallint, null),
+  '{"stamps_required":5,"cycle_months":6,"reward_title":"Premio","reward_description":"Desc","terms":"T","card_background_path":null,"stamp_image_path":null,"push_coupon_validity_hours":24}'::jsonb,
   'update trims, saves and returns the new config');
 select is(pg_temp.c1_cycle_stamps(), 6::smallint, 'RN-29 active cycles keep their copy');
 

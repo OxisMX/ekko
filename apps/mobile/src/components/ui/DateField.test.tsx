@@ -34,7 +34,7 @@ describe("DateField", () => {
 
   it("exposes the error as text and hint", async () => {
     await render(<DateField label="Fecha de nacimiento" value={null} onChange={jest.fn()} error="Debes tener 18 años o más." />);
-    expect(screen.getByText("Error: Debes tener 18 años o más.")).toBeOnTheScreen();
+    expect(screen.getByText("Debes tener 18 años o más.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: /Fecha de nacimiento/ }).props.accessibilityHint).toBe("Debes tener 18 años o más.");
   });
 

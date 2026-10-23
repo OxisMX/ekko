@@ -1,12 +1,18 @@
+import { ERRORS } from "@ekko/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { Alert, Linking } from "react-native";
 
 import { ProfileScreen } from "./ProfileScreen";
 import { RedemptionsScreen } from "./RedemptionsScreen";
 
-const mockSupabase = { rpc: jest.fn() };
+const mockUpload = jest.fn();
+const mockSupabase = {
+  rpc: jest.fn(),
+  storage: { from: () => ({ upload: mockUpload, getPublicUrl: (path: string) => ({ data: { publicUrl: `https://x/${path}` } }) }) },
+};
 const mockRouter = { push: jest.fn(), navigate: jest.fn() };
 const mockSignOut = jest.fn();
 const mockRegisterDevice = jest.fn();
@@ -25,6 +31,16 @@ jest.mock("../../auth/AuthProvider", () => ({
 }));
 jest.mock("../auth/deviceRegistration", () => ({ registerDevice: () => mockRegisterDevice() }));
 jest.mock("../notifications/pushToken", () => ({ requestPushPermission: () => mockRequestPush() }));
+jest.mock("expo-image-picker", () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
+}));
+jest.mock("expo-image-manipulator", () => ({
+  SaveFormat: { JPEG: "jpeg" },
+  ImageManipulator: {
+    manipulate: () => ({ resize: () => ({ renderAsync: async () => ({ saveAsync: async () => ({ uri: "file:///resized.jpg" }) }) }) }),
+  },
+}));
 jest.mock("../auth/EmailVerificationBanner", () => ({ EmailVerificationBanner: () => null }));
 
 const profile = {
@@ -35,6 +51,8 @@ const profile = {
   auth_provider: "email",
   email_verified: true,
   profile_complete: true,
+  avatar_path: null,
+  push_opt_in: true,
 };
 
 const permission = (status: string, canAskAgain: boolean) =>
@@ -49,6 +67,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   permission("granted", true);
   mockRegisterDevice.mockResolvedValue(undefined);
+  mockUpload.mockResolvedValue({ error: null });
   mockSupabase.rpc.mockResolvedValue({ data: profile, error: null });
 });
 
@@ -58,10 +77,69 @@ describe("A-20 Perfil", () => {
     expect(await screen.findByTestId("profile-name")).toHaveTextContent("Ana López");
     expect(screen.getByText("AL", { includeHiddenElements: true })).toBeOnTheScreen();
     expect(screen.getByTestId("profile-birth-date")).toHaveTextContent(/05\/03\/1990/);
-    expect(screen.getByText(/No se puede cambiar/)).toBeOnTheScreen();
+    expect(screen.getAllByText(/No se puede cambiar/)).toHaveLength(2);
     expect(screen.getByTestId("profile-email")).toHaveTextContent(/Verificado/);
     await fireEvent.press(screen.getByTestId("profile-delete-account"));
     expect(mockRouter.push).toHaveBeenCalledWith("/delete-account");
+  });
+
+  it("keeps Guardar disabled until something changes and the names are valid", async () => {
+    await renderWith(<ProfileScreen />);
+    const save = await screen.findByTestId("profile-save");
+    expect(save).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Nombre"), "A");
+    expect(screen.getByText("Tu nombre debe tener al menos 2 caracteres.")).toBeOnTheScreen();
+    expect(save).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Nombre"), "Ana María");
+    expect(save).toBeEnabled();
+  });
+
+  it("saves names and notification preference with update_profile and confirms", async () => {
+    await renderWith(<ProfileScreen />);
+    await fireEvent.changeText(await screen.findByLabelText("Nombre"), " Ana María ");
+    await fireEvent(screen.getByTestId("profile-push-opt-in"), "valueChange", false);
+    mockSupabase.rpc.mockResolvedValue({ data: { ...profile, first_name: "Ana María", push_opt_in: false }, error: null });
+    await fireEvent.press(screen.getByTestId("profile-save"));
+    expect(await screen.findByText("Guardamos tus cambios.")).toBeOnTheScreen();
+    expect(mockSupabase.rpc).toHaveBeenCalledWith("update_profile", {
+      p_first_name: "Ana María",
+      p_last_name: "López",
+      p_avatar_path: null,
+      p_push_opt_in: false,
+    });
+    expect(screen.getByTestId("profile-save")).toBeDisabled();
+  });
+
+  it("shows a plain-language message when saving fails", async () => {
+    await renderWith(<ProfileScreen />);
+    await fireEvent.changeText(await screen.findByLabelText("Apellido"), "Pérez");
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: "TypeError: Network request failed" } });
+    await fireEvent.press(screen.getByTestId("profile-save"));
+    expect(await screen.findByText(ERRORS["E-01"].message)).toBeOnTheScreen();
+    expect(screen.getByTestId("profile-save")).toBeEnabled();
+  });
+
+  it("uploads a picked photo to customer-avatars/<uid>/ and saves its path", async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///picked.jpg" }] });
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({ arrayBuffer: async () => new ArrayBuffer(8) } as Response);
+    await renderWith(<ProfileScreen />);
+    await fireEvent.press(await screen.findByTestId("profile-photo-change"));
+    mockSupabase.rpc.mockResolvedValue({ data: { ...profile, avatar_path: "u1/1.jpg" }, error: null });
+    await fireEvent.press(await waitFor(() => { const b = screen.getByTestId("profile-save"); expect(b).toBeEnabled(); return b; }));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalled());
+    expect(mockUpload.mock.calls[0]![0]).toMatch(/^u1\/\d+\.jpg$/);
+    expect(mockUpload.mock.calls[0]![2]).toEqual({ contentType: "image/jpeg" });
+    await waitFor(() =>
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("update_profile", expect.objectContaining({ p_avatar_path: mockUpload.mock.calls[0]![0] }))
+    );
+  });
+
+  it("explains how to allow photo access when permission is denied", async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+    await renderWith(<ProfileScreen />);
+    await fireEvent.press(await screen.findByTestId("profile-photo-change"));
+    expect(await screen.findByText(/permite el acceso a tus fotos/)).toBeOnTheScreen();
   });
 
   it("shows the dev push simulator only in __DEV__", async () => {

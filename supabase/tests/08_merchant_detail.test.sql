@@ -122,15 +122,15 @@ select is((select v -> 'merchant' from r where k = 'u1c1'),
   '{"id":"20000000-0000-0000-0000-0000000000c1","name":"Café Ekko Centro","category":"cafeterias_postres",
     "description":"Café de especialidad y postres de la casa.","address":"Av. Juárez 100, Centro",
     "logo_path":"merchants/c1/logo","cover_path":"merchants/c1/cover","maps_url":"https://maps.example/c1",
-    "reviews_url":"https://reviews.example/c1","available":true}'::jsonb,
+    "reviews_url":"https://reviews.example/c1","available":true,"is_favorite":false}'::jsonb,
   'merchant has exactly the documented fields; active and visible is available');
 select is(pg_temp.keys((select v -> 'card' from r where k = 'u1c1')),
-  array['background_path', 'cycle_expires_at', 'has_relation', 'pending_extra_stamps', 'reward_coupon_id', 'reward_description',
-        'reward_title', 'stamped_today', 'stamps', 'stamps_required', 'terms'],
+  array['background_path', 'cycle_expires_at', 'has_relation', 'logo_path', 'pending_extra_stamps', 'reward_coupon_id', 'reward_description',
+        'reward_title', 'stamp_image_path', 'stamped_today', 'stamps', 'stamps_required', 'terms'],
   'card carries the documented fields');
 select is((select (v -> 'card') - 'stamps'::text - 'cycle_expires_at'::text from r where k = 'u1c1'),
   '{"has_relation":true,"stamps_required":6,"reward_title":"Bebida gratis","reward_description":"Cualquier bebida mediana de la carta.",
-    "terms":"Consumo mínimo de $80 por visita.","background_path":null,"pending_extra_stamps":2,"reward_coupon_id":null,"stamped_today":false}'::jsonb,
+    "terms":"Consumo mínimo de $80 por visita.","background_path":null,"stamp_image_path":null,"logo_path":"merchants/c1/logo","pending_extra_stamps":2,"reward_coupon_id":null,"stamped_today":false}'::jsonb,
   'card values come from the active cycle and the relation (pending_extra_stamps)');
 select is((select (v -> 'card' ->> 'cycle_expires_at')::timestamptz from r where k = 'u1c1'),
   (select (v ->> 0)::timestamptz from r where k = 'u1expiry'), 'cycle_expires_at is the active cycle expiry');
@@ -235,7 +235,7 @@ select pg_temp.login('10000000-0000-0000-0000-0000000000a2');
 insert into r values ('u2c1', public.get_merchant_detail('20000000-0000-0000-0000-0000000000c1'));
 select is((select v -> 'card' from r where k = 'u2c1'),
   '{"has_relation":false,"stamps_required":6,"stamps":[],"cycle_expires_at":null,"reward_title":"Bebida gratis",
-    "reward_description":"Cualquier bebida mediana de la carta.","terms":"Consumo mínimo de $80 por visita.","background_path":null,
+    "reward_description":"Cualquier bebida mediana de la carta.","terms":"Consumo mínimo de $80 por visita.","background_path":null,"stamp_image_path":null,"logo_path":"merchants/c1/logo",
     "pending_extra_stamps":0,"reward_coupon_id":null,"stamped_today":false}'::jsonb,
   'without relation the card is the program preview');
 select is((select v -> 'wheel' from r where k = 'u2c1'), '{"status":"no_relation"}'::jsonb, 'without relation the wheel is no_relation');
@@ -277,7 +277,7 @@ update public.loyalty_programs set stamps_required = 8, reward_title = 'Postre g
 where merchant_id = '20000000-0000-0000-0000-0000000000c1';
 set local role authenticated;
 select pg_temp.login('10000000-0000-0000-0000-0000000000a3');
-select is((public.get_merchant_detail('20000000-0000-0000-0000-0000000000c1') -> 'card') - 'stamps'::text - 'cycle_expires_at'::text - 'background_path'::text - 'pending_extra_stamps'::text - 'reward_coupon_id'::text - 'stamped_today'::text - 'has_relation'::text,
+select is((public.get_merchant_detail('20000000-0000-0000-0000-0000000000c1') -> 'card') - 'stamps'::text - 'cycle_expires_at'::text - 'background_path'::text - 'stamp_image_path'::text - 'logo_path'::text - 'pending_extra_stamps'::text - 'reward_coupon_id'::text - 'stamped_today'::text - 'has_relation'::text,
   '{"stamps_required":6,"reward_title":"Bebida gratis","reward_description":"Cualquier bebida mediana de la carta.","terms":"Consumo mínimo de $80 por visita."}'::jsonb,
   'TC-075/TC-076 the running cycle keeps its copied stamps, reward and terms');
 select is(public.get_merchant_detail('20000000-0000-0000-0000-0000000000c1') -> 'card' -> 'stamps_required', '6'::jsonb, 'TC-075 the running cycle stays at 6');
@@ -291,7 +291,7 @@ select pg_temp.login('10000000-0000-0000-0000-0000000000a1');
 insert into r values ('u1rolled', public.get_merchant_detail('20000000-0000-0000-0000-0000000000c1'));
 select is((select (v -> 'card') - 'cycle_expires_at'::text from r where k = 'u1rolled'),
   '{"has_relation":true,"stamps_required":8,"stamps":[],"reward_title":"Postre gratis","reward_description":"Cualquier postre.",
-    "terms":"Nuevos términos.","background_path":null,"pending_extra_stamps":2,"reward_coupon_id":null,"stamped_today":false}'::jsonb,
+    "terms":"Nuevos términos.","background_path":null,"stamp_image_path":null,"logo_path":"merchants/c1/logo","pending_extra_stamps":2,"reward_coupon_id":null,"stamped_today":false}'::jsonb,
   'TC-073/TC-075 an expired cycle shows a new empty card with the current config');
 select is((select (v -> 'card' ->> 'cycle_expires_at')::timestamptz from r where k = 'u1rolled'), pg_temp.now() + interval '3 months',
   'the new cycle uses the current cycle_months');

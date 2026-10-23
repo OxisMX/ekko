@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { FavoriteButton } from "../ui/FavoriteButton";
 import { PinIcon } from "../catalog/MerchantCard";
 import { MerchantAvatar } from "./MerchantAvatar";
 
@@ -25,6 +26,8 @@ export type MerchantHeaderProps = {
   coverUri: string | null;
   logoUri: string | null;
   onOpenMap: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   /** Vertical offset of the screen's Animated.ScrollView (Animated.event, useNativeDriver: true). */
   scrollY?: Animated.Value;
   /** Rendered under the header and kept visible when compact (e.g. SegmentedTabs, DA-2). */
@@ -38,7 +41,7 @@ export type MerchantHeaderProps = {
  * Scrolling translates it up by the collapse distance (transform only, native driver) and cross-fades
  * the cover out and a compact logo + name bar in.
  */
-export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenMap, scrollY, children, testID }: MerchantHeaderProps) {
+export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenMap, isFavorite, onToggleFavorite, scrollY, children, testID }: MerchantHeaderProps) {
   const insets = useSafeAreaInsets();
   const [staticScroll] = useState(() => new Animated.Value(0));
   const [failedCoverUri, setFailedCoverUri] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenM
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.md, paddingHorizontal: spacing.lg, marginTop: -LOGO_SIZE / 2 }}>
           <MerchantAvatar name={name} uri={logoUri} size={LOGO_SIZE} ringWidth={3} />
           <View style={{ flex: 1 }} />
+          <FavoriteButton isFavorite={isFavorite} onToggle={onToggleFavorite} backgroundColor={colors.surfaceMuted} testID="merchant-favorite" />
           <Pressable
             onPress={onOpenMap}
             accessibilityRole="button"

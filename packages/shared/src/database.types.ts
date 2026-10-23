@@ -95,6 +95,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"customer_favorites": {
+                  Row: {
+                    "created_at": string,"customer_id": string,"merchant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"customer_id": string,"merchant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"customer_id"?: string,"merchant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "customer_favorites_customer_id_fkey"
+      columns: ["customer_id"]
+isOneToOne: false
+      referencedRelation: "customers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "customer_favorites_merchant_id_fkey"
+      columns: ["merchant_id"]
+isOneToOne: false
+      referencedRelation: "merchants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"customer_merchants": {
                   Row: {
                     "created_at": string,"customer_id": string,"merchant_id": string,"origin": Database["public"]['Enums']["relation_origin"],"pending_extra_stamps": number
@@ -123,28 +149,28 @@ isOneToOne: false
                   ]
                 },"customers": {
                   Row: {
-                    "auth_provider": string,"auth_user_id": string | null,"birth_date": string | null,"created_at": string,"deleted_at": string | null,"email_verified_at": string | null,"first_name": string | null,"id": string,"last_name": string | null,"status": Database["public"]['Enums']["customer_status"],"updated_at": string
+                    "auth_provider": string,"auth_user_id": string | null,"avatar_path": string | null,"birth_date": string | null,"created_at": string,"deleted_at": string | null,"email_verified_at": string | null,"first_name": string | null,"id": string,"last_name": string | null,"push_opt_in": boolean,"status": Database["public"]['Enums']["customer_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "auth_provider": string,"auth_user_id"?: string | null,"birth_date"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"email_verified_at"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"status"?: Database["public"]['Enums']["customer_status"],"updated_at"?: string
+                    "auth_provider": string,"auth_user_id"?: string | null,"avatar_path"?: string | null,"birth_date"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"email_verified_at"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"push_opt_in"?: boolean,"status"?: Database["public"]['Enums']["customer_status"],"updated_at"?: string
                   }
                   Update: {
-                    "auth_provider"?: string,"auth_user_id"?: string | null,"birth_date"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"email_verified_at"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"status"?: Database["public"]['Enums']["customer_status"],"updated_at"?: string
+                    "auth_provider"?: string,"auth_user_id"?: string | null,"avatar_path"?: string | null,"birth_date"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"email_verified_at"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"push_opt_in"?: boolean,"status"?: Database["public"]['Enums']["customer_status"],"updated_at"?: string
                   }
                   Relationships: [
                     
                   ]
                 },"loyalty_programs": {
                   Row: {
-                    "card_background_path": string | null,"cycle_months": number,"merchant_id": string,"reward_description": string,"reward_title": string,"stamps_required": number,"terms": string,"updated_at": string
+                    "card_background_path": string | null,"cycle_months": number,"merchant_id": string,"reward_description": string,"reward_title": string,"stamp_image_path": string | null,"stamps_required": number,"terms": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "card_background_path"?: string | null,"cycle_months"?: number,"merchant_id": string,"reward_description": string,"reward_title": string,"stamps_required"?: number,"terms": string,"updated_at"?: string
+                    "card_background_path"?: string | null,"cycle_months"?: number,"merchant_id": string,"reward_description": string,"reward_title": string,"stamp_image_path"?: string | null,"stamps_required"?: number,"terms": string,"updated_at"?: string
                   }
                   Update: {
-                    "card_background_path"?: string | null,"cycle_months"?: number,"merchant_id"?: string,"reward_description"?: string,"reward_title"?: string,"stamps_required"?: number,"terms"?: string,"updated_at"?: string
+                    "card_background_path"?: string | null,"cycle_months"?: number,"merchant_id"?: string,"reward_description"?: string,"reward_title"?: string,"stamp_image_path"?: string | null,"stamps_required"?: number,"terms"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -390,10 +416,16 @@ isOneToOne: false
 "get_merchant_detail":
 { Args: { "p_merchant_id": string }; Returns: Json
                            },
+"get_merchant_profile":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "get_merchant_session":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "get_metrics":
+{ Args: { "p_range": string }; Returns: Json
+                           },
+"get_metrics_series":
 { Args: { "p_range": string }; Returns: Json
                            },
 "get_my_profile":
@@ -461,11 +493,20 @@ isOneToOne: false
 "spin_wheel":
 { Args: { "p_device_id_digest": string,"p_merchant_id": string }; Returns: Json
                            },
+"toggle_favorite":
+{ Args: { "p_merchant_id": string }; Returns: Json
+                           },
 "unlock_admin":
 { Args: { "p_pin": string }; Returns: Json
                            },
 "update_card_config":
-{ Args: { "p_card_background_path": string,"p_cycle_months": number,"p_push_coupon_validity_hours": number,"p_reward_description": string,"p_reward_title": string,"p_stamps_required": number,"p_terms": string }; Returns: Json
+{ Args: { "p_card_background_path": string,"p_cycle_months": number,"p_push_coupon_validity_hours": number,"p_reward_description": string,"p_reward_title": string,"p_stamp_image_path": string,"p_stamps_required": number,"p_terms": string }; Returns: Json
+                           },
+"update_merchant_profile":
+{ Args: { "p_category": Database["public"]['Enums']["merchant_category"],"p_cover_path": string,"p_description": string,"p_logo_path": string,"p_maps_url": string,"p_name": string,"p_reviews_url": string }; Returns: Json
+                           },
+"update_profile":
+{ Args: { "p_avatar_path": string,"p_first_name": string,"p_last_name": string,"p_push_opt_in": boolean }; Returns: Json
                            },
 "upsert_menu_category":
 { Args: { "p_id"?: string,"p_name"?: string,"p_position"?: number }; Returns: Json

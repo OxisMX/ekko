@@ -1,12 +1,13 @@
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { StatusIcon } from "./StatusIcon";
 import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
-// WHY: the prefix word carries the meaning so it never depends on color alone (§9).
+// WHY: the icon shape carries the meaning so it never depends on color alone (§9).
 // NOTE: rendered on `surface` (white) — colors.error drops below AA on surfaceMuted.
 const variants = {
-  error: { prefix: "Error:", color: colors.error },
-  info: { prefix: "Aviso:", color: colors.navy },
-  success: { prefix: "Listo:", color: colors.success },
+  error: { color: colors.error },
+  info: { color: colors.navy },
+  success: { color: colors.success },
 } as const;
 
 export type FormMessageProps = {
@@ -19,7 +20,7 @@ export type FormMessageProps = {
 };
 
 export function FormMessage({ variant, message, actionLabel, onAction, testID, style }: FormMessageProps) {
-  const { prefix, color } = variants[variant];
+  const { color } = variants[variant];
   return (
     <View
       testID={testID}
@@ -38,13 +39,18 @@ export function FormMessage({ variant, message, actionLabel, onAction, testID, s
         style,
       ]}
     >
-      <Text
-        // On the text, not the container: an accessible container would swallow the action button.
-        accessibilityRole={variant === "error" ? "alert" : undefined}
-        selectable
-        maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary }]}>
-        <Text style={{ fontFamily: fontFamily.semibold, color }}>{prefix}</Text> {message}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
+        <StatusIcon variant={variant} color={color} />
+        <Text
+          // On the text, not the container: an accessible container would swallow the action button.
+          accessibilityRole={variant === "error" ? "alert" : undefined}
+          selectable
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[textStyles.secondary, { flex: 1, color: colors.textPrimary }]}
+        >
+          {message}
+        </Text>
+      </View>
       {actionLabel && onAction ? (
         <Pressable
           onPress={onAction}

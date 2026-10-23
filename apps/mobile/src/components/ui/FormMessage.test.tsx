@@ -2,18 +2,15 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { FormMessage } from "./FormMessage";
 
 describe("FormMessage", () => {
-  it.each([
-    ["error", "Error:"],
-    ["info", "Aviso:"],
-    ["success", "Listo:"],
-  ] as const)("prefixes the %s variant with %s", async (variant, prefix) => {
+  it.each(["error", "info", "success"] as const)("shows the %s variant as an icon plus the plain message", async (variant) => {
     await render(<FormMessage variant={variant} message="Texto" />);
-    expect(screen.getByText(`${prefix} Texto`)).toBeOnTheScreen();
+    expect(screen.getByText("Texto")).toBeOnTheScreen();
+    expect(screen.getByTestId(`status-icon-${variant}`, { includeHiddenElements: true })).toBeOnTheScreen();
   });
 
   it("announces errors as an alert", async () => {
     await render(<FormMessage variant="error" message="Ese correo ya tiene cuenta." />);
-    expect(screen.getByRole("alert", { name: "Error: Ese correo ya tiene cuenta." })).toBeOnTheScreen();
+    expect(screen.getByRole("alert", { name: "Ese correo ya tiene cuenta." })).toBeOnTheScreen();
   });
 
   it("does not use the alert role for info", async () => {

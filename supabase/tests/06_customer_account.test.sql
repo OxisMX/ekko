@@ -43,7 +43,7 @@ select throws_ok($$ select public.register_device(repeat('a', 64), 'ios') $$, 'P
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000e001","role":"authenticated","app_metadata":{"role":"customer"}}';
 select is(
   public.get_my_profile(),
-  '{"first_name":null,"last_name":null,"birth_date":null,"email":"ana@ekko.test","auth_provider":"email","email_verified":false,"profile_complete":false}'::jsonb,
+  '{"first_name":null,"last_name":null,"birth_date":null,"email":"ana@ekko.test","auth_provider":"email","email_verified":false,"profile_complete":false,"avatar_path":null,"push_opt_in":true}'::jsonb,
   'get_my_profile: new email customer has an incomplete, unverified profile'
 );
 

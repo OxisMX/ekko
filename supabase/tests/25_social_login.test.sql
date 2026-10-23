@@ -35,7 +35,7 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000f0001","role":"authenticated","app_metadata":{"role":"customer"}}';
 select is(
   public.get_my_profile() - 'email',
-  '{"first_name":"Gabi","last_name":"Mora Ruiz","birth_date":null,"auth_provider":"google","email_verified":true,"profile_complete":false}'::jsonb,
+  '{"first_name":"Gabi","last_name":"Mora Ruiz","birth_date":null,"auth_provider":"google","email_verified":true,"profile_complete":false,"avatar_path":null,"push_opt_in":true}'::jsonb,
   'google customer: verified (RN-05) but profile incomplete');
 select throws_ok($$ select public.complete_profile('Gabi', 'Mora Ruiz', '2015-01-01') $$, 'P0001', 'E-07', 'under 18 -> E-07');
 select is(public.complete_profile('Gabi', 'Mora Ruiz', '2000-01-01'), '{"profile_complete": true}'::jsonb, 'complete_profile with 18+ date');

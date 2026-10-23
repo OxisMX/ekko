@@ -17,6 +17,8 @@ export type StampCardProps = {
   /** Stamps of the current cycle, oldest first. */
   stamps: StampCardStamp[];
   logoUri: string | null;
+  /** Custom stamp art; null falls back to the logo. */
+  stampImageUri?: string | null;
   merchantName: string;
   backgroundUri: string | null;
   rewardTitle: string;
@@ -88,16 +90,16 @@ type SlotProps = {
   isLast: boolean;
   isNew: boolean;
   merchantName: string;
-  logoUri: string | null;
+  imageUri: string | null;
   grayscale: boolean;
 };
 
-function StampSlot({ stamp, isLast, isNew, merchantName, logoUri, grayscale }: SlotProps) {
-  const circle = { width: "100%" as const, maxWidth: STAMP_MAX, aspectRatio: 1, borderRadius: STAMP_MAX } as const;
+function StampSlot({ stamp, isLast, isNew, merchantName, imageUri, grayscale }: SlotProps) {
+  const circle = { width: "100%" as const, maxWidth: STAMP_MAX, aspectRatio: 1, borderRadius: STAMP_MAX / 2 } as const;
   let face: React.ReactNode;
   if (!stamp) {
     face = (
-      <View testID="stamp-empty" style={[circle, { backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center" }]}>
+      <View testID="stamp-empty" style={[circle, { backgroundColor: colors.surfaceMuted, borderWidth: 1.5, borderColor: colors.textSecondary, alignItems: "center", justifyContent: "center" }]}>
         {isLast ? <GiftIcon size={24} testID="stamp-gift" /> : null}
       </View>
     );
@@ -105,7 +107,7 @@ function StampSlot({ stamp, isLast, isNew, merchantName, logoUri, grayscale }: S
     const ring = isNew ? NEW_RING : 0;
     face = (
       <View testID={isNew ? "stamp-new" : "stamp-granted"} style={[circle, { borderWidth: ring, borderColor: colors.accent, alignItems: "center", justifyContent: "center" }]}>
-        <MerchantAvatar name={merchantName} uri={logoUri} size={STAMP_MAX} grayscale={grayscale} style={{ width: "100%", height: "100%" }} />
+        <MerchantAvatar name={merchantName} uri={imageUri} size={STAMP_MAX} grayscale={grayscale} style={{ width: "100%", height: "100%" }} />
         {/* RN-36: a bonus stamp carries a star (not only a colour) so it reads apart from a visit stamp. */}
         {stamp.isBonus ? (
           <View testID="stamp-bonus" style={styles.bonusStar}>
@@ -131,6 +133,7 @@ export function StampCard({
   stampsRequired,
   stamps,
   logoUri,
+  stampImageUri = null,
   merchantName,
   backgroundUri,
   rewardTitle,
@@ -174,7 +177,7 @@ export function StampCard({
                 isLast={index === stampsRequired - 1}
                 isNew={highlightLast && index === granted - 1}
                 merchantName={merchantName}
-                logoUri={logoUri}
+                imageUri={stampImageUri ?? logoUri}
                 grayscale={!available}
               />
             </View>

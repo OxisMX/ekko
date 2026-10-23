@@ -102,7 +102,7 @@ describe("A-03 Crear cuenta", () => {
     await fillRegister(new Date(today.getFullYear() - 17, today.getMonth(), today.getDate()));
     await fireEvent.press(screen.getByTestId("register-submit"));
 
-    expect(await screen.findByText(`Error: ${ERRORS["E-07"].message}`)).toBeOnTheScreen();
+    expect(await screen.findByText(`${ERRORS["E-07"].message}`)).toBeOnTheScreen();
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
   });
 

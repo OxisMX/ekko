@@ -8,6 +8,7 @@ import Svg, { Path } from "react-native-svg";
 import { HEADER_EXPANDED_HEIGHT, MerchantHeader } from "../../components/merchant";
 import { ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../../components/ui";
 import { CardTab, MenuTab, MERCHANT_TABS, type MerchantTabKey, PromosTab, ReviewTab } from "../../features/merchant/MerchantTabs";
+import { useToggleFavorite } from "../../features/favorites/favorites";
 import { couponsHref } from "../../features/notifications/pushNavigation";
 import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { imageUri, useAddCard, useMerchantDetail } from "../../features/merchant/merchantDetail";
@@ -30,6 +31,7 @@ export default function MerchantScreen() {
   const insets = useSafeAreaInsets();
   const detail = useMerchantDetail(merchantId);
   const addCard = useAddCard(merchantId);
+  const toggleFavorite = useToggleFavorite();
   const linkTab: MerchantTabKey = params.tab === "promos" ? "promos" : "card";
   const linkCoupon = typeof params.coupon === "string" ? params.coupon : null;
   const [tab, setTab] = useState<MerchantTabKey>(linkTab);
@@ -139,6 +141,8 @@ export default function MerchantScreen() {
           categoryLabel={merchantCategoryLabel[merchant.category]}
           coverUri={imageUri(merchant.cover_path, "cover")}
           logoUri={imageUri(merchant.logo_path, "logo")}
+          isFavorite={merchant.is_favorite}
+          onToggleFavorite={() => toggleFavorite.mutate({ merchantId, isFavorite: merchant.is_favorite })}
           onOpenMap={() => openExternalUrl(merchant.maps_url, "No pudimos abrir la ubicación de este negocio.")}
           scrollY={scrollY}
           testID="merchant-header"

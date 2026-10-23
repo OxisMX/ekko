@@ -32,7 +32,7 @@ export function MyCardsScreen() {
   }
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: spacing.lg }}>
         <Button title="Registrar visita" onPress={() => router.push("/scan")} fullWidth testID="cards-scan" />
       </View>
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} testID="cards-tabs" />

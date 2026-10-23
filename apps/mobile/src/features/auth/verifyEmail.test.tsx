@@ -66,7 +66,7 @@ describe("A-05 Verifica tu correo", () => {
     await screen.findByText(/ana@ekko\.mx/);
 
     await fireEvent.changeText(codeInput(), "999999");
-    expect(await screen.findByText("Error: Código incorrecto o vencido")).toBeOnTheScreen();
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeOnTheScreen();
     expect(codeInput().props.value).toBe("");
   });
 

@@ -9,6 +9,7 @@ const myCardsSchema = z.array(
     merchant_id: z.string(),
     merchant_name: z.string(),
     logo_path: z.string().nullable(),
+    stamp_image_path: z.string().nullable(),
     merchant_available: z.boolean(),
     stamps_count: z.number(),
     stamps_required: z.number(),

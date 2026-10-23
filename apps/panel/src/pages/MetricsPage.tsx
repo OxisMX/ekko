@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { BellIcon } from '../components/Icons'
+import { MetricsCharts } from '../components/MetricsCharts'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { useMenuFailure } from '../lib/menu'
-import { formatCount, METRICS_KEY, NO_AUTO_REFETCH, toMetrics, type MetricsRange } from '../lib/metrics'
+import { formatCount, METRICS_KEY, NO_AUTO_REFETCH, toMetrics, toMetricsSeries, type MetricsRange } from '../lib/metrics'
 import { supabase } from '../lib/supabase'
 
 const PUSH_MONTHLY_LIMIT = 5
@@ -35,8 +36,14 @@ export function MetricsPage() {
     ...NO_AUTO_REFETCH,
   })
 
+  const series = useQuery({
+    queryKey: [...METRICS_KEY, 'series', range],
+    queryFn: async () => toMetricsSeries(await adminRpc(() => supabase.rpc('get_metrics_series', { p_range: range }))),
+    ...NO_AUTO_REFETCH,
+  })
+
   return (
-    <section aria-labelledby="metrics-title" className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <section aria-labelledby="metrics-title" className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <h1 id="metrics-title" className="text-2xl font-bold">Métricas</h1>
 
       <div role="radiogroup" aria-label="Periodo" className="flex w-fit gap-1 rounded-xl bg-surface p-1">
@@ -75,6 +82,14 @@ export function MetricsPage() {
           {metrics.data.visits === 0 && metrics.data.redemptions === 0 && (
             <p className="text-text-secondary">Aún no hay actividad. Cuando tus clientes escaneen su primer QR, verás aquí tus números.</p>
           )}
+          {series.isPending && <div role="status" aria-label="Cargando las gráficas" className="h-72 animate-pulse rounded-2xl bg-surface" />}
+          {series.isError && (
+            <div role="alert" className="flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
+              <p className="font-semibold">No pudimos cargar las gráficas. {failure(series.error).message}</p>
+              <button type="button" className="min-h-12 rounded-xl bg-navy px-5 font-semibold text-white" onClick={() => void series.refetch()}>Reintentar gráficas</button>
+            </div>
+          )}
+          {series.data && <MetricsCharts series={series.data} range={range} />}
           <Link to="/admin/notificaciones" className="flex w-fit items-center gap-2 rounded-xl py-2 font-medium underline">
             <BellIcon className="size-5 shrink-0" />
             Notificaciones restantes este mes: {metrics.data.push_remaining_this_month} de {PUSH_MONTHLY_LIMIT}

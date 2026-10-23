@@ -21,6 +21,7 @@ jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
   useLocalSearchParams: () => ({ id: "c1", merchantId: "m1" }),
+  useIsFocused: () => true,
   useFocusEffect: (effect: () => void) => mockUseEffect(effect, [effect]),
 }));
 
