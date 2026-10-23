@@ -14,6 +14,9 @@ import { CashierModePage } from './pages/CashierModePage.tsx'
 import { InactivePage } from './pages/InactivePage.tsx'
 import { CardConfigPage } from './pages/CardConfigPage.tsx'
 import { MenuPage } from './pages/MenuPage.tsx'
+import { OffersPage } from './pages/OffersPage.tsx'
+import { OfferFormPage } from './pages/OfferFormPage.tsx'
+import { PushPage } from './pages/PushPage.tsx'
 import { ProductFormPage } from './pages/ProductFormPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
 
@@ -35,7 +38,11 @@ const router = createBrowserRouter([
           { path: 'menu', element: <MenuPage /> },
           { path: 'menu/nuevo', element: <ProductFormPage /> },
           { path: 'menu/:productId', element: <ProductFormPage /> },
-          ...ADMIN_SECTIONS.filter((section) => !['tarjeta', 'menu'].includes(section.path)).map((section) => ({
+          { path: 'ofertas', element: <OffersPage /> },
+          { path: 'ofertas/nueva', element: <OfferFormPage /> },
+          { path: 'ofertas/:offerId', element: <OfferFormPage /> },
+          { path: 'notificaciones', element: <PushPage /> },
+          ...ADMIN_SECTIONS.filter((section) => !['tarjeta', 'menu', 'ofertas', 'notificaciones'].includes(section.path)).map((section) => ({
             path: section.path,
             element: <AdminPlaceholderPage section={section} />,
           })),

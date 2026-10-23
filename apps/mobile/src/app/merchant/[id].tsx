@@ -8,6 +8,7 @@ import Svg, { Path } from "react-native-svg";
 import { HEADER_EXPANDED_HEIGHT, MerchantHeader } from "../../components/merchant";
 import { ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../../components/ui";
 import { CardTab, MenuTab, MERCHANT_TABS, type MerchantTabKey, PromosTab, ReviewTab } from "../../features/merchant/MerchantTabs";
+import { couponsHref } from "../../features/notifications/pushNavigation";
 import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { imageUri, useAddCard, useMerchantDetail } from "../../features/merchant/merchantDetail";
 import { wheelHref } from "../../features/wheel/wheel";
@@ -22,7 +23,7 @@ const BACK_SIZE = 44; // RT-04
 // A-08..A-11 Detalle de comercio (US-08..US-10, US-12, F-06 H–K, DA-2, DA-4).
 export default function MerchantScreen() {
   // tab/coupon/highlight arrive from A-15 (visit result) via router.dismissTo.
-  const params = useLocalSearchParams<{ id: string; tab?: string; coupon?: string; highlight?: string }>();
+  const params = useLocalSearchParams<{ id: string; tab?: string; coupon?: string; highlight?: string; from?: string }>();
   const { id } = params;
   const merchantId = typeof id === "string" ? id : "";
   const router = useRouter();
@@ -51,12 +52,15 @@ export default function MerchantScreen() {
   const addErrorCode = useMemo(() => (addCard.error ? toAppError(addCard.error).code : null), [addCard.error]);
 
   // F-06 J: E-05 (hidden merchant without relation, or inactive on add_card) explains and goes back.
+  const fromPush = params.from === "push";
   const unavailable = errorCode === "E-05" || addErrorCode === "E-05";
   useEffect(() => {
     if (!unavailable) return;
     Alert.alert(UNAVAILABLE_MESSAGE);
-    goBack();
-  }, [unavailable, goBack]);
+    // F-13: a push for a merchant that is gone lands on Mis cupones instead of going back.
+    if (fromPush) router.replace(couponsHref);
+    else goBack();
+  }, [unavailable, goBack, fromPush, router]);
 
   // Reward available → Promociones with the reward coupon highlighted (RN-27). Coupons are the last section.
   useEffect(() => {

@@ -64,7 +64,7 @@ function storageErrorAsRpc(err: { message: string; statusCode?: string }) {
 }
 
 // Immutable paths: every change gets a new uuid (backend §7), stored without the `_{width}` suffix.
-export async function uploadMerchantImage(merchantId: string, folder: 'card' | 'product', variants: ImageVariant[]) {
+export async function uploadMerchantImage(merchantId: string, folder: 'card' | 'product' | 'offer', variants: ImageVariant[]) {
   const base = `merchants/${merchantId}/${folder}/${crypto.randomUUID()}`
   for (const { width, blob, format } of variants) {
     const { error } = await supabase.storage

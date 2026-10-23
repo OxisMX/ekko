@@ -47,8 +47,8 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.121.0
-      # WHY: the panel E2E only needs Auth, PostgREST, Storage and Realtime; skipping the rest saves minutes.
-      - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+      # WHY: the panel E2E only needs Auth, PostgREST, Storage, Realtime and the Edge Runtime (send-push, P-10); skipping the rest saves minutes.
+      - run: supabase start -x studio,imgproxy,logflare,vector,supavisor,mailpit
       - run: supabase db reset
       - run: echo "E2E_SUPABASE_ANON_KEY=$(supabase status -o json 2>/dev/null | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
       - run: pnpm --filter @ekko/panel exec playwright install --with-deps chromium

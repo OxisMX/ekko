@@ -10,6 +10,7 @@ import { reportError } from "../../lib/sentry";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { useMyProfile } from "../auth/account";
 import { EmailVerificationBanner } from "../auth/EmailVerificationBanner";
+import { DevSimulatePush } from "./DevSimulatePush";
 import { type PushPermissionState, usePushPermission } from "./notificationsPermission";
 
 const PERMISSION_TEXT: Record<PushPermissionState, { status: string; action?: string }> = {
@@ -54,6 +55,7 @@ export function ProfileScreen() {
       <PermissionRow />
       <HistoryRow />
       <SignOutButton />
+      {__DEV__ ? <DevSimulatePush /> : null}
     </ScrollView>
   );
 }

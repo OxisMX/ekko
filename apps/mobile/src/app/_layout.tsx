@@ -9,6 +9,9 @@ import { useRegisterDeviceOnce } from "../features/auth/deviceRegistration";
 import { useEnsureBirthdayCouponsOnce } from "../features/birthday/birthdayCoupons";
 import { decideGate } from "../features/auth/gate";
 import { GatedStack } from "../features/auth/GatedStack";
+import { setPendingPush } from "../features/notifications/pushNavigation";
+import { usePushNotifications } from "../features/notifications/usePushNotifications";
+import { Toast } from "../components/ui";
 import { usePendingVisitRedirect } from "../features/visit/pendingVisit";
 import { enforceImageCacheLimit } from "../lib/imageCache";
 import { queryClient } from "../lib/queryClient";
@@ -34,6 +37,7 @@ function RootNavigator() {
   useRegisterDeviceOnce(route === "tabs" ? (session?.user.id ?? null) : null);
   useEnsureBirthdayCouponsOnce(route === "tabs" ? (session?.user.id ?? null) : null);
   usePendingVisitRedirect(route);
+  const { toast, dismissToast } = usePushNotifications(route);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -50,7 +54,22 @@ function RootNavigator() {
   // last glyph gets clipped ("Entrai"). Fonts load from the bundle in milliseconds; the auth/profile
   // wait stays behind the splash with the navigator mounted, so deep links (F-09) still resolve.
   if (!fontsReady) return null;
-  return <GatedStack route={route} afterSignUp={justSignedUp} />;
+  return (
+    <>
+      <GatedStack route={route} afterSignUp={justSignedUp} />
+      {toast ? (
+        <Toast
+          key={`${toast.title}|${toast.body}`}
+          title={toast.title}
+          message={toast.body}
+          actionLabel="Ver"
+          onAction={() => setPendingPush(toast.target)}
+          onDismiss={dismissToast}
+          testID="push-toast"
+        />
+      ) : null}
+    </>
+  );
 }
 
 function RootLayout() {

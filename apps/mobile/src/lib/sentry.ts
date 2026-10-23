@@ -22,3 +22,8 @@ export function reportError(error: unknown): void {
 
 // NOTE: without a DSN Sentry.wrap only logs "wrap was called before init" on every start.
 export const wrapRootComponent: typeof Sentry.wrap = (component) => (dsn ? Sentry.wrap(component) : component);
+
+/** Breadcrumb for events that are ignored on purpose; callers must not pass PII. */
+export function addBreadcrumb(category: string, message: string): void {
+  Sentry.addBreadcrumb({ category, message, level: "info" });
+}

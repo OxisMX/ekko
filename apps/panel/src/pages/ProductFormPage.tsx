@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase'
 const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
 const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 
-function Field({ label, error, counter, children, id }: { label: string; error?: string; counter?: string; children: React.ReactNode; id: string }) {
+export function Field({ label, error, counter, children, id }: { label: string; error?: string; counter?: string; children: React.ReactNode; id: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3">

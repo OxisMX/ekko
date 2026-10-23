@@ -711,8 +711,11 @@ Todas exigen sesión administrativa (E-16); las de escritura, además comercio a
 #### Ofertas
 | RPC | Parámetros |
 |---|---|
+| `list_offers_admin` | — |
 | `upsert_offer` | `p_id` (opcional), `p_title`, `p_description`, `p_weekday`, `p_image_path`, `p_position` |
 | `delete_offer` | `p_id` |
+
+Mismas puertas que el menú: sesión administrativa (E-16), escritura con comercio activo (E-05), id ajeno = E-23 `{field:'id'}`. `list_offers_admin` devuelve un arreglo `{ id, title, description, weekday, image_path, position }` ordenado por día, posición. E-23: `title` (1–60), `description` (1–200), `weekday` (1–7), `image_path` (`merchants/{id}/offer/<base>` con objeto subido). `position` nula = máximo + 1 dentro del día.
 
 #### `get_metrics`
 | Parámetro | Tipo |
@@ -737,8 +740,11 @@ Retorna:
 
 Retorna `{ created_at, expires_at, status, used_at }` sin datos del cliente.
 
+#### `get_push_status`
+Panel P-10 (sesión administrativa; un comercio inactivo puede leer). Retorna `{ remaining_this_month, limit: 5, resets_on, recipients_count, push_coupon_validity_hours }`. `resets_on` = primer día del siguiente mes local; `recipients_count` = clientes con relación y cuenta activa.
+
 #### `list_push_campaigns`
-Retorna el historial del comercio: `{ id, title, has_coupon, status, recipients_count, sent_count, failed_count, created_at }`.
+Retorna el historial del comercio (sesión administrativa), más reciente primero, máximo 50: `{ id, title, has_coupon, status, recipients_count, sent_count, failed_count, created_at }`.
 
 ### 4.6 RPC internas (solo `service_role`)
 
@@ -748,6 +754,8 @@ Retorna el historial del comercio: `{ id, title, has_coupon, status, recipients_
 | `get_push_recipients(p_campaign_id)` | `send-push` | Tokens activos de los clientes con relación. |
 | `record_push_result(p_campaign_id, p_sent, p_failed, p_invalid_tokens text[])` | `send-push` | Cierra la campaña y desactiva tokens inválidos. |
 | `anonymize_customer(p_customer_id)` | `delete-account` | Anonimización (6.4). |
+
+`create_push_campaign`: `p_payload = { idempotency_key, title, body, coupon?: { title, description, terms, validity_hours } }`. Replica `require_admin_session` con parámetros explícitos (extiende 5 min). Bloquea la fila del comercio (`for update`) para serializar envíos. E-23 `idempotency_key`, `title` (1–50), `body` (1–150), `coupon_title` (1–60), `coupon_description` (1–200), `coupon_terms` (1–1000), `coupon_validity_hours` (24–48). Con una clave ya usada devuelve la campaña guardada con `duplicate: true` sin revisar cuota ni crear cupones. Cuota agotada: E-17 `{resets_on}`. Retorna `{ campaign_id, recipients, duplicate, status, sent, failed, push_remaining_this_month }`; la campaña nace `sending`. `get_push_recipients` devuelve `(customer_id, coupon_id, token)` por dispositivo con push activo, token y sin cierre de sesión. `record_push_result` pasa a `sent` (o `failed` si `sent = 0` y `failed > 0`), solo si seguía `sending`, y limpia `push_enabled`/`expo_push_token` de los tokens inválidos.
 
 Los scripts de operación (`onboard-merchant.ts`, `set-merchant-status.ts`, `reset-pin.ts`) usan la `service_role key` y SQL directo en una transacción.
 
@@ -779,6 +787,10 @@ Solicitud:
 `coupon` es opcional.
 
 Proceso: validar esquema → `create_push_campaign` → `get_push_recipients` → envío a Expo en lotes de 100 con datos `{ "merchant_id": "...", "coupon_id": "..." }` → `record_push_result`.
+
+Decisión: la lógica pura (validación del cuerpo, lotes, clasificación de tickets, mapeo de errores) vive en `supabase/functions/send-push/logic.mts`, sin imports de npm/zod; `scripts/send-push-logic.test.ts` la prueba con `node --test` sin Deno. `.mts` para que Node y `tsc` la traten como ESM sin `package.json` en `supabase/functions`.
+
+Errores: JSON `{ "error": "E-xx", "details"? }`; 400 E-23 `{field}`, 401 E-18 (JWT ausente o inválido), 403 E-05/E-16/E-19, 429 E-17 `{resets_on}`, 500 E-99. Una clave repetida devuelve 200 con el resultado guardado.
 
 Respuesta:
 ```json
