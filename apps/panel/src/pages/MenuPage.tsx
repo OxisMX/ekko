@@ -2,6 +2,7 @@ import { merchantImageUrl } from '@ekko/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
+import { ModalDialog } from '../components/ModalDialog'
 import { AlertIcon, CheckCircleIcon, MenuBookIcon } from '../components/Icons'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { categoryNameSchema, formatPrice, MENU_LIMITS, MENU_QUERY_KEY, type MenuCategory, type MenuProduct, toMenu, useMenuFailure } from '../lib/menu'
@@ -258,24 +259,22 @@ export function MenuPage() {
       })}
 
       {confirm && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-surface p-6">
-            <h2 id="delete-title" className="text-xl font-semibold">{confirm.kind === 'product' ? '¿Eliminar este producto?' : '¿Eliminar esta categoría?'}</h2>
-            <p>
-              <strong>{confirm.name}</strong> se eliminará del menú que ven tus clientes. Esta acción no se puede deshacer.
+        <ModalDialog labelledBy="delete-title" onClose={() => !busy && setConfirm(null)}>
+          <h2 id="delete-title" className="text-xl font-semibold">{confirm.kind === 'product' ? '¿Eliminar este producto?' : '¿Eliminar esta categoría?'}</h2>
+          <p>
+            <strong>{confirm.name}</strong> se eliminará del menú que ven tus clientes. Esta acción no se puede deshacer.
+          </p>
+          {confirm.error && (
+            <p role="alert" className="flex items-center gap-2 font-medium text-error">
+              <AlertIcon className="size-5 shrink-0" />
+              {confirm.error}
             </p>
-            {confirm.error && (
-              <p role="alert" className="flex items-center gap-2 font-medium text-error">
-                <AlertIcon className="size-5 shrink-0" />
-                {confirm.error}
-              </p>
-            )}
-            <div className="flex flex-wrap justify-end gap-3">
-              <button type="button" disabled={busy} className={outlineButton} onClick={() => setConfirm(null)}>Cancelar</button>
-              <button type="button" disabled={busy} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void confirmDelete()}>{busy ? 'Eliminando…' : 'Eliminar'}</button>
-            </div>
+          )}
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" disabled={busy} className={outlineButton} onClick={() => setConfirm(null)}>Cancelar</button>
+            <button type="button" disabled={busy} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void confirmDelete()}>{busy ? 'Eliminando…' : 'Eliminar'}</button>
           </div>
-        </div>
+        </ModalDialog>
       )}
     </section>
   )

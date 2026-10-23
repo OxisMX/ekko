@@ -247,7 +247,8 @@ export function StampCard({
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
               Premio: {rewardTitle}
             </Text>
-            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            {/* WHY: over a dark merchant image the 78% veil leaves ~3.4:1 for textSecondary; textPrimary stays AA. */}
+            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: showBg ? colors.textPrimary : colors.textSecondary }]}>
               Vence el {expires}
             </Text>
           </View>
@@ -261,7 +262,7 @@ export function StampCard({
                 Recompensa disponible
               </Text>
             </View>
-            {onViewReward ? <Button title="Ver recompensa" onPress={onViewReward} fullWidth /> : null}
+            {onViewReward ? <Button title="Ver recompensa" onPress={onViewReward} fullWidth testID={testID && `${testID}-view-reward`} /> : null}
           </View>
         ) : null}
       </View>

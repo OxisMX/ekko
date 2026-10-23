@@ -1,0 +1,41 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-04 Ruleta: unverified customer (U2) adds a card -> wheel blocked -> verify email -> spin -> coupon in Mis Tarjetas.
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- tapOn:
+    id: "merchant-card-${MERCHANT_ID}"
+- tapOn:
+    id: merchant-add-card
+- tapOn:
+    id: merchant-spin-wheel
+- assertVisible:
+    id: wheel-unverified
+- tapOn:
+    id: wheel-unverified-action
+- tapOn:
+    id: verify-email-code
+- inputText: ${VERIFY_CODE}
+- extendedWaitUntil:
+    visible:
+      id: verify-email-success
+    timeout: 15000
+- back
+- tapOn:
+    id: wheel-spin
+- extendedWaitUntil:
+    visible:
+      id: wheel-result
+    timeout: 15000
+- tapOn:
+    id: wheel-close
+- tapOn:
+    id: tab-cards
+- tapOn:
+    id: cards-tabs-coupons
+- assertVisible:
+    id: "my-coupon-.*"

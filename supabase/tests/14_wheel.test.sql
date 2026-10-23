@@ -114,10 +114,10 @@ select pg_temp.exec($$ update auth.users set email = 'u3@ekko.test' where id = '
 insert into res select 'u3', pg_temp.spin('c1', 'bb');
 select is(pg_temp.keys((select v from res where k = 'u3')), array['coupon_id', 'label', 'prize_type', 'segment_index'], 'spin result keys');
 select is((select v ->> 'prize_type' from res where k = 'u3'), 'coupon', 'the only active prize is a coupon');
-select is((select count(*)::int from public.coupons), 0, 'coupons are not readable by tables');
+select throws_ok($$ select count(*) from public.coupons $$, '42501', null, 'coupons are not readable by tables');
 select is((select (pg_temp.cp()).expires_at - (pg_temp.cp()).issued_at), interval '48 hours', 'coupon lasts 48 h (RN-35)');
 select is((select (c).source::text || '/' || (c).title || '/' || ((c).code ~ '^[2-9A-HJKMNP-Z]{6}$') from (select pg_temp.cp() as c) q), 'wheel/10% de descuento/true', 'wheel coupon with benefit copy and a valid code');
-select is((select count(*)::int from public.wheel_spins), 0, 'wheel_spins is not readable by tables');
+select throws_ok($$ select count(*) from public.wheel_spins $$, '42501', null, 'wheel_spins is not readable by tables');
 select is(pg_temp.wheel('c1') ->> 'status', 'spun', 'U3 status spun');
 
 -- Probabilities stay in the database: weights are not exposed anywhere in the answers

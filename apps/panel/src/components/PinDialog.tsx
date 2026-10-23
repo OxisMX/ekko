@@ -1,7 +1,8 @@
 import { ERRORS } from '@ekko/shared'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAdminUnlock, type UnlockNotice } from '../lib/useAdminUnlock'
 import { AlertIcon, LockIcon } from './Icons'
+import { ModalDialog } from './ModalDialog'
 import { useMerchantSession } from './panelOutlet'
 
 const PIN_LENGTH = 4
@@ -23,13 +24,7 @@ export function PinDialog({ onUnlocked, onCancel, cancelLabel }: { onUnlocked: (
   const { pin_locked_until } = useMerchantSession()
   const unlock = useAdminUnlock(pin_locked_until, onUnlocked)
   const [pin, setPin] = useState('')
-  const dialogRef = useRef<HTMLDivElement>(null)
   const blocked = unlock.locked || unlock.isPending
-
-  // Disabled keys drop focus while a request runs; take it back so the physical keyboard keeps working.
-  useEffect(() => {
-    if (!blocked) dialogRef.current?.focus()
-  }, [blocked])
 
   function press(digit: string) {
     if (blocked) return
@@ -47,80 +42,69 @@ export function PinDialog({ onUnlocked, onCancel, cancelLabel }: { onUnlocked: (
   function onKeyDown(event: React.KeyboardEvent) {
     if (/^\d$/.test(event.key)) press(event.key)
     else if (event.key === 'Backspace') erase()
-    else if (event.key === 'Escape') onCancel()
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pin-title"
-        tabIndex={-1}
-        onKeyDown={onKeyDown}
-        className="flex w-full max-w-sm flex-col rounded-3xl bg-surface p-6 outline-none"
-      >
-        <div className="flex items-center gap-3">
-          <LockIcon className="size-7 text-navy" />
-          <h2 id="pin-title" className="text-xl font-semibold">
-            Ingresa tu PIN
-          </h2>
-        </div>
-        <p className="mt-1 text-sm text-text-secondary">PIN de 4 dígitos para entrar a Administración.</p>
+    <ModalDialog labelledBy="pin-title" onClose={onCancel} onKeyDown={onKeyDown} refocusWhen={!blocked} className="max-w-sm p-6">
+      <div className="flex items-center gap-3">
+        <LockIcon className="size-7 text-navy" />
+        <h2 id="pin-title" className="text-xl font-semibold">
+          Ingresa tu PIN
+        </h2>
+      </div>
+      <p className="mt-1 text-sm text-text-secondary">PIN de 4 dígitos para entrar a Administración.</p>
 
-        <div className="mt-6 flex justify-center gap-4" aria-hidden="true">
-          {Array.from({ length: PIN_LENGTH }, (_, i) => (
-            <span key={i} className={`size-5 rounded-full border-2 border-navy ${i < pin.length ? 'bg-navy' : ''}`} />
-          ))}
-        </div>
-        <p role="status" className="sr-only">
-          {pin.length} de {PIN_LENGTH} dígitos
-        </p>
+      <div className="mt-6 flex justify-center gap-4" aria-hidden="true">
+        {Array.from({ length: PIN_LENGTH }, (_, i) => (
+          <span key={i} className={`size-5 rounded-full border-2 border-navy ${i < pin.length ? 'bg-navy' : ''}`} />
+        ))}
+      </div>
+      <p role="status" className="sr-only">
+        {pin.length} de {PIN_LENGTH} dígitos
+      </p>
 
-        <div className="mt-4 min-h-14">
-          {unlock.isPending && <p className="font-semibold text-text-secondary">Verificando…</p>}
-          {unlock.locked && (
-            <div role="alert" className="flex items-start gap-3 rounded-xl bg-surface-muted p-4">
-              <LockIcon className="size-6 shrink-0 text-error" />
-              <div>
-                <p className="font-semibold">{ERRORS['E-15'].message}</p>
-                <p className="text-sm">
-                  Podrás intentar de nuevo en <span className="font-bold tabular-nums">{formatCountdown(unlock.secondsLeft)}</span>
-                </p>
-              </div>
+      <div className="mt-4 min-h-14">
+        {unlock.isPending && <p className="font-semibold text-text-secondary">Verificando…</p>}
+        {unlock.locked && (
+          <div role="alert" className="flex items-start gap-3 rounded-xl bg-surface-muted p-4">
+            <LockIcon className="size-6 shrink-0 text-error" />
+            <div>
+              <p className="font-semibold">{ERRORS['E-15'].message}</p>
+              <p className="text-sm">
+                Podrás intentar de nuevo en <span className="font-bold tabular-nums">{formatCountdown(unlock.secondsLeft)}</span>
+              </p>
             </div>
-          )}
-          {!unlock.locked && unlock.notice && (
-            <p role="alert" className="flex items-center gap-2 font-semibold text-error">
-              <AlertIcon className="size-6 shrink-0" />
-              {noticeText(unlock.notice)}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
+        {!unlock.locked && unlock.notice && (
+          <p role="alert" className="flex items-center gap-2 font-semibold text-error">
+            <AlertIcon className="size-6 shrink-0" />
+            {noticeText(unlock.notice)}
+          </p>
+        )}
+      </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-3">
-          {DIGITS.map((d) => (
-            <button key={d} type="button" disabled={blocked} onClick={() => press(d)} className={keyClass}>
-              {d}
-            </button>
-          ))}
-          <button type="button" disabled={blocked || pin.length === 0} onClick={erase} className={`${keyClass} text-lg`}>
-            Borrar
+      <div className="mt-2 grid grid-cols-3 gap-3">
+        {DIGITS.map((d) => (
+          <button key={d} type="button" disabled={blocked} onClick={() => press(d)} className={keyClass}>
+            {d}
           </button>
-          <button type="button" disabled={blocked} onClick={() => press('0')} className={keyClass}>
-            0
-          </button>
-        </div>
-
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-4 h-14 rounded-xl font-semibold text-text-primary transition-colors hover:bg-surface-muted"
-        >
-          {cancelLabel}
+        ))}
+        <button type="button" disabled={blocked || pin.length === 0} onClick={erase} className={`${keyClass} text-lg`}>
+          Borrar
+        </button>
+        <button type="button" disabled={blocked} onClick={() => press('0')} className={keyClass}>
+          0
         </button>
       </div>
-    </div>
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-4 h-14 rounded-xl font-semibold text-text-primary transition-colors hover:bg-surface-muted"
+      >
+        {cancelLabel}
+      </button>
+    </ModalDialog>
   )
 }

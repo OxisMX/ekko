@@ -24,7 +24,8 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
-it('subscribes to UPDATEs of this QR and resolves "used" from the Realtime event, without polling', async () => {
+it('subscribes to UPDATEs of this QR, does one catch-up poll on SUBSCRIBED and resolves "used" from the Realtime event', async () => {
+  mocks.rpc.mockResolvedValue(status('pending'))
   renderHook(() => useQrStatusSync('q1', onResolved))
   const [ch] = mocks.realtime.channels
   expect(ch.name).toBe('qr-q1')
@@ -32,7 +33,7 @@ it('subscribes to UPDATEs of this QR and resolves "used" from the Realtime event
 
   ch.status('SUBSCRIBED')
   await flush(10_000)
-  expect(mocks.rpc).not.toHaveBeenCalled()
+  expect(mocks.rpc).toHaveBeenCalledTimes(1) // a claim before SUBSCRIBED would otherwise be missed
 
   ch.emit({ id: 'q1', used_at: '2026-10-21T10:00:00Z', invalidated_at: null })
   expect(onResolved).toHaveBeenCalledWith('q1', 'used')
@@ -62,15 +63,15 @@ it('channel error → polling; reconnect → one catch-up poll, then Realtime on
   ch.status('SUBSCRIBED')
   ch.status('CHANNEL_ERROR')
   await flush()
-  expect(mocks.rpc).toHaveBeenCalledTimes(1)
+  expect(mocks.rpc).toHaveBeenCalledTimes(2) // first SUBSCRIBED catch-up + error poll
   await flush(3_000)
-  expect(mocks.rpc).toHaveBeenCalledTimes(2)
+  expect(mocks.rpc).toHaveBeenCalledTimes(3)
 
   ch.status('SUBSCRIBED')
   await flush()
-  expect(mocks.rpc).toHaveBeenCalledTimes(3) // catch-up for the gap since the last poll
+  expect(mocks.rpc).toHaveBeenCalledTimes(4) // catch-up for the gap since the last poll
   await flush(9_000)
-  expect(mocks.rpc).toHaveBeenCalledTimes(3)
+  expect(mocks.rpc).toHaveBeenCalledTimes(4)
 })
 
 it('a failed poll keeps polling', async () => {

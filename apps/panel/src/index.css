@@ -25,3 +25,14 @@ body {
   outline: 3px solid var(--color-navy);
   outline-offset: 2px;
 }
+
+/* WHY: "reducir movimiento" (QA §7.4). Transitions and spinners collapse to an instant state change. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -21,4 +21,9 @@ describe("SegmentedTabs", () => {
     await fireEvent.press(screen.getByRole("tab", { name: "Tarjeta" }));
     expect(onChange).toHaveBeenCalledTimes(1);
   });
+
+  it("exposes a stable testID per tab (RQ-3)", async () => {
+    await render(<SegmentedTabs tabs={tabs} value="card" onChange={jest.fn()} testID="merchant-tabs" />);
+    expect(screen.getByTestId("merchant-tabs-promos")).toBeOnTheScreen();
+  });
 });

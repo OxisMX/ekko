@@ -1,0 +1,14 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-08 Comercio inactivo (mobile side): the related card of the inactive merchant (C3) reads "No disponible".
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- tapOn:
+    id: tab-cards
+- assertVisible:
+    id: "my-card-${MERCHANT_ID}"
+- assertVisible: .*No disponible.*

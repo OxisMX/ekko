@@ -1,0 +1,34 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-03 Completar tarjeta y canjear: customer with 5 of 6 stamps -> scan -> completed -> show code.
+# Cashier validation of the code and the final history check pair with the Playwright side.
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- runFlow:
+    file: _scan.yaml
+    env:
+      SCAN_TOKEN: ${QR_TOKEN}
+- assertVisible: ¡Completaste tu tarjeta!
+- tapOn:
+    id: visit-result-primary
+- tapOn:
+    id: tab-cards
+- tapOn:
+    id: cards-tabs-coupons
+- tapOn:
+    id: "my-coupon-.*-show-code"
+- assertVisible:
+    id: coupon-code
+# After the cashier redeems it (Playwright), come back and check the history.
+- tapOn:
+    id: coupon-done
+- tapOn:
+    id: tab-profile
+- tapOn:
+    id: profile-history
+- assertVisible:
+    id: redemptions-list

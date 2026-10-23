@@ -33,14 +33,14 @@ isOneToOne: false
                   ]
                 },"coupons": {
                   Row: {
-                    "birthday_year": number | null,"campaign_id": string | null,"code": string,"customer_id": string,"cycle_id": string | null,"description": string,"expires_at": string,"id": string,"issued_at": string,"merchant_id": string,"redeemed_at": string | null,"source": Database["public"]['Enums']["coupon_source"],"spin_id": string | null,"status": Database["public"]['Enums']["coupon_status"],"terms": string | null,"title": string
+                    "birthday_year": number | null,"campaign_id": string | null,"code": string,"customer_id": string,"cycle_id": string | null,"description": string,"expires_at": string,"id": string,"issued_at": string,"merchant_id": string,"redeemed_at": string | null,"redeemed_by_session_id": string | null,"source": Database["public"]['Enums']["coupon_source"],"spin_id": string | null,"status": Database["public"]['Enums']["coupon_status"],"terms": string | null,"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "birthday_year"?: number | null,"campaign_id"?: string | null,"code": string,"customer_id": string,"cycle_id"?: string | null,"description": string,"expires_at": string,"id"?: string,"issued_at"?: string,"merchant_id": string,"redeemed_at"?: string | null,"source": Database["public"]['Enums']["coupon_source"],"spin_id"?: string | null,"status"?: Database["public"]['Enums']["coupon_status"],"terms"?: string | null,"title": string
+                    "birthday_year"?: number | null,"campaign_id"?: string | null,"code": string,"customer_id": string,"cycle_id"?: string | null,"description": string,"expires_at": string,"id"?: string,"issued_at"?: string,"merchant_id": string,"redeemed_at"?: string | null,"redeemed_by_session_id"?: string | null,"source": Database["public"]['Enums']["coupon_source"],"spin_id"?: string | null,"status"?: Database["public"]['Enums']["coupon_status"],"terms"?: string | null,"title": string
                   }
                   Update: {
-                    "birthday_year"?: number | null,"campaign_id"?: string | null,"code"?: string,"customer_id"?: string,"cycle_id"?: string | null,"description"?: string,"expires_at"?: string,"id"?: string,"issued_at"?: string,"merchant_id"?: string,"redeemed_at"?: string | null,"source"?: Database["public"]['Enums']["coupon_source"],"spin_id"?: string | null,"status"?: Database["public"]['Enums']["coupon_status"],"terms"?: string | null,"title"?: string
+                    "birthday_year"?: number | null,"campaign_id"?: string | null,"code"?: string,"customer_id"?: string,"cycle_id"?: string | null,"description"?: string,"expires_at"?: string,"id"?: string,"issued_at"?: string,"merchant_id"?: string,"redeemed_at"?: string | null,"redeemed_by_session_id"?: string | null,"source"?: Database["public"]['Enums']["coupon_source"],"spin_id"?: string | null,"status"?: Database["public"]['Enums']["coupon_status"],"terms"?: string | null,"title"?: string
                   }
                   Relationships: [
                     {

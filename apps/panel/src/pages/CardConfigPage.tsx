@@ -1,3 +1,4 @@
+import { ModalDialog } from '../components/ModalDialog'
 import { ERRORS, merchantImageUrl } from '@ekko/shared'
 import * as Sentry from '@sentry/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -276,22 +277,20 @@ export function CardConfigPage() {
       </div>
 
       {confirming && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-surface p-6">
-            <h2 id="confirm-title" className="text-xl font-semibold">
-              ¿Guardar los cambios?
-            </h2>
-            <p>Los cambios aplicarán a las tarjetas nuevas. Las tarjetas que tus clientes ya tienen no se modifican.</p>
-            <div className="flex flex-wrap justify-end gap-3">
-              <button type="button" disabled={save.isPending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setConfirming(false)}>
-                Cancelar
-              </button>
-              <button type="button" disabled={save.isPending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => save.mutate(form)}>
-                {save.isPending ? 'Guardando…' : 'Confirmar'}
-              </button>
-            </div>
+        <ModalDialog labelledBy="confirm-title" onClose={() => !save.isPending && setConfirming(false)}>
+          <h2 id="confirm-title" className="text-xl font-semibold">
+            ¿Guardar los cambios?
+          </h2>
+          <p>Los cambios aplicarán a las tarjetas nuevas. Las tarjetas que tus clientes ya tienen no se modifican.</p>
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" disabled={save.isPending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setConfirming(false)}>
+              Cancelar
+            </button>
+            <button type="button" disabled={save.isPending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => save.mutate(form)}>
+              {save.isPending ? 'Guardando…' : 'Confirmar'}
+            </button>
           </div>
-        </div>
+        </ModalDialog>
       )}
     </section>
   )

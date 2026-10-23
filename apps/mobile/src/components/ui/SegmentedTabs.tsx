@@ -27,6 +27,7 @@ export function SegmentedTabs<K extends string>({ tabs, value, onChange, testID 
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={tab.label}
+              testID={testID && `${testID}-${tab.key}`}
               onPress={() => {
                 if (!selected) onChange(tab.key);
               }}

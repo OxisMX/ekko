@@ -1,3 +1,9 @@
+// testID scheme (RQ-3), used by Maestro (.maestro/) and jest:
+//   screen/element  -> "<screen>-<element>"           e.g. "login-submit", "wheel-spin"
+//   list items      -> "<entity>-<id>"                e.g. "my-card-<merchantId>", "my-coupon-<id>"
+//   child controls  -> "<parent testID>-<suffix>"     e.g. "visit-result-primary", "cards-tabs-coupons"
+//   tab bar         -> "tab-<route>"                  e.g. "tab-cards"
+// kebab-case, English, stable: never derived from copy (labels are Spanish and may change).
 export { Button, type ButtonProps } from "./Button";
 export { Chip, type ChipProps } from "./Chip";
 export { TextField, type TextFieldProps } from "./TextField";

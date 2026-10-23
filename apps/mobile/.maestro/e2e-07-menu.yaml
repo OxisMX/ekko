@@ -1,0 +1,15 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-07 Gestión de menú (mobile side): a product marked "agotado" in the panel shows as sold out.
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- tapOn:
+    id: "merchant-card-${MERCHANT_ID}"
+- tapOn:
+    id: merchant-tabs-menu
+- assertVisible:
+    id: product-sold-out

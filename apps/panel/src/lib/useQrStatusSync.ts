@@ -41,15 +41,14 @@ export function useQrStatusSync(qrId: string | null, onResolved: (qrId: string, 
       if (next === 'polling' && mode !== 'polling') {
         pollSafely()
         pollTimer = setInterval(pollSafely, SYNC_MS)
-      } else if (next === 'realtime' && mode === 'polling') {
+      } else if (next === 'realtime' && mode !== 'realtime') {
         clearInterval(pollTimer)
-        pollSafely() // an UPDATE between the last poll and SUBSCRIBED would otherwise be missed
+        // WHY: an UPDATE before SUBSCRIBED (or between the last poll and it) would otherwise be missed.
+        pollSafely()
       }
       mode = next
     }
 
-    // ponytail: a claim before the first SUBSCRIBED (~sub-second) is caught only by expiry; add a
-    // catch-up poll on first SUBSCRIBED if that ever shows up in the field.
     const channel = supabase
       .channel(`qr-${qrId}`)
       .on(

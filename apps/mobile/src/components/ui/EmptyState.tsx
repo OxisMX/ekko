@@ -27,7 +27,7 @@ export function EmptyState({ title, message, actionLabel, onAction, role, testID
       >
         {message}
       </Text>
-      <Button title={actionLabel} onPress={onAction} style={{ marginTop: spacing.sm }} />
+      <Button title={actionLabel} onPress={onAction} style={{ marginTop: spacing.sm }} testID={testID && `${testID}-action`} />
     </View>
   );
 }

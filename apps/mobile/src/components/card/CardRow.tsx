@@ -23,13 +23,15 @@ export type CardRowProps = {
   testID?: string;
 };
 
-function Badge({ label, filled, onPress }: { label: string; filled?: boolean; onPress?: () => void }) {
+function Badge({ label, filled, onPress, testID }: { label: string; filled?: boolean; onPress?: () => void; testID?: string }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? "button" : undefined}
-      hitSlop={onPress ? 8 : undefined}
+      // RT-04: the ~28 pt pill grows to a 44 pt target.
+      hitSlop={onPress ? { top: 8, bottom: 8, left: 8, right: 8 } : undefined}
+      testID={testID}
       style={{
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
@@ -61,6 +63,9 @@ export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cy
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !available }}
+      // WHY: the badge is nested in an accessible row, so VoiceOver/TalkBack can't focus it; expose it as a custom action.
+      accessibilityActions={available && wheelAvailable && onWheelPress ? [{ name: "wheel", label: "Girar ruleta" }] : undefined}
+      onAccessibilityAction={(event) => event.nativeEvent.actionName === "wheel" && onWheelPress?.()}
       testID={testID}
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -96,7 +101,7 @@ export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cy
             {rewardAvailable || wheelAvailable ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs }}>
                 {rewardAvailable ? <Badge label="Recompensa disponible" filled /> : null}
-                {wheelAvailable ? <Badge label="Gira tu ruleta" onPress={onWheelPress} /> : null}
+                {wheelAvailable ? <Badge label="Gira tu ruleta" onPress={onWheelPress} testID={testID && `${testID}-wheel`} /> : null}
               </View>
             ) : null}
           </>
