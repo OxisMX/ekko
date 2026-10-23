@@ -13,6 +13,21 @@ const appVariant: keyof typeof VARIANTS =
     : "production";
 const variant = VARIANTS[appVariant];
 
+// TRD §9: each variant claims only its own domain (the AASA/assetlinks files list all three apps).
+// Development reuses the staging domain; `?mode=developer` makes iOS fetch the AASA straight from the
+// server instead of Apple's CDN (SP-2).
+const UNIVERSAL_LINK_HOST = {
+  development: "staging.ekko.oxis.mx",
+  staging: "staging.ekko.oxis.mx",
+  production: "ekko.oxis.mx",
+} as const;
+const linkHost = UNIVERSAL_LINK_HOST[appVariant];
+const associatedDomain = `applinks:${linkHost}${appVariant === "development" ? "?mode=developer" : ""}`;
+
+// Filled in by `eas init` (see docs/ekko_despliegue.md). It is an identifier, not a secret.
+// Empty = EAS Update stays off, so local dev and CI keep working before the Expo project exists.
+const EAS_PROJECT_ID = "";
+
 const config: ExpoConfig = {
   name: variant.name,
   slug: "ekko",
@@ -21,11 +36,17 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   userInterfaceStyle: "light",
-  // TODO(DEP-01/DEP-09): universal/app links for /v/:token — ios.associatedDomains
-  // (applinks:ekko.oxis.mx, applinks:staging.ekko.oxis.mx) and android.intentFilters (autoVerify).
-  ios: { bundleIdentifier: variant.id },
+  ios: { bundleIdentifier: variant.id, associatedDomains: [associatedDomain] },
   android: {
     package: variant.id,
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [{ scheme: "https", host: linkHost, pathPrefix: "/v/" }],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
     adaptiveIcon: {
       backgroundImage: "./assets/images/android-icon-background.png",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -52,8 +73,13 @@ const config: ExpoConfig = {
     // and `project` here, set SENTRY_AUTH_TOKEN as an EAS secret, and drop `disableAutoUpload`.
     ["@sentry/react-native/expo", { disableAutoUpload: true }],
   ],
+  // WHY appVersion (plan §6.3): an OTA only reaches binaries of the same `version`, so bump `version`
+  // on every native change. Fingerprint would be safer against forgetting, but it makes every dependency
+  // bump a new runtime and breaks the "one staging OTA, then production" flow the team uses.
+  runtimeVersion: { policy: "appVersion" },
+  ...(EAS_PROJECT_ID ? { updates: { url: `https://u.expo.dev/${EAS_PROJECT_ID}` } } : {}),
   // Read at runtime via expo-constants (Sentry `environment`).
-  extra: { appVariant },
+  extra: { appVariant, ...(EAS_PROJECT_ID ? { eas: { projectId: EAS_PROJECT_ID } } : {}) },
   experiments: { typedRoutes: true },
 };
 

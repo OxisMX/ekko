@@ -1,21 +1,36 @@
 {
-  "cli": { "appVersionSource": "remote" },
+  "cli": { "version": ">= 25.0.0", "appVersionSource": "remote" },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
+      "environment": "development",
       "env": { "APP_VARIANT": "development" }
     },
     "staging": {
       "distribution": "internal",
       "channel": "staging",
+      "environment": "staging",
+      "autoIncrement": true,
+      "android": { "buildType": "apk" },
       "env": { "APP_VARIANT": "staging" }
     },
     "production": {
+      "distribution": "store",
       "channel": "production",
+      "environment": "production",
       "autoIncrement": true,
       "env": { "APP_VARIANT": "production" }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {},
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "draft"
+      }
     }
   }
 }
