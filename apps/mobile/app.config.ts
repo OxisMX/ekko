@@ -36,7 +36,7 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   userInterfaceStyle: "light",
-  ios: { bundleIdentifier: variant.id, associatedDomains: [associatedDomain] },
+  ios: { bundleIdentifier: variant.id, associatedDomains: [associatedDomain], usesAppleSignIn: true },
   android: {
     package: variant.id,
     intentFilters: [
@@ -66,6 +66,9 @@ const config: ExpoConfig = {
     ],
     // A-16: push token registration. Handling incoming pushes arrives in Sprint 12.
     "expo-notifications",
+    // F-03: Sign in with Apple (iOS only, needs a dev build). expo-web-browser serves the Google OAuth session.
+    "expo-apple-authentication",
+    "expo-web-browser",
     ["expo-splash-screen", { image: "./assets/images/splash-icon.png", imageWidth: 76, backgroundColor: "#FFFFFF" }],
     // WHY: RNF-01 asks for iOS 15.0, but Expo SDK 58 enforces a 16.4 minimum; revisit if RNF-01 must hold.
     ["expo-build-properties", { ios: { deploymentTarget: "16.4" }, android: { minSdkVersion: 26 } }],

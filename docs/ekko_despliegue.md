@@ -65,6 +65,22 @@ Las `EXPO_PUBLIC_*` las inyecta EAS en builds y en `eas update --environment`; e
 | Supabase secrets | `PANEL_ORIGINS`, `APP_ORIGINS`, `EXPO_ACCESS_TOKEN`, `APPLE_*` | Los fija el workflow con `supabase secrets set`; no se capturan a mano. |
 | Supabase Vault | `hash_pepper` | A mano, una vez por proyecto (paso 3). |
 
+### Inicio de sesión social (F-03, ADR-15)
+
+| Proveedor | Qué crear | Dónde va cada secreto |
+|---|---|---|
+| Google | Google Cloud → APIs y servicios → Credenciales → ID de cliente OAuth, tipo **Aplicación web**. URIs de redirección autorizados: `https://<ref>.supabase.co/auth/v1/callback` (uno por entorno) y, solo para pruebas locales, `http://127.0.0.1:54321/auth/v1/callback`. Pantalla de consentimiento con alcances `email` y `profile`. | Hosted: Supabase → Authentication → Providers → Google (Client ID y Secret). Local: variables `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` y `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`. |
+| Apple | Apple Developer → Identifiers: App ID `mx.oxis.ekko` con *Sign in with Apple*, y una llave (Key) con ese servicio. Flujo nativo: no hace falta Services ID ni redirect. | Hosted: Supabase → Providers → Apple, *Client IDs* = bundle id(s) separados por coma (el secret no se usa en nativo). Las llaves `APPLE_*` de arriba son solo para revocar en `delete-account`. |
+
+La verificación de nonce queda activa en ambos. La app usa la redirección `ekko://auth/callback`; debe figurar en Supabase → Authentication → URL Configuration → Redirect URLs (en `config.toml` ya está `ekko://**` y los patrones `exp://`).
+
+#### Probar Google en local
+
+1. Crear un cliente OAuth web en Google Cloud con el redirect `http://127.0.0.1:54321/auth/v1/callback`.
+2. `export SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=... SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...`
+3. `pnpm supabase stop && pnpm db:start` (sin las variables Supabase arranca igual; solo falla el inicio de sesión con Google).
+4. Abrir la app en Expo Go y pulsar "Continuar con Google". Apple solo se prueba en un build de desarrollo iOS.
+
 ## Primera vez, en orden
 
 1. **Supabase:** crear los proyectos staging (gratuito) y producción (Pro). Anotar ref, URL, anon key y contraseña de la DB.

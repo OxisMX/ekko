@@ -51,15 +51,18 @@ beforeEach(() => {
 });
 
 describe("A-18 Cupones", () => {
-  const openCoupons = async () => {
-    mockSupabase.rpc.mockImplementation((fn: string) => Promise.resolve({ data: fn === "list_my_coupons" ? [coupon()] : [], error: null }));
+  it("shows loading, then the coupon with its Mostrar código action", async () => {
+    // WHY deferred: on a slow CI runner an instantly resolved mock finished loading before the assertion.
+    let resolveCoupons: (value: { data: unknown; error: null }) => void = () => undefined;
+    mockSupabase.rpc.mockImplementation((fn: string) =>
+      fn === "list_my_coupons"
+        ? new Promise((resolve) => { resolveCoupons = resolve; })
+        : Promise.resolve({ data: [], error: null })
+    );
     await renderWithClient(<CardsTab />);
     await fireEvent.press(screen.getByRole("tab", { name: "Cupones" }));
-  };
-
-  it("shows loading, then the coupon with its Mostrar código action", async () => {
-    await openCoupons();
     expect(screen.getByLabelText("Cargando cupones")).toBeOnTheScreen();
+    resolveCoupons({ data: [coupon()], error: null });
     expect(await screen.findByText("Café gratis")).toBeOnTheScreen();
     expect(screen.getByText("Café La Esquina")).toBeOnTheScreen();
     fireEvent.press(screen.getByText("Mostrar código"));

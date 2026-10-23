@@ -168,6 +168,8 @@ additional_redirect_urls = [
   "exp://127.0.0.1:8081/--/**",
   "exp://localhost:8081/--/**",
   "ekko://**",
+  "ekko://auth/callback",
+  "exp://127.0.0.1:8081/--/auth/callback",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -359,19 +361,26 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# WHY (ADR-15): Google goes through signInWithOAuth + PKCE (web client); Apple is native
+# (signInWithIdToken + nonce), so the nonce check stays ON for both. Google is enabled but harmless
+# without credentials (verified: `supabase start` boots with the env vars unset; the sign-in just
+# fails until they are exported). Apple stays disabled locally: it needs a real iOS build anyway.
+# Hosted projects configure both in the dashboard (docs/ekko_despliegue.md).
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = false
+
 [auth.external.apple]
 enabled = false
-client_id = ""
+# Native-only: client_id is the iOS bundle id (comma-separated list); no Services ID needed.
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-# Overrides the default auth callback URL derived from auth.external_url.
 redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
 url = ""
-# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.

@@ -9,6 +9,7 @@ import { AuthLayout } from "../components/auth";
 import { Button, DateField, FormMessage, TextField } from "../components/ui";
 import { formatCalendarDate } from "../components/ui/DateField";
 import { type MyProfile, useCompleteProfile, useMyProfile, useRegisterDraft } from "../features/auth/account";
+import { getSocialNameDraft } from "../features/auth/socialSignIn";
 import { TextLink } from "../features/auth/TextLink";
 import { toAppError } from "../lib/appError";
 import { fromIsoDate, toIsoDate } from "../lib/calendarDate";
@@ -55,11 +56,12 @@ function CompleteProfileForm({ profile, draft }: FormProps) {
   const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
   // RN-04: once set, only Oxis support can change it, so it is shown but not editable.
   const birthDateLocked = profile.birth_date !== null;
+  const socialName = getSocialNameDraft();
   const { control, handleSubmit, setError } = useForm<CompleteProfileInput, unknown, CompleteProfileValues>({
     resolver: zodResolver(completeProfileSchema),
     defaultValues: {
-      first_name: profile.first_name ?? draft?.first_name ?? "",
-      last_name: profile.last_name ?? draft?.last_name ?? "",
+      first_name: profile.first_name ?? draft?.first_name ?? socialName?.first_name ?? "",
+      last_name: profile.last_name ?? draft?.last_name ?? socialName?.last_name ?? "",
       birth_date: profile.birth_date ?? draft?.birth_date ?? "",
     },
   });

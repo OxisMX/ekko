@@ -5,10 +5,17 @@ import { DeleteAccountScreen } from "./DeleteAccountScreen";
 
 const mockInvoke = jest.fn();
 const mockRouter = { back: jest.fn() };
-const mockAuth = { finishAccountDeletion: jest.fn(), endSession: jest.fn() };
+const mockAppleCode = jest.fn();
+const mockAuth: { finishAccountDeletion: jest.Mock; endSession: jest.Mock; session: unknown } = {
+  finishAccountDeletion: jest.fn(),
+  endSession: jest.fn(),
+  session: { user: { identities: [{ provider: "email" }] } },
+};
+const appleSession = { user: { identities: [{ provider: "email" }, { provider: "apple" }] } };
 
 jest.mock("../../lib/supabase", () => ({ supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } } }));
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
+jest.mock("../auth/socialSignIn", () => ({ requestAppleAuthorizationCode: () => mockAppleCode() }));
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("../../auth/AuthProvider", () => ({ useAuth: () => mockAuth }));
 
@@ -18,6 +25,8 @@ const submit = () => fireEvent.press(screen.getByTestId("delete-account-submit")
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAuth.session = { user: { identities: [{ provider: "email" }] } };
+  mockAppleCode.mockResolvedValue("apple-code");
   mockAuth.finishAccountDeletion.mockResolvedValue(undefined);
   mockInvoke.mockResolvedValue({ data: { deleted: true }, error: null });
 });
@@ -83,5 +92,45 @@ describe("A-22 Eliminar cuenta", () => {
     await render(<DeleteAccountScreen />);
     await fireEvent.press(screen.getByTestId("delete-account-cancel"));
     expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  describe("Apple identity (F-15)", () => {
+    beforeEach(() => {
+      mockAuth.session = appleSession;
+    });
+
+    it("re-authenticates and sends apple_authorization_code", async () => {
+      await render(<DeleteAccountScreen />);
+      await type("ELIMINAR");
+      await submit();
+      expect(mockInvoke).toHaveBeenCalledWith("delete-account", { body: { confirmation: "ELIMINAR", apple_authorization_code: "apple-code" } });
+      expect(mockAuth.finishAccountDeletion).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays on the screen without error when the user cancels Apple", async () => {
+      mockAppleCode.mockResolvedValue(null);
+      await render(<DeleteAccountScreen />);
+      await type("ELIMINAR");
+      await submit();
+      expect(mockInvoke).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("delete-account-error")).toBeNull();
+      expect(screen.getByTestId("delete-account-submit").props.accessibilityState.busy).toBe(false);
+    });
+
+    it("shows E-21 when Apple fails", async () => {
+      mockAppleCode.mockRejectedValue(new Error("apple down"));
+      await render(<DeleteAccountScreen />);
+      await type("ELIMINAR");
+      await submit();
+      expect(mockInvoke).not.toHaveBeenCalled();
+      expect(await screen.findByTestId("delete-account-error")).toBeOnTheScreen();
+    });
+  });
+
+  it("does not ask Apple when the account has no Apple identity", async () => {
+    await render(<DeleteAccountScreen />);
+    await type("ELIMINAR");
+    await submit();
+    expect(mockAppleCode).not.toHaveBeenCalled();
   });
 });

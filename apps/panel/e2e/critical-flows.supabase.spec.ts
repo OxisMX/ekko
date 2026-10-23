@@ -85,7 +85,10 @@ test('E2E-07: a product marked sold out in the panel is sold out in get_merchant
   await page.getByRole('button', { name: 'Guardar producto' }).click()
   await expect(page.getByText('Producto creado.')).toBeVisible()
   const soldOut = page.getByRole('switch', { name: `Agotado por hoy: ${name}` })
+  // WHY wait for the RPC: the switch flips optimistically before the server has saved the flag.
+  const saved = page.waitForResponse((r) => r.url().includes('/rpc/set_product_flags') && r.ok())
   await soldOut.click()
+  await saved
   await expect(soldOut).toHaveAttribute('aria-checked', 'true')
 
   const jwt = await signInCustomer('u1@ekko.test')
