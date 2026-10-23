@@ -60,7 +60,8 @@ describe("A-20 Perfil", () => {
     expect(screen.getByTestId("profile-birth-date")).toHaveTextContent(/05\/03\/1990/);
     expect(screen.getByText(/No se puede cambiar/)).toBeOnTheScreen();
     expect(screen.getByTestId("profile-email")).toHaveTextContent(/Verificado/);
-    expect(screen.queryByText(/Eliminar cuenta/)).toBeNull();
+    await fireEvent.press(screen.getByTestId("profile-delete-account"));
+    expect(mockRouter.push).toHaveBeenCalledWith("/delete-account");
   });
 
   it("shows the dev push simulator only in __DEV__", async () => {

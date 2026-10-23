@@ -733,12 +733,14 @@ Retorna:
 ```
 `active_customers` siempre usa la ventana de 30 días (RN-67).
 
+Panel P-05 (sección con PIN): sesión administrativa (E-16; un comercio inactivo puede leer). `p_range` distinto de `30d`/`all`: E-23 `{field:'range'}`. Una visita es un `visit_qr_tokens` con `used_at` (un QR puede dar varios sellos por RN-36; contar sellos inflaría las visitas); la ventana de 30 días es `app.now() - 30 days`. `redemptions` = cupones del comercio con `redeemed_at` en el rango. `active_customers` excluye cuentas eliminadas. `push_remaining_this_month` = `app.push_remaining`. Solo agregados (RN-66).
+
 #### `list_qr_log`
 | Parámetro | Tipo |
 |---|---|
 | `p_offset`, `p_limit` | integer |
 
-Retorna `{ created_at, expires_at, status, used_at }` sin datos del cliente.
+Retorna un arreglo `{ created_at, expires_at, status, used_at }` (más reciente primero) sin datos del cliente. `status`: `used`, `invalidated` (reemplazado por un QR nuevo, como `get_qr_status`), `expired` o `pending`. Mismas puertas que `get_metrics`. Defaults `p_offset = 0`, `p_limit = 20`; E-23 `{field:'offset'}` (< 0) o `{field:'limit'}` (fuera de 1–50).
 
 #### `get_push_status`
 Panel P-10 (sesión administrativa; un comercio inactivo puede leer). Retorna `{ remaining_this_month, limit: 5, resets_on, recipients_count, push_coupon_validity_hours }`. `resets_on` = primer día del siguiente mes local; `recipients_count` = clientes con relación y cuenta activa.
@@ -753,7 +755,7 @@ Retorna el historial del comercio (sesión administrativa), más reciente primer
 | `create_push_campaign(p_merchant_id, p_auth_session_id, p_payload jsonb)` | Edge Function `send-push` | Verifica sesión administrativa del dispositivo, comercio activo, cuota mensual (E-17) e idempotencia; crea la campaña y los cupones en una transacción. |
 | `get_push_recipients(p_campaign_id)` | `send-push` | Tokens activos de los clientes con relación. |
 | `record_push_result(p_campaign_id, p_sent, p_failed, p_invalid_tokens text[])` | `send-push` | Cierra la campaña y desactiva tokens inválidos. |
-| `anonymize_customer(p_customer_id)` | `delete-account` | Anonimización (6.4). |
+| `anonymize_customer(p_customer_id)` | `delete-account` | Anonimización (6.4). Retorna `true` si anonimizó y `false` si ya estaba eliminado (idempotente, permite reintentar); id inexistente: E-23 `{field:'customer_id'}`. También pone `push_enabled = false`. |
 
 `create_push_campaign`: `p_payload = { idempotency_key, title, body, coupon?: { title, description, terms, validity_hours } }`. Replica `require_admin_session` con parámetros explícitos (extiende 5 min). Bloquea la fila del comercio (`for update`) para serializar envíos. E-23 `idempotency_key`, `title` (1–50), `body` (1–150), `coupon_title` (1–60), `coupon_description` (1–200), `coupon_terms` (1–1000), `coupon_validity_hours` (24–48). Con una clave ya usada devuelve la campaña guardada con `duplicate: true` sin revisar cuota ni crear cupones. Cuota agotada: E-17 `{resets_on}`. Retorna `{ campaign_id, recipients, duplicate, status, sent, failed, push_remaining_this_month }`; la campaña nace `sending`. `get_push_recipients` devuelve `(customer_id, coupon_id, token)` por dispositivo con push activo, token y sin cierre de sesión. `record_push_result` pasa a `sent` (o `failed` si `sent = 0` y `failed > 0`), solo si seguía `sending`, y limpia `push_enabled`/`expo_push_token` de los tokens inválidos.
 
@@ -822,6 +824,8 @@ Proceso:
 4. Elimina el usuario de Supabase Auth.
 
 Respuesta: `{ "deleted": true }`.
+
+Implementación (`supabase/functions/delete-account/`): `logic.mts` (cuerpo, Origin) y `apple.mts` (client secret ES256 con Web Crypto, canje y revocación) sin dependencias, probadas en `scripts/delete-account-logic.test.ts`. Errores: 400 E-23 `{field}` (`body`, `confirmation`, `apple_authorization_code`), 401 E-18, 403 E-19 (JWT sin fila de `customers`, p. ej. comercio, o `sub` de Apple ajeno), 500 E-99. Es la app nativa quien llama: se aceptan solicitudes sin `Origin`; si hay `Origin` debe estar en `APP_ORIGINS` (si no, 403). Con identidad `apple` el código es obligatorio y, sin los secretos `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID`, falla cerrado con 500 E-99 sin borrar. Si Apple rechaza el canje o la revocación se continúa el borrado (SP-3, paso 4) y la respuesta añade `apple_revoked: false`. Si `deleteUser` falla tras anonimizar, 500 E-99: el reintento es seguro porque la anonimización es idempotente (la fila de `customers` se localiza por `auth_user_id`, que sigue existiendo). Apple Sign-In aún no está en la app (F-03).
 
 La verificación de correo no usa Edge Function: ver 6.3 y ADR-14.
 
@@ -948,6 +952,8 @@ Notas S5 (migración `realtime`): la publicación se agrega en su propia migraci
 | `kpi_reward_redemption` | Cupones `card_reward` canjeados / emitidos (excluye vigentes). | Canje de premios |
 | `kpi_coupon_redemption` | Cupones `wheel`, `push`, `birthday` canjeados / emitidos (excluye vigentes). | Canje de cupones |
 | `merchants_billing` | Comercios por vencer (15 días) y vencidos, con días de gracia restantes. | Operación F-31 |
+
+Migración `metrics_delete_account`. Sin `GRANT` y con `private` cerrado a `anon`/`authenticated`: Oxis las lee por SQL/Studio. Meses y semanas en hora local; `kpi_merchants` agrupa por mes de alta, `kpi_weekly_stamps` cuenta sellos de visita (sin bonus) por lunes de semana, y los dos de canje devuelven `redeemed`, `issued_closed` (canjeados o vencidos) y `redemption_pct`. `merchants_billing` expone `billing_state` (`expiring`/`overdue`), `days_to_due` y `grace_days_left` (15 días, RN-70).
 
 ---
 

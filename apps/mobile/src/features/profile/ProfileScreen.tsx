@@ -55,6 +55,7 @@ export function ProfileScreen() {
       <PermissionRow />
       <HistoryRow />
       <SignOutButton />
+      <DeleteAccountEntry />
       {__DEV__ ? <DevSimulatePush /> : null}
     </ScrollView>
   );
@@ -162,5 +163,22 @@ function SignOutButton() {
       fullWidth
       testID="profile-sign-out"
     />
+  );
+}
+
+// F-15 entry: deliberately low-key (text link, not a button) so it is not tapped by accident.
+function DeleteAccountEntry() {
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push("/delete-account")}
+      testID="profile-delete-account"
+      style={{ minHeight: 48, justifyContent: "center", alignItems: "center" }}
+    >
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.error }]}>
+        Eliminar mi cuenta
+      </Text>
+    </Pressable>
   );
 }
