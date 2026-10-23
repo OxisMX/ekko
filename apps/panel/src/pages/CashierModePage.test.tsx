@@ -15,7 +15,9 @@ const { rpc, realtime } = vi.hoisted(() => ({
 }))
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    rpc,
+    // WHY: the catch-up poll on SUBSCRIBED (get_qr_status) must not consume the generate_visit_qr queue.
+    rpc: (name: string, ...args: unknown[]) =>
+      name === 'get_qr_status' ? Promise.resolve({ data: { status: 'pending' }, error: null }) : rpc(name, ...args),
     channel: (n: string) => realtime.current.channel(n),
     removeChannel: (c: never) => realtime.current.removeChannel(c),
   },

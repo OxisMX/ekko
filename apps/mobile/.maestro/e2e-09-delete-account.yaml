@@ -1,0 +1,56 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-09 Eliminar cuenta: delete -> signed out -> register again with the same email -> the used wheel stays blocked.
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- tapOn:
+    id: tab-profile
+- tapOn:
+    id: profile-delete-account
+- tapOn:
+    id: delete-account-input
+- inputText: ELIMINAR
+- tapOn:
+    id: delete-account-submit
+- extendedWaitUntil:
+    visible:
+      id: login-screen
+    timeout: 20000
+# Register again with the same EMAIL (see E2E-01 for the birth-date picker caveat).
+- tapOn:
+    id: login-register
+- tapOn:
+    id: register-first-name
+- inputText: Ana
+- tapOn:
+    id: register-last-name
+- inputText: Prueba
+- tapOn:
+    id: register-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: register-password
+- inputText: ${PASSWORD}
+- tapOn:
+    id: register-birth-date
+- tapOn: Listo
+- tapOn:
+    id: register-privacy
+- tapOn:
+    id: register-submit
+- extendedWaitUntil:
+    visible:
+      id: tab-explore
+    timeout: 20000
+- tapOn:
+    id: "merchant-card-${MERCHANT_ID}"
+- tapOn:
+    id: merchant-add-card
+- tapOn:
+    id: merchant-spin-wheel
+- assertVisible:
+    id: "wheel-(spun|unverified)"

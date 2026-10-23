@@ -93,7 +93,7 @@ export function CouponCard({ title, merchantName, source, expiresAt, terms, now 
         ) : null}
       </View>
       {onShowCode ? <Button title="Mostrar código" onPress={onShowCode} fullWidth style={{ marginTop: spacing.sm }} testID={testID ? `${testID}-show-code` : undefined} /> : null}
-      {actionLabel && onAction ? <Button title={actionLabel} onPress={onAction} fullWidth style={{ marginTop: spacing.sm }} /> : null}
+      {actionLabel && onAction ? <Button title={actionLabel} onPress={onAction} fullWidth style={{ marginTop: spacing.sm }} testID={testID && `${testID}-action`} /> : null}
     </View>
   );
 }

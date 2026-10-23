@@ -155,8 +155,8 @@ export function VisitResult({
         ) : null}
       </View>
       <View style={{ alignSelf: "stretch", gap: spacing.md, marginTop: spacing.sm }}>
-        <Button title={primaryLabel ?? defaultPrimary} onPress={onPrimary} fullWidth />
-        {onSecondary && secondaryLabel ? <Button title={secondaryLabel} onPress={onSecondary} variant="secondary" fullWidth /> : null}
+        <Button title={primaryLabel ?? defaultPrimary} onPress={onPrimary} fullWidth testID={testID && `${testID}-primary`} />
+        {onSecondary && secondaryLabel ? <Button title={secondaryLabel} onPress={onSecondary} variant="secondary" fullWidth testID={testID && `${testID}-secondary`} /> : null}
       </View>
     </View>
   );

@@ -1,0 +1,20 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# Sub-flow: open the scanner from Mis Tarjetas and feed it SCAN_TOKEN through the dev paste field (RQ-6).
+appId: mx.oxis.ekko.dev
+---
+- tapOn:
+    id: tab-cards
+- tapOn:
+    id: cards-scan
+- tapOn:
+    id: scan-dev-paste
+- tapOn:
+    id: scan-dev-input
+- inputText: ${SCAN_TOKEN}
+- tapOn:
+    id: scan-dev-paste
+- extendedWaitUntil:
+    visible:
+      id: visit-result
+    timeout: 15000

@@ -1,0 +1,20 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-02 Visita recurrente: login -> scan -> second scan the same day shows "Ya registraste tu visita de hoy".
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: _login.yaml
+- runFlow:
+    file: _scan.yaml
+    env:
+      SCAN_TOKEN: ${QR_TOKEN}
+- tapOn:
+    id: visit-result-primary
+- runFlow:
+    file: _scan.yaml
+    env:
+      SCAN_TOKEN: ${QR_TOKEN_2}
+- assertVisible: Ya registraste tu visita de hoy.*

@@ -20,9 +20,9 @@ export default function TabsLayout() {
         headerTitleStyle: { fontFamily: fontFamily.bold, color: colors.textPrimary },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Explorar", tabBarIcon: icon("explore") }} />
-      <Tabs.Screen name="cards" options={{ title: "Mis Tarjetas", tabBarIcon: icon("cards") }} />
-      <Tabs.Screen name="profile" options={{ title: "Perfil", tabBarIcon: icon("profile") }} />
+      <Tabs.Screen name="index" options={{ title: "Explorar", tabBarButtonTestID: "tab-explore", tabBarIcon: icon("explore") }} />
+      <Tabs.Screen name="cards" options={{ title: "Mis Tarjetas", tabBarButtonTestID: "tab-cards", tabBarIcon: icon("cards") }} />
+      <Tabs.Screen name="profile" options={{ title: "Perfil", tabBarButtonTestID: "tab-profile", tabBarIcon: icon("profile") }} />
     </Tabs>
   );
 }

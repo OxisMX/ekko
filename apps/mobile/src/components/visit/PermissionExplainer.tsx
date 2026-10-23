@@ -68,8 +68,8 @@ export function PermissionExplainer({ variant, onPrimary, onSecondary, testID }:
         </Text>
       </View>
       <View style={{ alignSelf: "stretch", gap: spacing.md, marginTop: spacing.sm }}>
-        <Button title={primary} onPress={onPrimary} fullWidth />
-        <Button title={secondary} onPress={onSecondary} variant="secondary" fullWidth />
+        <Button title={primary} onPress={onPrimary} fullWidth testID={testID && `${testID}-primary`} />
+        <Button title={secondary} onPress={onSecondary} variant="secondary" fullWidth testID={testID && `${testID}-secondary`} />
       </View>
     </View>
   );

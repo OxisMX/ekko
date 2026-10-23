@@ -73,7 +73,7 @@ Requisitos que el desarrollo debe cumplir para que el plan sea ejecutable:
 | ID | Requisito | Afecta a |
 |---|---|---|
 | RQ-1 | **Reloj controlable:** todas las funciones usan `app.now()` en lugar de `now()`. En entornos local y de prueba, `app.now()` respeta el ajuste de sesión `app.fake_now`; en staging y producción la función ignora ese ajuste. Permite probar vencimientos de 60 s, 48 h, 30 días, 6 meses, cambios de día y de mes sin esperar. | Backend (sección 3) |
-| RQ-2 | **Aleatoriedad controlable en pruebas:** la ruleta y los códigos aceptan una semilla solo en el entorno local, para pruebas deterministas de selección ponderada y colisión de códigos. | Backend |
+| RQ-2 | **Aleatoriedad controlable en pruebas:** los códigos de cupón aceptan una lista fija (`app.fake_codes`) solo en una sesión SQL directa (local/pgTAP), para probar la colisión de códigos. La ruleta **no** acepta semilla (desviación S14): su sorteo usa rechazo de sesgo sobre `gen_random_bytes` y se verifica por revisión de código y el script de distribución TC-095 (manual); no se justificó duplicar `spin_wheel` solo para inyectar bytes. | Backend |
 | RQ-3 | **Identificadores de prueba:** atributos `testID` (app) y `data-testid` (panel) en todos los elementos interactivos de los flujos críticos. | App, panel |
 | RQ-4 | **Datos semilla deterministas:** `seed.sql` crea comercios, clientes y estados conocidos (sección 4.2). | Backend |
 | RQ-5 | **Servicios externos simulados:** Expo Push, SMTP y API de Apple se reemplazan por dobles en las pruebas de integración. | Edge Functions |
@@ -440,3 +440,57 @@ Se ejecuta en staging antes de cada release y en producción tras cada despliegu
 | Prueba de humo | Rotativo | Rotativo | Rotativo | Rotativo | Aprueba |
 | UAT | Apoyo | Apoyo | Apoyo | Apoyo | Responsable |
 | Aprobación de release | — | — | — | Aprueba | Aprueba |
+
+---
+
+## 13. Anexo: matriz de cobertura (S14)
+
+Archivos en `supabase/tests/` (pgTAP salvo indicación): 04 `04_auth`, 06 `06_customer_account`, 07 `07_catalog`, 08 `08_merchant_detail`, 09 `09_visit_qr`, 10 `10_claim_visit`, 12 `12_card_rules`, 13 `13_redemption`, 14 `14_wheel`, 15 `15_admin_unlock`, 16 `16_card_config`, 17 `17_storage`, 18 `18_birthday`, 20 `20_menu`, 21 `21_offers_push`, 22 `22_metrics_delete`, 03 `03_app_functions`, 02 `02_schema`, 00 `00_inventory`, 23 `23_security_audit`, 24 `24_qa_gaps`, C = `concurrency/*.sh`. "app"/"panel" = pruebas de componentes/E2E de esas apps; "manual" = dispositivo real o servicio externo.
+
+| Casos | Cobertura |
+|---|---|
+| TC-001, 010, 015 | 04 (el correo de verificación: manual) |
+| TC-002, 003, 007 | 06 |
+| TC-004, 009, 011 | panel / app (E2E) |
+| TC-005, 006, 014, 028, 056, 148, 161, 172 | manual |
+| TC-008 | 06, 11 (E-19) + app |
+| TC-012 | 04 (disparador OTP) + manual (vencido/reutilizado) |
+| TC-013, 170, 190, 191, 192 | integración de Edge Functions (`scripts/*.test.ts`) / manual |
+| TC-020 a 023, 024 a 027, 029 | 07, 08 |
+| TC-040 a 043, 045 a 050, 057, 070, 074, 098, 099 | 09, 10 |
+| TC-044 | C (`tc044_claim_visit.sh`) |
+| TC-051, 071, 078, 123, 182 | app (componentes/E2E) |
+| TC-052 | 10 |
+| TC-053, 054, 146, 147, 100, 194 | panel / app (E2E) |
+| TC-055, 201 | 07, 09 (el comercio solo ve sus tokens) |
+| TC-072, 119 | 13 |
+| TC-073, 075, 076, 079 | 08, 12 |
+| TC-077 | 16 |
+| TC-090 a 094, 096 | 14 |
+| TC-095 | manual (distribución de 10,000 giros: no automatizable en pgTAP, un giro por cuenta; ver RQ-2) |
+| TC-097, 200, 202 | 24, 23 |
+| TC-110, 195 | 03 |
+| TC-111 | 24 (con `app.fake_codes`) |
+| TC-112 a 118 | 13 |
+| TC-114, 203 a 207 | 13, 14, 00, 23 |
+| TC-120 | 24 + C (`tc120_confirm_redemption.sh`) |
+| TC-121, 181 | 24 |
+| TC-122 | 10 (30 días), 14 (48 h), 21 (24/48 h), 18 (fin de mes) |
+| TC-124 | manual (sello y canje son RPC independientes; sin dependencia entre ellos) |
+| TC-130 a 133, 135 | 18 |
+| TC-131, 134 | 18, 24 |
+| TC-140 a 145 | 15 |
+| TC-160 | app/panel (pruebas unitarias de imagen) |
+| TC-162, 163 | 16, 17 |
+| TC-164, 165 | 20 |
+| TC-166 a 169, 171 | 21, 22 |
+| TC-173, 174, 184, 193 | 22 |
+| TC-180 | 09, 16, 20, 21, 24 |
+| TC-183 | 24 |
+| TC-208, 209 | CI / `pnpm audit` |
+| TC-210 | manual |
+| NF-01 a 05, 10 a 12 | medición manual / k6 / Lighthouse (no ejecutadas aún) |
+
+Cambios y hallazgos de S14:
+- TC-180: `unlock_admin` se permite con comercio inactivo por diseño (el validador sigue disponible, backend §4.5); las RPC de escritura sí rechazan con E-05. El caso se lee así: "generar QR, enviar push y editar menú rechazados con E-05; el desbloqueo de PIN se permite".
+- TC-120: defecto Alta corregido en `s14_hardening`; el reintento idempotente de `confirm_redemption` ahora exige la misma sesión de Auth, otra tableta recibe E-11.

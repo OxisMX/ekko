@@ -23,6 +23,12 @@ describe("VisitResult", () => {
     expect(onSecondary).toHaveBeenCalledTimes(1);
   });
 
+  it("gives both actions stable testIDs (RQ-3)", async () => {
+    await render(<VisitResult kind="offline" onPrimary={jest.fn()} onSecondary={jest.fn()} secondaryLabel="Cerrar" testID="visit-result" />);
+    expect(screen.getByTestId("visit-result-primary")).toBeOnTheScreen();
+    expect(screen.getByTestId("visit-result-secondary")).toBeOnTheScreen();
+  });
+
   it("omits the extra badge for a single stamp", async () => {
     await render(<VisitResult kind="stamped" stampsCount={1} stampsRequired={8} stampsAdded={1} onPrimary={jest.fn()} />);
     expect(screen.queryByTestId("visit-result-extra")).toBeNull();

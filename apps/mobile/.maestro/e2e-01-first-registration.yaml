@@ -1,0 +1,46 @@
+# UNVERIFIED: written against the testIDs but never run — Maestro/Java and a dev build do not exist yet (DEP-09).
+# Docs: README.md (env vars, QR tokens). testID scheme: src/components/ui/index.ts.
+# E2E-01 Primer registro en caja: register by email -> scan the cashier QR -> stamp -> card in Mis Tarjetas.
+# Cashier QR comes from the panel (Playwright side) or scripts/dev-visit-qr.sh; pass it as QR_TOKEN.
+appId: mx.oxis.ekko.dev
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: login-register
+- tapOn:
+    id: register-first-name
+- inputText: Ana
+- tapOn:
+    id: register-last-name
+- inputText: Prueba
+- tapOn:
+    id: register-email
+- inputText: ${NEW_EMAIL}
+- tapOn:
+    id: register-password
+- inputText: ${PASSWORD}
+# TODO(unverified): the birth date opens a native picker; pick any date >= 18 years ago on the first real run.
+- tapOn:
+    id: register-birth-date
+- tapOn: Listo
+- tapOn:
+    id: register-privacy
+- tapOn:
+    id: register-submit
+- extendedWaitUntil:
+    visible:
+      id: tab-explore
+    timeout: 20000
+- runFlow:
+    file: _scan.yaml
+    env:
+      SCAN_TOKEN: ${QR_TOKEN}
+- assertVisible:
+    id: visit-result
+- tapOn:
+    id: visit-result-primary
+- tapOn:
+    id: tab-cards
+- assertVisible:
+    id: "my-card-.*"

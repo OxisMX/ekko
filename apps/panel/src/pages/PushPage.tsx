@@ -1,6 +1,7 @@
 import { ERRORS } from '@ekko/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
+import { ModalDialog } from '../components/ModalDialog'
 import { AlertIcon, BellIcon, CheckCircleIcon } from '../components/Icons'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { describeMenuError, useMenuFailure } from '../lib/menu'
@@ -61,7 +62,7 @@ function Preview({ form }: { form: PushForm }) {
       </div>
       {form.withCoupon && (
         <div className="rounded-2xl border-2 border-dashed border-accent bg-surface p-4" data-testid="coupon-preview">
-          <p className="text-xs font-semibold tracking-wide text-accent uppercase">Cupón</p>
+          <p className="text-xs font-semibold tracking-wide text-navy uppercase">Cupón</p>
           <p className="mt-1 text-lg font-bold break-words">{form.couponTitle || 'Beneficio del cupón'}</p>
           {form.couponDescription && <p className="text-sm break-words">{form.couponDescription}</p>}
           {form.couponTerms && <p className="mt-2 text-xs break-words text-text-secondary">{form.couponTerms}</p>}
@@ -281,17 +282,15 @@ export function PushPage() {
       </section>
 
       {pendingBody && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="confirm-push-title" className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-surface p-6">
-            <h2 id="confirm-push-title" className="text-xl font-semibold">¿Enviar esta notificación?</h2>
-            <p>Se enviará a {recipients_count} clientes. Te quedarán {remaining - 1} de {limit}.</p>
-            {pendingBody.coupon && <p>Cada cliente recibirá el cupón aunque tenga las notificaciones desactivadas.</p>}
-            <div className="flex flex-wrap justify-end gap-3">
-              <button type="button" disabled={sending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setPendingBody(null)}>Cancelar</button>
-              <button type="button" disabled={sending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void send(pendingBody)}>{sending ? 'Enviando…' : 'Enviar ahora'}</button>
-            </div>
+        <ModalDialog labelledBy="confirm-push-title" onClose={() => !sending && setPendingBody(null)}>
+          <h2 id="confirm-push-title" className="text-xl font-semibold">¿Enviar esta notificación?</h2>
+          <p>Se enviará a {recipients_count} clientes. Te quedarán {remaining - 1} de {limit}.</p>
+          {pendingBody.coupon && <p>Cada cliente recibirá el cupón aunque tenga las notificaciones desactivadas.</p>}
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" disabled={sending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setPendingBody(null)}>Cancelar</button>
+            <button type="button" disabled={sending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void send(pendingBody)}>{sending ? 'Enviando…' : 'Enviar ahora'}</button>
           </div>
-        </div>
+        </ModalDialog>
       )}
     </section>
   )

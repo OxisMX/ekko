@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useReduceMotion } from "../useReduceMotion";
 import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
 export const TOAST_DURATION_MS = 5000;
@@ -20,13 +21,17 @@ export type ToastProps = {
 // stealing focus; the whole card and the explicit action both open the destination.
 export function Toast({ title, message, actionLabel, onAction, onDismiss, durationMs = TOAST_DURATION_MS, testID }: ToastProps) {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    // WHY: §9 — with reduce motion the toast appears without the fade; null = setting not known yet.
+    if (reduceMotion === null) return;
+    if (reduceMotion) opacity.setValue(1);
+    else Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
     const timer = setTimeout(onDismiss, durationMs);
     return () => clearTimeout(timer);
-  }, [opacity, onDismiss, durationMs]);
+  }, [opacity, onDismiss, durationMs, reduceMotion]);
 
   const open = () => {
     onAction();

@@ -216,6 +216,7 @@ La mayoría de edad (18+) se valida en `complete_profile` con `app.now()`, no co
 | `issued_at` | timestamptz | NOT NULL | — |
 | `expires_at` | timestamptz | NOT NULL | Según tabla de vigencias (PRD 6.6). |
 | `redeemed_at` | timestamptz | nullable | — |
+| `redeemed_by_session_id` | uuid | nullable | `session_id` del JWT del comercio que canjeó (S14); acota el reintento idempotente de `confirm_redemption`. |
 
 Índices únicos:
 - `(merchant_id, code)` — un código no se repite dentro del comercio en toda su historia (31^6 ≈ 887 millones de combinaciones; ante colisión se regenera).
@@ -328,7 +329,7 @@ Restricción: `CHECK` que exige la columna de origen correspondiente a `source`.
 | `app.require_admin_session()` | void | Verifica y extiende 5 min la sesión administrativa del `session_id` actual; si no existe o venció, lanza E-16. |
 | `app.is_email_verified(customer)` | boolean | `auth_provider IN ('google','apple') OR email_verified_at IS NOT NULL`. |
 | `app.peppered_hash(text)` | bytea | SHA-256 de `valor || pimienta`; la pimienta se lee de Supabase Vault. |
-| `app.random_code()` | char(6) | Código con `gen_random_bytes` sobre el alfabeto de 31 símbolos. |
+| `app.random_code()` | char(6) | Código con `gen_random_bytes` sobre el alfabeto de 31 símbolos. Solo local/pruebas (RQ-2): si `app.fake_codes` (lista separada por comas) está fijado, devuelve sus entradas en orden (índice en la secuencia `app.fake_code_seq`, que no revierte con subtransacciones) y luego vuelve a ser aleatorio. Como `app.fake_now`, no se puede fijar vía PostgREST. |
 | `app.raise(code text, detail jsonb)` | void | Lanza `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = code, DETAIL = detail::text`. |
 | `app.roll_cycle(customer_id, merchant_id)` | `card_cycles` | Bloquea el ciclo activo (`FOR UPDATE`); si venció (`expires_at <= app.now()`) lo cierra como `expired` y abre uno nuevo con la configuración vigente; si no existe, lo crea. Concurrencia: el índice único parcial rechaza el segundo ciclo activo; ante `unique_violation` relee y devuelve el del ganador (verificado con dos sesiones simultáneas). Migración `card_cycle` (S4). |
 | `app.wheel_status(customer, merchant)` | text | Estado de la ruleta para un cliente CON relación: `spun` → `unavailable` (comercio inactivo o sin premios activos) → `needs_verification` → `available`. Migración `merchant_detail_rpc` (S4). |
@@ -665,9 +666,9 @@ Retorna en éxito (`"ok": true` más):
 |---|---|
 | `p_coupon_id` | uuid |
 
-Reglas: bloquea el cupón; valida comercio, vigencia y estado. Marca `redeemed`. Idempotente si ya fue canjeado por este mismo comercio en los últimos 60 s.
+Reglas: bloquea el cupón; valida comercio, vigencia y estado. Marca `redeemed`. Idempotente si ya fue canjeado por este mismo comercio y la misma sesión de Auth (misma tableta) en los últimos 60 s; otra tableta recibe E-11 (TC-120, S14).
 Retorna: `{ "redeemed_at": "..." }`.
-Notas S7: cupón inexistente o de otro comercio: E-12; ya canjeado por este comercio hace menos de 60 s: mismo `redeemed_at`; si no, E-11; vencido: E-10. Permitido con comercio inactivo (RN-71). Orden de errores en `reveal_coupon_code`: E-12, E-06, E-11, E-10.
+Notas S7: cupón inexistente o de otro comercio: E-12; ya canjeado por este comercio y esta sesión hace menos de 60 s: mismo `redeemed_at`; si no, E-11; vencido: E-10. Permitido con comercio inactivo (RN-71). Orden de errores en `reveal_coupon_code`: E-12, E-06, E-11, E-10.
 
 ### 4.5 Comercio — administración (requieren sesión administrativa)
 
@@ -870,6 +871,13 @@ Notas S3 (migración `catalog_rls`, parte de catálogo de la 013):
 - Se revocan todos los privilegios de `anon` sobre esas cinco tablas (denegación explícita). Los privilegios por columna llegan con las tablas de su sprint.
 
 Notas S4 (migración `merchant_detail_rpc`): política `visit_qr_tokens_select` (comercio dueño: `merchant_id` de un comercio con `auth_user_id = auth.uid()`). Se revoca todo a `anon` y `authenticated` y se concede `SELECT` solo sobre `id, merchant_id, created_at, expires_at, used_at, invalidated_at`: `token_hash` y `used_by_customer_id` no son legibles.
+
+Notas S14 (migración `s14_hardening`, auditoría en `supabase/tests/23_security_audit.test.sql`):
+- Las tablas transaccionales (`customers`, `customer_devices`, `customer_merchants`, `card_cycles`, `stamps`, `coupons`, `wheel_spins`, `push_campaigns`) no tienen políticas y tampoco privilegios: se revocó todo a `anon` y `authenticated` (Supabase concede `ALL` por defecto), de modo que el acceso es solo por RPC y una política futura mal escrita no expone `coupons.code` ni los hashes. Las filas "Cliente: sus filas" de la tabla de arriba se sirven por RPC, no por consulta directa.
+- Catálogo (`merchants`, `loyalty_programs`, `menu_categories`, `products`, `weekly_offers`): `authenticated` solo tiene `SELECT`; en `merchants` por columnas, sin `subscription_status`, `billing_period` ni `paid_until` (RN-70).
+- Los privilegios por defecto de `public` ya no conceden tablas a `anon`/`authenticated` ni `EXECUTE` a `PUBLIC`/`anon` en funciones nuevas; cada migración concede lo que necesita.
+- Tablas de `private`: RLS habilitado (segundo candado; el propietario y `service_role` lo omiten).
+- `unlock_admin` se permite con comercio inactivo (decisión de diseño de S6, el validador sigue disponible); toda RPC de escritura rechaza con E-05. TC-180 se ajustó a esto.
 
 ### 6.3 Verificación de correo
 

@@ -108,6 +108,7 @@ function DevTokenPaste({ onSubmit, bottom }: { onSubmit: (value: string) => void
       <Pressable
         onPress={() => (open && value ? onSubmit(value) : setOpen(true))}
         accessibilityRole="button"
+        accessibilityLabel={open ? "Usar token" : "Pegar token"}
         hitSlop={8}
         testID="scan-dev-paste"
         style={{ alignSelf: "center", minHeight: 44, justifyContent: "center" }}

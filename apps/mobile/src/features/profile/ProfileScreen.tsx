@@ -64,11 +64,11 @@ export function ProfileScreen() {
 function Header({ name, email, initials }: { name: string; email: string | null; initials: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-      <View accessibilityElementsHidden style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" }}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" }}>
         <Text style={[textStyles.h2, { color: colors.surface }]}>{initials}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]} testID="profile-name">
+        <Text accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]} testID="profile-name">
           {name}
         </Text>
         {email ? (
@@ -121,6 +121,7 @@ function HistoryRow() {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel="Historial de canjes"
       onPress={() => router.push("/redemptions")}
       testID="profile-history"
       style={{ minHeight: 48, justifyContent: "center", backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingHorizontal: spacing.lg }}

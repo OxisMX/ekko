@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   reporter: 'list',
+  // WHY: all specs share the seeded merchants (c1) and generate_visit_qr invalidates c1's previous QR,
+  // so files running in parallel would cancel each other's QR.
+  workers: 1,
   use: { baseURL: 'http://localhost:5173' },
   webServer: {
     command: 'pnpm exec vite --port 5173 --strictPort',

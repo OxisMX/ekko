@@ -84,7 +84,7 @@ select throws_ok($$ select public.lookup_redemption('2AAAAA') $$, 'P0001', 'E-19
 select throws_ok($$ select public.confirm_redemption(null) $$, 'P0001', 'E-19', 'customer cannot confirm_redemption');
 
 -- RLS: the code is not readable by tables (only through reveal_coupon_code)
-select is((select count(*)::int from public.coupons), 0, 'authenticated reads no coupon rows directly');
+select throws_ok($$ select count(*) from public.coupons $$, '42501', null, 'authenticated has no table privileges on coupons (S14)');
 
 -- list_my_coupons
 select pg_temp.login('10000000-0000-0000-0000-0000000000a2');
