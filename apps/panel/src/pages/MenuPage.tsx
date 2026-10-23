@@ -1,39 +1,78 @@
 import { merchantImageUrl } from '@ekko/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { ModalDialog } from '../components/ModalDialog'
-import { AlertIcon, CheckCircleIcon, MenuBookIcon } from '../components/Icons'
+import { AlertIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, MenuBookIcon, MoreHorizontalIcon } from '../components/Icons'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { categoryNameSchema, formatPrice, MENU_LIMITS, MENU_QUERY_KEY, type MenuCategory, type MenuProduct, toMenu, useMenuFailure } from '../lib/menu'
 import { supabase } from '../lib/supabase'
+import { btnDanger, btnPrimary, btnSecondary, btnSmall, input, Switch } from '../components/ui'
 
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
-const outlineButton = `${buttonClass} border border-black/15 hover:bg-surface-muted`
-const smallButton = 'min-h-10 rounded-lg px-3 text-sm font-semibold transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40'
-const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
-
-function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-navy' : 'bg-black/30'}`}
-      >
-        <span className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : ''}`} />
-      </button>
-      <span aria-hidden="true">{label.split(':')[0]}</span>
-    </label>
-  )
-}
 
 function Thumbnail({ path }: { path: string | null }) {
   if (!path) return <div aria-hidden="true" className="grid size-16 shrink-0 place-items-center rounded-xl bg-surface-muted text-text-secondary"><MenuBookIcon className="size-6" /></div>
   return <img src={merchantImageUrl(import.meta.env.VITE_SUPABASE_URL ?? '', path, 'product', 1)} alt="" className="size-16 shrink-0 rounded-xl bg-surface-muted object-cover" />
+}
+
+// WHY min-h-12: touch targets of 48 px on the tablet at the counter (P-33).
+const rowAction = btnSmall.replace('min-h-10', 'min-h-12')
+
+type RowMenuItem = { label: string; ariaLabel: string; icon?: React.ReactNode; disabled?: boolean; danger?: boolean; onSelect: () => void }
+
+// Disclosure menu (button + list): Escape or an outside click closes it and focus returns to the trigger.
+function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false)
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [open])
+
+  return (
+    <div
+      ref={root}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return
+        e.stopPropagation()
+        setOpen(false)
+        trigger.current?.focus()
+      }}
+      onBlur={(e) => !root.current?.contains(e.relatedTarget as Node | null) && e.relatedTarget && setOpen(false)}
+    >
+      <button ref={trigger} type="button" aria-expanded={open} aria-label={label} className={`${rowAction} grid place-items-center`} onClick={() => setOpen(!open)}>
+        <MoreHorizontalIcon className="size-5" />
+      </button>
+      {open && (
+        <ul className="absolute right-0 z-20 mt-1 flex min-w-40 flex-col rounded-card border border-black/10 bg-surface p-1 shadow-lg">
+          {items.map((item) => (
+            <li key={item.ariaLabel}>
+              <button
+                type="button"
+                disabled={item.disabled}
+                aria-label={item.ariaLabel}
+                className={`flex min-h-12 w-full items-center gap-2 rounded-field px-3 text-left font-semibold hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 ${item.danger ? 'text-error' : ''}`}
+                // WHY focus the trigger first: the item unmounts with the menu, and a dialog opened by the action restores focus to whatever was active.
+                onClick={() => {
+                  trigger.current?.focus()
+                  setOpen(false)
+                  item.onSelect()
+                }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 type Confirm = { kind: 'product' | 'category'; id: string; name: string; error?: string }
@@ -49,6 +88,7 @@ export function MenuPage() {
   const [newCategory, setNewCategory] = useState('')
   const [newCategoryError, setNewCategoryError] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
 
   const menu = useQuery({
@@ -141,7 +181,7 @@ export function MenuPage() {
   if (menu.isPending)
     return (
       <section aria-labelledby="menu-title" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <h1 id="menu-title" className="text-2xl font-bold">Menú</h1>
+        <h1 id="menu-title" className="text-h1 font-bold">Menú</h1>
         <div role="status" aria-label="Cargando el menú" className="flex animate-pulse flex-col gap-4">
           {[0, 1].map((i) => (
             <div key={i} className="h-40 rounded-2xl bg-surface" />
@@ -153,7 +193,7 @@ export function MenuPage() {
     return (
       <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
         <p className="font-semibold">{failure(menu.error).message}</p>
-        <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void menu.refetch()}>
+        <button type="button" className={btnPrimary} onClick={() => void menu.refetch()}>
           Reintentar
         </button>
       </div>
@@ -164,12 +204,12 @@ export function MenuPage() {
   return (
     <section aria-labelledby="menu-title" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id="menu-title" className="text-2xl font-bold">Menú</h1>
+        <h1 id="menu-title" className="text-h1 font-bold">Menú</h1>
         {categories.length > 0 ? (
-          <Link to="nuevo" className={`${buttonClass} flex items-center bg-navy text-white hover:bg-brand`}>Nuevo producto</Link>
+          <Link to="nuevo" className={`${btnPrimary} flex items-center`}>Nuevo producto</Link>
         ) : (
           <div className="flex flex-col items-end gap-1">
-            <button type="button" disabled aria-describedby="new-product-hint" className={`${buttonClass} bg-navy text-white`}>Nuevo producto</button>
+            <button type="button" disabled aria-describedby="new-product-hint" className={btnPrimary}>Nuevo producto</button>
             <p id="new-product-hint" className="text-sm text-text-secondary">Crea una categoría primero.</p>
           </div>
         )}
@@ -191,8 +231,8 @@ export function MenuPage() {
       <form className="flex flex-col gap-1.5 rounded-2xl bg-surface p-4" onSubmit={(e) => { e.preventDefault(); void addCategory() }}>
         <label htmlFor="new-category" className="font-semibold">Nueva categoría</label>
         <div className="flex flex-wrap gap-3">
-          <input id="new-category" className={`${inputClass} min-w-0 flex-1`} value={newCategory} maxLength={MENU_LIMITS.categoryName + 10} placeholder="Ej. Bebidas calientes" aria-invalid={!!newCategoryError} onChange={(e) => setNewCategory(e.target.value)} />
-          <button type="submit" disabled={busy} className={`${buttonClass} bg-navy text-white hover:bg-brand`}>Agregar categoría</button>
+          <input id="new-category" className={`${input} min-w-0 flex-1`} value={newCategory} maxLength={MENU_LIMITS.categoryName + 10} placeholder="Ej. Bebidas calientes" aria-invalid={!!newCategoryError} onChange={(e) => setNewCategory(e.target.value)} />
+          <button type="submit" disabled={busy} className={btnPrimary}>Agregar categoría</button>
         </div>
         {newCategoryError && <p role="alert" className="text-sm font-medium text-error">{newCategoryError}</p>}
       </form>
@@ -212,18 +252,19 @@ export function MenuPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               {renaming?.id === category.id ? (
                 <form className="flex min-w-0 flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); void renameCategory() }}>
-                  <input aria-label="Nombre de la categoría" autoFocus className={inputClass} value={renaming.name} onChange={(e) => setRenaming({ id: category.id, name: e.target.value })} />
-                  <button type="submit" disabled={busy} className={`${buttonClass} bg-navy text-white`}>Guardar</button>
-                  <button type="button" className={outlineButton} onClick={() => setRenaming(null)}>Cancelar</button>
+                  <input aria-label="Nombre de la categoría" autoFocus className={input} value={renaming.name} onChange={(e) => setRenaming({ id: category.id, name: e.target.value })} />
+                  <button type="submit" disabled={busy} className={btnPrimary}>Guardar</button>
+                  <button type="button" className={btnSecondary} onClick={() => setRenaming(null)}>Cancelar</button>
                 </form>
               ) : (
                 <>
                   <h2 className="text-lg font-semibold">{category.name}</h2>
                   <div className="flex flex-wrap gap-1">
-                    <button type="button" className={smallButton} disabled={busy || ci === 0} aria-label={`Subir categoría ${category.name}`} onClick={() => void swap(categories, ci, -1, (c, position) => saveCategory(c.id, c.name, position))}>↑</button>
-                    <button type="button" className={smallButton} disabled={busy || ci === categories.length - 1} aria-label={`Bajar categoría ${category.name}`} onClick={() => void swap(categories, ci, 1, (c, position) => saveCategory(c.id, c.name, position))}>↓</button>
-                    <button type="button" className={smallButton} aria-label={`Renombrar categoría ${category.name}`} onClick={() => setRenaming({ id: category.id, name: category.name })}>Renombrar</button>
-                    <button type="button" className={`${smallButton} text-error`} aria-label={`Eliminar categoría ${category.name}`} onClick={() => setConfirm({ kind: 'category', id: category.id, name: category.name })}>Eliminar</button>
+                    <Link to={`nuevo?categoria=${category.id}`} className={`${btnSmall} flex items-center`} aria-label={`Agregar producto en ${category.name}`}>Agregar producto</Link>
+                    <button type="button" className={btnSmall} disabled={busy || ci === 0} aria-label={`Subir categoría ${category.name}`} onClick={() => void swap(categories, ci, -1, (c, position) => saveCategory(c.id, c.name, position))}><ChevronUpIcon className="size-5" /></button>
+                    <button type="button" className={btnSmall} disabled={busy || ci === categories.length - 1} aria-label={`Bajar categoría ${category.name}`} onClick={() => void swap(categories, ci, 1, (c, position) => saveCategory(c.id, c.name, position))}><ChevronDownIcon className="size-5" /></button>
+                    <button type="button" className={btnSmall} aria-label={`Renombrar categoría ${category.name}`} onClick={() => setRenaming({ id: category.id, name: category.name })}>Renombrar</button>
+                    <button type="button" className={`${btnSmall} text-error`} aria-label={`Eliminar categoría ${category.name}`} onClick={() => setConfirm({ kind: 'category', id: category.id, name: category.name })}>Eliminar</button>
                   </div>
                 </>
               )}
@@ -236,20 +277,28 @@ export function MenuPage() {
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <Thumbnail path={product.image_path} />
                     <div className="min-w-0">
-                      <p className="font-semibold">{product.name}</p>
+                      <p className="flex flex-wrap items-center gap-2 font-semibold">
+                        {product.name}
+                        {product.is_sold_out && <span className="rounded-full border border-text-primary px-2 py-0.5 text-xs font-semibold">Agotado</span>}
+                      </p>
                       <p className="font-mono text-sm">{formatPrice(product.price)}</p>
                       {product.description && <p className="truncate text-sm text-text-secondary">{product.description}</p>}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <Switch label={`Agotado por hoy: ${product.name}`} checked={product.is_sold_out} onChange={(v) => void setFlags(product, { is_sold_out: v })} />
-                    <Switch label={`Más pedidos: ${product.name}`} checked={product.is_featured} onChange={(v) => void setFlags(product, { is_featured: v })} />
+                    <Switch label={`Agotado por hoy: ${product.name}`} text="Agotado por hoy" checked={product.is_sold_out} onChange={(v) => void setFlags(product, { is_sold_out: v })} />
+                    <Switch label={`Más pedidos: ${product.name}`} text="Más pedidos" checked={product.is_featured} onChange={(v) => void setFlags(product, { is_featured: v })} />
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    <button type="button" className={smallButton} disabled={busy || pi === 0} aria-label={`Subir ${product.name}`} onClick={() => void swap(products, pi, -1, saveProductPosition)}>↑</button>
-                    <button type="button" className={smallButton} disabled={busy || pi === products.length - 1} aria-label={`Bajar ${product.name}`} onClick={() => void swap(products, pi, 1, saveProductPosition)}>↓</button>
-                    <Link to={product.id} className={`${smallButton} flex items-center`} aria-label={`Editar ${product.name}`}>Editar</Link>
-                    <button type="button" className={`${smallButton} text-error`} aria-label={`Eliminar ${product.name}`} onClick={() => setConfirm({ kind: 'product', id: product.id, name: product.name })}>Eliminar</button>
+                  <div className="flex items-center gap-1">
+                    <Link to={product.id} className={`${rowAction} flex items-center`} aria-label={`Editar ${product.name}`}>Editar</Link>
+                    <RowMenu
+                      label={`Más acciones de ${product.name}`}
+                      items={[
+                        { label: 'Subir', ariaLabel: `Subir ${product.name}`, icon: <ChevronUpIcon className="size-5" />, disabled: busy || pi === 0, onSelect: () => void swap(products, pi, -1, saveProductPosition) },
+                        { label: 'Bajar', ariaLabel: `Bajar ${product.name}`, icon: <ChevronDownIcon className="size-5" />, disabled: busy || pi === products.length - 1, onSelect: () => void swap(products, pi, 1, saveProductPosition) },
+                        { label: 'Eliminar', ariaLabel: `Eliminar ${product.name}`, danger: true, onSelect: () => setConfirm({ kind: 'product', id: product.id, name: product.name }) },
+                      ]}
+                    />
                   </div>
                 </li>
               ))}
@@ -259,8 +308,8 @@ export function MenuPage() {
       })}
 
       {confirm && (
-        <ModalDialog labelledBy="delete-title" onClose={() => !busy && setConfirm(null)}>
-          <h2 id="delete-title" className="text-xl font-semibold">{confirm.kind === 'product' ? '¿Eliminar este producto?' : '¿Eliminar esta categoría?'}</h2>
+        <ModalDialog labelledBy="delete-title" onClose={() => !busy && setConfirm(null)} initialFocusRef={cancelRef}>
+          <h2 id="delete-title" className="text-h2 font-semibold">{confirm.kind === 'product' ? '¿Eliminar este producto?' : '¿Eliminar esta categoría?'}</h2>
           <p>
             <strong>{confirm.name}</strong> se eliminará del menú que ven tus clientes. Esta acción no se puede deshacer.
           </p>
@@ -271,8 +320,8 @@ export function MenuPage() {
             </p>
           )}
           <div className="flex flex-wrap justify-end gap-3">
-            <button type="button" disabled={busy} className={outlineButton} onClick={() => setConfirm(null)}>Cancelar</button>
-            <button type="button" disabled={busy} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void confirmDelete()}>{busy ? 'Eliminando…' : 'Eliminar'}</button>
+            <button ref={cancelRef} type="button" disabled={busy} className={btnSecondary} onClick={() => setConfirm(null)}>Cancelar</button>
+            <button type="button" disabled={busy} className={btnDanger} onClick={() => void confirmDelete()}>{busy ? 'Eliminando…' : 'Eliminar'}</button>
           </div>
         </ModalDialog>
       )}

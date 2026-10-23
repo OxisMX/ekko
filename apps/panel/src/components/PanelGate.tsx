@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { AlertIcon } from './Icons'
 import { PanelSkeleton } from './PanelSkeleton'
 import type { PanelOutletContext } from './panelOutlet'
+import { btnPrimary, btnSmall } from './ui'
 
 // Route guard for every signed-in screen (F-20, F-28).
 export function PanelGate() {
@@ -49,22 +50,22 @@ function SessionError({ code, retrying, onRetry }: { code: ErrorCode; retrying: 
   const { signOut } = useAuth()
   return (
     <main className="grid min-h-dvh place-items-center p-6">
-      <div role="alert" className="flex w-full max-w-md flex-col items-center rounded-2xl bg-surface p-8 text-center">
+      <div role="alert" className="flex w-full max-w-md flex-col items-center rounded-sheet bg-surface p-8 text-center">
         <AlertIcon className="size-10 text-error" />
-        <h1 className="mt-4 text-xl font-semibold">{ERRORS[code].message}</h1>
+        <h1 className="mt-4 text-h2 font-semibold">{ERRORS[code].message}</h1>
         <p className="mt-2 text-sm text-text-secondary">No pudimos cargar los datos de tu negocio.</p>
         <button
           type="button"
           onClick={onRetry}
           disabled={retrying}
-          className="mt-6 h-14 w-full rounded-xl bg-brand text-lg font-semibold text-white transition-colors hover:bg-navy disabled:cursor-wait disabled:opacity-70"
+          className={`${btnPrimary} mt-6 h-14 w-full text-lg disabled:cursor-wait`}
         >
           {retrying ? 'Reintentando…' : 'Reintentar'}
         </button>
         <button
           type="button"
           onClick={() => void signOut()}
-          className="mt-3 h-12 w-full rounded-xl font-semibold text-text-primary hover:bg-surface-muted"
+          className={`${btnSmall} mt-3 h-12 w-full text-base`}
         >
           Cerrar sesión
         </button>

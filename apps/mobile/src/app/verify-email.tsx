@@ -2,9 +2,12 @@ import { ERRORS, type ErrorCode } from "@ekko/shared";
 import { isAuthApiError } from "@supabase/supabase-js";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { Text, View } from "react-native";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth";
+import { Check } from "../components/icons";
+import { Entrance } from "../components/motion";
 import { Button, CodeField, FormMessage } from "../components/ui";
 import { useMyProfile, useVerifyEmailCode } from "../features/auth/account";
 import {
@@ -16,8 +19,11 @@ import {
 import { TextLink } from "../features/auth/TextLink";
 import { toAppError } from "../lib/appError";
 import { useCooldown } from "../lib/cooldown";
+import * as haptics from "../lib/haptics";
+import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../theme";
 
 const WRONG_CODE = "Código incorrecto o vencido";
+const CODE_LENGTH = 6;
 const LEAVE_AFTER_MS = 1500; // Long enough to read "Correo verificado" (brief §5.5 toast).
 
 // A-05 Verifica tu correo (F-02 K→L, F-04, ADR-14).
@@ -38,6 +44,7 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     if (!verify.isSuccess) return;
+    haptics.success();
     const timer = setTimeout(leave, LEAVE_AFTER_MS);
     return () => clearTimeout(timer);
   }, [verify.isSuccess, leave]);
@@ -101,7 +108,7 @@ export default function VerifyEmailScreen() {
         autoFocus
         testID="verify-email-code"
       />
-      {verify.isSuccess ? <FormMessage variant="success" message="Correo verificado" testID="verify-email-success" /> : null}
+      {verify.isSuccess ? <VerifiedCelebration /> : null}
       {formError ? (
         <FormMessage
           variant="error"
@@ -112,16 +119,48 @@ export default function VerifyEmailScreen() {
         />
       ) : null}
       {verify.isSuccess ? null : (
-        <Button
-          title={resendTitle}
-          variant="secondary"
-          onPress={resend}
-          loading={sending}
-          disabled={cooldown.secondsLeft > 0 || verify.isPending || !email}
-          fullWidth
-          testID="verify-email-resend"
-        />
+        <>
+          {/* A-14: once a code was sent the main action is "Verificar"; resending is secondary. */}
+          {cooldown.started ? (
+            <Button
+              title="Verificar"
+              onPress={() => submitCode(code)}
+              loading={verify.isPending}
+              disabled={code.length < CODE_LENGTH || !email}
+              fullWidth
+              testID="verify-email-submit"
+            />
+          ) : null}
+          <Button
+            title={resendTitle}
+            variant={cooldown.started ? "secondary" : "primary"}
+            onPress={resend}
+            loading={sending}
+            disabled={cooldown.secondsLeft > 0 || verify.isPending || !email}
+            fullWidth
+            testID="verify-email-resend"
+          />
+        </>
       )}
     </AuthLayout>
+  );
+}
+
+// A-15: celebrates the verification and says what it unlocks.
+function VerifiedCelebration() {
+  return (
+    <View style={{ alignItems: "center", gap: spacing.md }} testID="verify-email-success" accessibilityLiveRegion="polite">
+      <Entrance from={0.6} spring>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+          <Check color={colors.surface} size={34} />
+        </View>
+      </Entrance>
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]}>
+        Correo verificado
+      </Text>
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textSecondary, textAlign: "center" }]}>
+        Ya puedes girar la ruleta y canjear tus premios.
+      </Text>
+    </View>
   );
 }

@@ -18,8 +18,8 @@ const withFavorite = (data: ListData | undefined, merchantId: string, isFavorite
   };
 
 /**
- * Flips the heart at once (detail + list caches), reverts on error and refetches the list on settle,
- * because the server orders favorites first. NOTE: the list is not re-sorted locally on purpose.
+ * Flips the heart at once (detail + list caches), reverts on error and resyncs only the detail on settle.
+ * NOTE: the list is not re-sorted locally on purpose.
  */
 export function useToggleFavorite() {
   const queryClient = useQueryClient();
@@ -43,11 +43,10 @@ export function useToggleFavorite() {
       for (const [key, data] of context?.lists ?? []) queryClient.setQueryData(key, data);
       Alert.alert("No pudimos actualizar tus favoritos", ERRORS[toAppError(error).code].message);
     },
-    // WHY detail too: the RPC toggles server state, so a double tap or stale cache must resync both views.
-    onSettled: (_data, _error, { merchantId }) =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: MERCHANTS_KEY }),
-        queryClient.invalidateQueries({ queryKey: merchantDetailKey(merchantId) }),
-      ]),
+    // WHY (A-22): only the detail resyncs. The list is already patched optimistically; refetching it would
+    // apply the server's favorites-first order at once and make the cards jump under the finger. The new
+    // order shows on the next visit or pull-to-refresh. The detail is resynced because the RPC toggles
+    // server state, so a double tap or stale cache must not leave it wrong.
+    onSettled: (_data, _error, { merchantId }) => queryClient.invalidateQueries({ queryKey: merchantDetailKey(merchantId) }),
   });
 }

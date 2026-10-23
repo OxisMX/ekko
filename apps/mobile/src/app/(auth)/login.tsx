@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { type ComponentRef, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { TextInput } from "react-native";
+import { TextInput, View } from "react-native";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { AuthLayout, SocialButtons } from "../../components/auth";
@@ -13,6 +13,7 @@ import { Button, FormMessage, PasswordField, TextField } from "../../components/
 import { TextLink } from "../../features/auth/TextLink";
 import { toAppError } from "../../lib/appError";
 import { supabase } from "../../lib/supabase";
+import { spacing } from "../../theme";
 
 type FormError = { message: string; retry: boolean };
 
@@ -98,6 +99,10 @@ export default function LoginScreen() {
           />
         )}
       />
+      {/* A-11: the recovery link sits right under the password field, aligned to the right. */}
+      <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: -spacing.sm }}>
+        <TextLink label="¿Olvidaste tu contraseña?" onPress={() => router.push("/recover")} testID="login-recover" />
+      </View>
       {formError ? (
         <FormMessage
           variant="error"
@@ -108,7 +113,6 @@ export default function LoginScreen() {
         />
       ) : null}
       <Button title="Entrar" onPress={submit} loading={busy} fullWidth testID="login-submit" />
-      <TextLink label="¿Olvidaste tu contraseña?" onPress={() => router.push("/recover")} testID="login-recover" />
     </AuthLayout>
   );
 }

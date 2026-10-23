@@ -15,6 +15,8 @@ export type MerchantListItem = {
   cover_path: string;
   maps_url: string;
   is_favorite: boolean;
+  /** A-19: the user's card at this merchant, null when they have none. */
+  progress: { stamps: number; stamps_required: number; reward_title: string } | null;
 };
 export type MerchantsPage = { items: MerchantListItem[]; has_more: boolean };
 
@@ -60,6 +62,11 @@ export function toMerchantCard(item: MerchantListItem): MerchantCardData {
   return {
     id: item.id,
     isFavorite: item.is_favorite,
+    progress: item.progress && {
+      stamps: item.progress.stamps,
+      required: item.progress.stamps_required,
+      rewardTitle: item.progress.reward_title,
+    },
     name: item.name,
     categoryLabel: merchantCategoryLabel[item.category],
     description: item.description,

@@ -1,1 +1,1 @@
-export { CouponCard, couponSourceLabel, relativeExpiry, type CouponCardProps, type CouponSource } from "./CouponCard";
+export { CouponCard, relativeExpiry, type CouponCardProps } from "./CouponCard";

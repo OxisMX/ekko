@@ -48,7 +48,7 @@ export function PinDialog({ onUnlocked, onCancel, cancelLabel }: { onUnlocked: (
     <ModalDialog labelledBy="pin-title" onClose={onCancel} onKeyDown={onKeyDown} refocusWhen={!blocked} className="max-w-sm p-6">
       <div className="flex items-center gap-3">
         <LockIcon className="size-7 text-navy" />
-        <h2 id="pin-title" className="text-xl font-semibold">
+        <h2 id="pin-title" className="text-h2 font-semibold">
           Ingresa tu PIN
         </h2>
       </div>

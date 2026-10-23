@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { useState, type ReactNode } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { FavoriteButton } from "../ui/FavoriteButton";
 import { PinIcon } from "../catalog/MerchantCard";
 import { MerchantAvatar } from "./MerchantAvatar";
@@ -28,6 +28,8 @@ export type MerchantHeaderProps = {
   onOpenMap: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  /** A-25: e.g. "3 de 8 sellos"; only when the user has a card here. */
+  progressLabel?: string;
   /** Vertical offset of the screen's Animated.ScrollView (Animated.event, useNativeDriver: true). */
   scrollY?: Animated.Value;
   /** Rendered under the header and kept visible when compact (e.g. SegmentedTabs, DA-2). */
@@ -41,7 +43,7 @@ export type MerchantHeaderProps = {
  * Scrolling translates it up by the collapse distance (transform only, native driver) and cross-fades
  * the cover out and a compact logo + name bar in.
  */
-export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenMap, isFavorite, onToggleFavorite, scrollY, children, testID }: MerchantHeaderProps) {
+export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenMap, isFavorite, onToggleFavorite, progressLabel, scrollY, children, testID }: MerchantHeaderProps) {
   const insets = useSafeAreaInsets();
   const [staticScroll] = useState(() => new Animated.Value(0));
   const [failedCoverUri, setFailedCoverUri] = useState<string | null>(null);
@@ -88,10 +90,19 @@ export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenM
             <PinIcon />
           </Pressable>
         </View>
-        <View accessible accessibilityRole="header" accessibilityLabel={`${name}, ${categoryLabel}`} style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.xs / 2 }}>
-          <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]}>
-            {name}
-          </Text>
+        <View accessible accessibilityRole="header" accessibilityLabel={[name, categoryLabel, progressLabel].filter(Boolean).join(", ")} style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.xs / 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary, flexShrink: 1 }]}>
+              {name}
+            </Text>
+            {progressLabel ? (
+              <View testID="merchant-progress-chip" style={{ backgroundColor: colors.navyTint, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs / 2 }}>
+                <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.label, { color: colors.navy, letterSpacing: 0, textTransform: "none" }]}>
+                  {progressLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
             {categoryLabel}
           </Text>
@@ -118,7 +129,7 @@ export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenM
           }}
         >
           <MerchantAvatar name={name} uri={logoUri} size={COMPACT_LOGO_SIZE} />
-          <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary }]}>
+          <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.semibold }]}>
             {name}
           </Text>
         </Animated.View>

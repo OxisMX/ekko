@@ -64,6 +64,9 @@ describe("A-12 Mis Tarjetas", () => {
   });
 
   it("shows a loading placeholder, then the card with progress and expiry", async () => {
+    // WHY: shared skeleton awaits the reduce-motion setting, which lets a render flush resolve instant mocks; delay data so the loading state is observable.
+    const instant = mockSupabase.rpc.getMockImplementation() as (...args: unknown[]) => unknown;
+    mockSupabase.rpc.mockImplementation((...args: unknown[]) => new Promise((resolve) => setTimeout(() => resolve(instant(...args)), 50)));
     await renderCards();
     expect(screen.getByLabelText("Cargando tarjetas")).toBeOnTheScreen();
     expect(await screen.findByText("Café La Esquina")).toBeOnTheScreen();
@@ -98,7 +101,7 @@ describe("A-12 Mis Tarjetas", () => {
   it("dims an unavailable merchant and offers no action (RN-71)", async () => {
     mockSupabase.rpc.mockResolvedValue({ data: [card({ merchant_available: false, reward_available: true })], error: null });
     await renderCards();
-    expect(await screen.findByText("No disponible")).toBeOnTheScreen();
+    expect(await screen.findByText("No disponible por ahora")).toBeOnTheScreen();
     expect(screen.queryByText("Recompensa disponible")).toBeNull();
     fireEvent.press(screen.getByTestId("my-card-m1"));
     expect(mockRouter.push).not.toHaveBeenCalled();

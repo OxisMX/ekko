@@ -2,7 +2,7 @@ import { typography } from "@ekko/shared";
 import type { TextStyle } from "react-native";
 import { fontFamily } from "./fonts";
 
-export { colors, radii, spacing } from "@ekko/shared";
+export { colors, motion, radii, spacing } from "@ekko/shared";
 export { fontAssets, fontFamily } from "./fonts";
 
 // §4.4: respect system font scaling up to 130%.

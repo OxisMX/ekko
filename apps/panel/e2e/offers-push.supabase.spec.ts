@@ -28,7 +28,7 @@ test('c1: crear oferta con imagen, editar y eliminar', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Nueva oferta' })).toBeVisible()
   await page.getByLabel('Título').fill(title)
   await page.getByLabel('Descripción').fill('Creada por la prueba E2E')
-  await page.getByLabel('Día de la semana').selectOption({ label: 'Jueves' })
+  await page.getByRole('button', { name: 'Jueves' }).click()
   await page.getByLabel('Elegir imagen de la oferta').setInputFiles({ name: 'o.png', mimeType: 'image/png', buffer: PNG })
   await expect(page.getByAltText('Vista previa de la oferta')).toBeVisible()
   await page.getByRole('button', { name: 'Guardar oferta' }).click()

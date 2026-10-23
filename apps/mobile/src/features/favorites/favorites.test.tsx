@@ -32,12 +32,13 @@ const isFavoriteInList = (client: QueryClient, id: string) =>
 describe("useToggleFavorite", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("flips the heart in the detail and the list, calls the RPC and refetches the list", async () => {
+  it("flips the heart in the detail and the list, calls the RPC and resyncs only the detail", async () => {
     mockSupabase.rpc.mockResolvedValue({ data: { is_favorite: true }, error: null });
     const { client, result } = await setup();
     const invalidate = jest.spyOn(client, "invalidateQueries");
     await act(async () => result.current.mutate({ merchantId: "m1", isFavorite: false }));
-    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["merchants"] }));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["merchant-detail", "m1"] }));
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["merchants"] });
     expect(mockSupabase.rpc).toHaveBeenCalledWith("toggle_favorite", { p_merchant_id: "m1" });
     expect((client.getQueryData(["merchant-detail", "m1"]) as { merchant: { is_favorite: boolean } }).merchant.is_favorite).toBe(true);
     expect(isFavoriteInList(client, "m1")).toBe(true);

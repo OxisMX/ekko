@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+import { colors } from "../../theme";
+import { CloudOff } from "../icons";
 import { EmptyState } from "./EmptyState";
 
 export type ErrorStateProps = {
@@ -5,6 +8,7 @@ export type ErrorStateProps = {
   title?: string;
   message?: string;
   actionLabel?: string;
+  icon?: ReactNode;
   testID?: string;
 };
 
@@ -14,7 +18,8 @@ export function ErrorState({
   title = "Sin conexión",
   message = "No hay conexión. Revisa tus datos o Wi-Fi e inténtalo de nuevo.",
   actionLabel = "Reintentar",
+  icon = <CloudOff size={48} color={colors.navy} />,
   testID,
 }: ErrorStateProps) {
-  return <EmptyState title={title} message={message} actionLabel={actionLabel} onAction={onRetry} role="alert" testID={testID} />;
+  return <EmptyState title={title} message={message} actionLabel={actionLabel} onAction={onRetry} role="alert" icon={icon} testID={testID} />;
 }

@@ -1,12 +1,12 @@
 import { ERRORS, merchantCategoryLabel } from "@ekko/shared";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Pressable, type ScrollViewInstance, View } from "react-native";
+import { Animated, Pressable, type ScrollViewInstance, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
-import { HEADER_EXPANDED_HEIGHT, MerchantHeader } from "../../components/merchant";
-import { ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../../components/ui";
+import { HEADER_EXPANDED_HEIGHT, MerchantHeader, StampCardSkeleton } from "../../components/merchant";
+import { EmptyState, ErrorState, SEGMENTED_TABS_HEIGHT, SegmentedTabs, Skeleton } from "../../components/ui";
 import { CardTab, MenuTab, MERCHANT_TABS, type MerchantTabKey, PromosTab, ReviewTab } from "../../features/merchant/MerchantTabs";
 import { useToggleFavorite } from "../../features/favorites/favorites";
 import { couponsHref } from "../../features/notifications/pushNavigation";
@@ -15,6 +15,7 @@ import { imageUri, useAddCard, useMerchantDetail } from "../../features/merchant
 import { wheelHref } from "../../features/wheel/wheel";
 import { toAppError } from "../../lib/appError";
 import { openExternalUrl } from "../../lib/openExternal";
+import { CloudOff } from "../../components/icons";
 import { colors, spacing } from "../../theme";
 
 // F-06 J: the catalogue message without the "sellos guardados" part, which only applies with a relation.
@@ -53,17 +54,10 @@ export default function MerchantScreen() {
   const errorCode = useMemo(() => (detail.error ? toAppError(detail.error).code : null), [detail.error]);
   const addErrorCode = useMemo(() => (addCard.error ? toAppError(addCard.error).code : null), [addCard.error]);
 
-  // F-06 J: E-05 (hidden merchant without relation, or inactive on add_card) explains and goes back.
+  // F-06 J / A-26: E-05 (hidden merchant without relation, or inactive on add_card) is explained in the screen itself.
+  // F-13: a push for a merchant that is gone leads to Mis cupones instead of Explorar.
   const fromPush = params.from === "push";
   const unavailable = errorCode === "E-05" || addErrorCode === "E-05";
-  useEffect(() => {
-    if (!unavailable) return;
-    Alert.alert(UNAVAILABLE_MESSAGE);
-    // F-13: a push for a merchant that is gone lands on Mis cupones instead of going back.
-    if (fromPush) router.replace(couponsHref);
-    else goBack();
-  }, [unavailable, goBack, fromPush, router]);
-
   // Reward available → Promociones with the reward coupon highlighted (RN-27). Coupons are the last section.
   useEffect(() => {
     if (tab !== "promos" || !highlightCouponId) return;
@@ -142,6 +136,7 @@ export default function MerchantScreen() {
           coverUri={imageUri(merchant.cover_path, "cover")}
           logoUri={imageUri(merchant.logo_path, "logo")}
           isFavorite={merchant.is_favorite}
+          progressLabel={data.card.has_relation ? `${data.card.stamps.length} de ${data.card.stamps_required} sellos` : undefined}
           onToggleFavorite={() => toggleFavorite.mutate({ merchantId, isFavorite: merchant.is_favorite })}
           onOpenMap={() => openExternalUrl(merchant.maps_url, "No pudimos abrir la ubicación de este negocio.")}
           scrollY={scrollY}
@@ -151,7 +146,20 @@ export default function MerchantScreen() {
         </MerchantHeader>
       </>
     );
-  } else if (detail.isError && errorCode && errorCode !== "E-05") {
+  } else if (unavailable) {
+    body = (
+      <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg, paddingTop: insets.top + BACK_SIZE }}>
+        <EmptyState
+          icon={<CloudOff size={48} />}
+          title="Negocio no disponible"
+          message={UNAVAILABLE_MESSAGE}
+          actionLabel={fromPush ? "Ver mis cupones" : "Volver a Explorar"}
+          onAction={() => router.replace(fromPush ? couponsHref : "/")}
+          testID="merchant-unavailable"
+        />
+      </View>
+    );
+  } else if (detail.isError && errorCode) {
     body = (
       <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg, paddingTop: insets.top + BACK_SIZE }}>
         {errorCode === "E-01" ? (
@@ -167,7 +175,7 @@ export default function MerchantScreen() {
         <Skeleton height={insets.top + HEADER_EXPANDED_HEIGHT} radius={0} />
         <View style={{ gap: spacing.lg, paddingHorizontal: spacing.lg }}>
           <Skeleton height={SEGMENTED_TABS_HEIGHT} />
-          <Skeleton height={260} />
+          <StampCardSkeleton />
         </View>
       </View>
     );

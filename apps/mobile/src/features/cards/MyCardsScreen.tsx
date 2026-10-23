@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, type ListRenderItem, RefreshControl, View } from "react-native";
 
 import { CardRow } from "../../components/card";
@@ -10,13 +10,10 @@ import { colors, spacing } from "../../theme";
 import { imageUri } from "../merchant/merchantDetail";
 import { wheelHref, wheelIsOffered } from "../wheel/wheel";
 import { type MyCoupon, useMyCoupons } from "../coupons/myCoupons";
+import { sortCards } from "./cardOrder";
 import { type MyCard, useMyCards } from "./myCards";
 
-const TABS = [
-  { key: "cards", label: "Tarjetas" },
-  { key: "coupons", label: "Cupones" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = "cards" | "coupons";
 
 // A-12 Mis Tarjetas (US-10, RN-71).
 export function MyCardsScreen() {
@@ -30,12 +27,18 @@ export function MyCardsScreen() {
     setSeenParam(initialTab);
     if (initialTab === "coupons") setTab("coupons");
   }
+  // A-54: the count builds expectation; it comes from the same cached query as the coupons list.
+  const couponCount = useMyCoupons().data?.length ?? 0;
+  const tabs = [
+    { key: "cards", label: "Tarjetas" },
+    { key: "coupons", label: couponCount > 0 ? `Cupones · ${couponCount}` : "Cupones" },
+  ] as const;
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: spacing.lg }}>
         <Button title="Registrar visita" onPress={() => router.push("/scan")} fullWidth testID="cards-scan" />
       </View>
-      <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} testID="cards-tabs" />
+      <SegmentedTabs tabs={tabs} value={tab} onChange={setTab} testID="cards-tabs" />
       {tab === "cards" ? <CardsList /> : <CouponsList />}
     </View>
   );
@@ -67,6 +70,7 @@ function CardsList() {
   const { refetch } = cards;
   useRefetchOnFocus(refetch);
   const refreshControl = usePullToRefresh(refetch);
+  const sorted = useMemo(() => sortCards(cards.data ?? []), [cards.data]);
 
   const renderItem = useCallback<ListRenderItem<MyCard>>(
     ({ item }) => (
@@ -112,7 +116,7 @@ function CardsList() {
 
   return (
     <FlatList
-      data={cards.data ?? []}
+      data={sorted}
       keyExtractor={(item) => item.merchant_id}
       renderItem={renderItem}
       contentContainerStyle={{ flexGrow: 1, gap: spacing.md, padding: spacing.lg }}
@@ -135,7 +139,8 @@ function CouponsList() {
     ({ item }) => (
       <CouponCard
         title={item.title}
-        merchantName={item.merchant_available ? item.merchant_name : `${item.merchant_name} · No disponible por ahora`}
+        merchantName={item.merchant_name}
+        merchantUnavailable={!item.merchant_available}
         source={item.source}
         expiresAt={item.expires_at}
         terms={item.terms ?? undefined}

@@ -24,8 +24,8 @@ test('c1: métricas con filtro de periodo', async ({ page }) => {
   await expect(page.getByText('últimos 30 días', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: /Notificaciones restantes este mes: \d de 5/ })).toBeVisible()
 
-  await page.getByRole('radio', { name: 'Histórico' }).click()
-  await expect(page.getByRole('radio', { name: 'Histórico' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('button', { name: 'Histórico' }).click()
+  await expect(page.getByRole('button', { name: 'Histórico' })).toHaveAttribute('aria-pressed', 'true')
   // NOTE: first() = the KPI tile; the chart title, axis and data table also say "Visitas".
   await expect(page.getByText('Visitas', { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('alert')).toBeHidden()

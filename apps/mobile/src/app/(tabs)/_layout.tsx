@@ -2,11 +2,10 @@ import { Tabs } from "expo-router";
 import { type ColorValue, View } from "react-native";
 
 import { AppHeader } from "../../components/layout/AppHeader";
+import { useCardsTabBadge } from "../../features/cards/cardsTabBadge";
 import { TabIcon, type TabIconName } from "../../components/ui/TabIcon";
 import { colors, fontFamily } from "../../theme";
 
-// navy at 12%: subtle on white while the navy icon keeps full contrast on top.
-const ACTIVE_PILL = "rgba(31, 42, 74, 0.12)";
 
 const icon = (name: TabIconName) =>
   function TabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
@@ -20,7 +19,7 @@ const icon = (name: TabIconName) =>
           borderRadius: 15,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: focused ? ACTIVE_PILL : "transparent",
+          backgroundColor: focused ? colors.navyTint : "transparent",
         }}
       >
         <TabIcon name={name} color={color} />
@@ -29,6 +28,7 @@ const icon = (name: TabIconName) =>
   };
 
 export default function TabsLayout() {
+  const cardsBadge = useCardsTabBadge();
   return (
     <Tabs
       screenOptions={{
@@ -40,7 +40,15 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Explorar", tabBarButtonTestID: "tab-explore", tabBarIcon: icon("explore") }} />
-      <Tabs.Screen name="cards" options={{ title: "Mis Tarjetas", tabBarButtonTestID: "tab-cards", tabBarIcon: icon("cards") }} />
+      <Tabs.Screen name="cards" options={{
+          title: "Mis Tarjetas",
+          tabBarButtonTestID: "tab-cards",
+          tabBarIcon: icon("cards"),
+          // A-53: an empty-string badge renders as a dot; accent marks a reward moment (OD-3).
+          tabBarBadge: cardsBadge ? "" : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.accent, minWidth: 10, height: 10, borderRadius: 5 },
+          tabBarAccessibilityLabel: cardsBadge ? "Mis Tarjetas, tienes novedades" : undefined,
+        }} />
       <Tabs.Screen name="profile" options={{ title: "Perfil", tabBarButtonTestID: "tab-profile", tabBarIcon: icon("profile") }} />
     </Tabs>
   );

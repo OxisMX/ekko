@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 
 import ScanScreen from "../../app/scan";
@@ -20,6 +21,8 @@ jest.mock("expo-camera", () => ({
   },
 }));
 
+// A-58: navigation waits ~150 ms so the accent corners register.
+const settle = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 200))));
 const scan = async (data: string) => {
   await fireEvent(screen.getByTestId("scan-camera"), "barcodeScanned", { data });
 };
@@ -51,8 +54,20 @@ describe("A-13 / A-14 scanner", () => {
     expect(screen.getByTestId("scan-camera").props.barcodeScannerSettings).toEqual({ barcodeTypes: ["qr"] });
     await scan(`https://ekko.oxis.mx/v/${TOKEN}`);
     await scan(`https://ekko.oxis.mx/v/${TOKEN}`);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("scanner-viewfinder")).toHaveLength(1);
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+    await settle();
     expect(mockRouter.replace).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/visit-result", params: { token: TOKEN } });
+  });
+
+  it("toggles the torch (A-59)", async () => {
+    await render(<ScanScreen />);
+    expect(screen.getByTestId("scan-camera").props.enableTorch).toBe(false);
+    await fireEvent.press(screen.getByRole("button", { name: "Encender linterna" }));
+    expect(screen.getByTestId("scan-camera").props.enableTorch).toBe(true);
+    expect(screen.getByRole("button", { name: "Apagar linterna" })).toBeOnTheScreen();
   });
 
   it("rejects a foreign code locally and lets the user keep scanning (TC-051)", async () => {
@@ -62,6 +77,7 @@ describe("A-13 / A-14 scanner", () => {
     expect(mockRouter.replace).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole("button", { name: "Seguir escaneando" }));
     await scan(`ekko://v/${TOKEN}`);
+    await settle();
     expect(mockRouter.replace).toHaveBeenCalledTimes(1);
   });
 
@@ -70,6 +86,7 @@ describe("A-13 / A-14 scanner", () => {
     await fireEvent.press(screen.getByText("Pegar token"));
     await fireEvent.changeText(screen.getByTestId("scan-dev-input"), TOKEN);
     await fireEvent.press(screen.getByText("Usar token"));
+    await settle();
     expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/visit-result", params: { token: TOKEN } });
   });
 

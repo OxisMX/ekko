@@ -5,13 +5,16 @@ import { z } from 'zod'
 // (performance.now()), never wall-clock: see `success`.
 export type VisitQr = { id: string; token: string; ttlSeconds: number }
 
+// P-20: the customer's card after this visit (get_qr_status when used).
+export type QrProgress = { stamps: number; stampsRequired: number; rewardAvailable: boolean }
+
 export type QrState =
   | { status: 'idle' }
   | { status: 'pending'; requestedAt: number }
   | { status: 'active'; qr: VisitQr; deadline: number; remaining: number }
   | { status: 'expired' }
   | { status: 'invalidated' }
-  | { status: 'used' }
+  | { status: 'used'; progress?: QrProgress }
   | { status: 'error'; code: ErrorCode }
 
 // Backend §4.4 get_qr_status / §8 Realtime. Terminal = everything but 'pending'.
@@ -24,6 +27,7 @@ export type QrAction =
   | { type: 'tick'; now: number }
   | { type: 'failure'; code: ErrorCode }
   | { type: 'resolved'; qrId: string; status: TerminalQrStatus }
+  | { type: 'progress'; progress: QrProgress }
   | { type: 'dismiss' }
 
 const remainingAt = (deadline: number, now: number) => Math.max(0, Math.ceil((deadline - now) / 1000))
@@ -52,6 +56,9 @@ export function qrReducer(state: QrState, action: QrAction): QrState {
     // be resolved, and only once: the first terminal result wins, anything later is a no-op.
     case 'resolved':
       return state.status === 'active' && state.qr.id === action.qrId ? { status: action.status } : state
+    // WHY separate from 'resolved': Realtime only carries the row, so the progress arrives a moment after "used".
+    case 'progress':
+      return state.status === 'used' ? { ...state, progress: action.progress } : state
     case 'dismiss':
       return state.status === 'used' ? { status: 'idle' } : state
   }
@@ -75,15 +82,34 @@ export function statusFromRow(row: { used_at?: string | null; invalidated_at?: s
   return null
 }
 
-const qrStatusSchema = z.object({ status: z.enum(['pending', 'used', 'expired', 'invalidated']) })
+const qrStatusSchema = z.object({
+  status: z.enum(['pending', 'used', 'expired', 'invalidated']),
+  stamps: z.number().int().nonnegative().optional(),
+  stamps_required: z.number().int().positive().optional(),
+  reward_available: z.boolean().optional(),
+})
 export const parseQrStatus = (data: unknown): RemoteQrStatus => qrStatusSchema.parse(data).status
+
+// Only a 'used' payload carries the card progress; anything else (or a partial payload) yields null.
+export function parseQrProgress(data: unknown): QrProgress | null {
+  const { stamps, stamps_required, reward_available } = qrStatusSchema.parse(data)
+  if (stamps === undefined || stamps_required === undefined) return null
+  return { stamps, stampsRequired: stamps_required, rewardAvailable: reward_available ?? stamps >= stamps_required }
+}
+
+// Cashier-facing line to cheer the customer on (P-20).
+export function progressText({ stamps, stampsRequired, rewardAvailable }: QrProgress): string {
+  if (rewardAvailable) return `Lleva ${stamps} de ${stampsRequired} · ¡ya tiene su premio!`
+  const missing = stampsRequired - stamps
+  return `Lleva ${stamps} de ${stampsRequired} · ${missing === 1 ? 'falta 1 sello' : `faltan ${missing}`} para su premio`
+}
 
 // Text for the aria-live region. It only changes at 30 s, 10 s and expiry, so screen
 // readers announce those three moments instead of every second.
 export function qrAnnouncement(state: QrState): string {
   if (state.status === 'expired') return 'El QR venció. Genera otro.'
   if (state.status === 'invalidated') return 'El QR se reemplazó. Genera otro.'
-  if (state.status === 'used') return 'Visita registrada'
+  if (state.status === 'used') return state.progress ? `Visita registrada. ${progressText(state.progress)}` : 'Visita registrada'
   if (state.status !== 'active' || state.remaining > 30) return ''
   return state.remaining > 10 ? 'Quedan 30 segundos.' : 'Quedan 10 segundos.'
 }

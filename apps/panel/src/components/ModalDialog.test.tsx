@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
@@ -33,4 +34,19 @@ it('focuses the dialog, keeps Tab inside it in both directions and closes with E
 
   await user.keyboard('{Escape}')
   expect(onClose).toHaveBeenCalledTimes(1)
+})
+
+it('focuses initialFocusRef instead of the dialog when given', () => {
+  function WithRef() {
+    const cancel = useRef<HTMLButtonElement>(null)
+    return (
+      <ModalDialog labelledBy="t" onClose={() => {}} initialFocusRef={cancel}>
+        <h2 id="t">Título</h2>
+        <button ref={cancel}>Cancelar</button>
+        <button>Eliminar</button>
+      </ModalDialog>
+    )
+  }
+  render(<WithRef />)
+  expect(screen.getByText('Cancelar')).toHaveFocus()
 })

@@ -1,6 +1,7 @@
 import { Pressable, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { colors } from "../../theme";
+import { Pop } from "../motion";
 
 const SIZE = 44; // RT-04
 
@@ -28,15 +29,17 @@ export function FavoriteButton({ isFavorite, onToggle, backgroundColor = colors.
         style,
       ]}
     >
+      <Pop trigger={isFavorite}>
       <Svg width={22} height={22} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
         <Path
           d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6.8 4.5 4.5 0 0 1 20 9.5c0 6.1-8 11-8 11z"
-          stroke={isFavorite ? colors.error : colors.navy}
+          stroke={isFavorite ? colors.favorite : colors.navy}
           strokeWidth={1.8}
           strokeLinejoin="round"
-          fill={isFavorite ? colors.error : "none"}
+          fill={isFavorite ? colors.favorite : "none"}
         />
       </Svg>
+      </Pop>
     </Pressable>
   );
 }

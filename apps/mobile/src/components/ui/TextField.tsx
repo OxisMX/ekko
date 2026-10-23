@@ -1,10 +1,11 @@
-import type { ComponentRef, ReactNode, Ref } from "react";
+import { useState, type ComponentRef, type ReactNode, type Ref } from "react";
 import { Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 import { StatusIcon } from "./StatusIcon";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
 // Shared box look for every field (TextField, PasswordField, DateField).
-export function fieldBoxStyle(hasError: boolean): ViewStyle {
+// Border priority: error > focus (navy) > none.
+export function fieldBoxStyle(hasError: boolean, focused = false): ViewStyle {
   return {
     minHeight: 48,
     flexDirection: "row",
@@ -12,7 +13,7 @@ export function fieldBoxStyle(hasError: boolean): ViewStyle {
     borderRadius: radii.field,
     borderCurve: "continuous",
     borderWidth: 1.5,
-    borderColor: hasError ? colors.error : "transparent",
+    borderColor: hasError ? colors.error : focused ? colors.navy : "transparent",
     backgroundColor: colors.surfaceMuted,
   };
 }
@@ -53,16 +54,19 @@ export function FieldError({ error }: { error?: string }) {
 export type TextFieldProps = Omit<TextInputProps, "style" | "accessibilityLabel"> & {
   label: string;
   error?: string;
+  /** Hint under the field; replaced by `error` when there is one. */
+  helper?: string;
   // Trailing control inside the field box (e.g. PasswordField's "Mostrar").
   accessory?: ReactNode;
   ref?: Ref<ComponentRef<typeof TextInput>>;
 };
 
-export function TextField({ label, error, accessory, ref, accessibilityHint, ...inputProps }: TextFieldProps) {
+export function TextField({ label, error, helper, accessory, ref, accessibilityHint, onFocus, onBlur, ...inputProps }: TextFieldProps) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: spacing.sm }}>
       <FieldLabel>{label}</FieldLabel>
-      <View style={fieldBoxStyle(!!error)}>
+      <View style={fieldBoxStyle(!!error, focused)}>
         <TextInput
           ref={ref}
           maxFontSizeMultiplier={MAX_FONT_SCALE}
@@ -81,10 +85,23 @@ export function TextField({ label, error, accessory, ref, accessibilityHint, ...
             },
           ]}
           {...inputProps}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
         />
         {accessory}
       </View>
       <FieldError error={error} />
+      {helper && !error ? (
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+          {helper}
+        </Text>
+      ) : null}
     </View>
   );
 }

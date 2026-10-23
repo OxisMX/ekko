@@ -63,7 +63,7 @@ async function fillRegister(birthDate: Date) {
   await type("Correo electrónico", "daniela@example.com");
   await type("Contraseña", "secreta123");
   await pickBirthDate("register-birth-date", birthDate);
-  await fireEvent(screen.getByTestId("register-privacy"), "valueChange", true);
+  await fireEvent.press(screen.getByTestId("register-privacy"));
 }
 
 beforeEach(() => {

@@ -92,6 +92,19 @@ describe('P-09 offers list', () => {
     expect(within(screen.getByRole('region', { name: 'Lunes' })).getByRole('link', { name: 'Agregar oferta del Lunes' })).toBeInTheDocument()
   })
 
+  it('highlights today with a "Hoy" badge on a 7-row week (P-36)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 21, 12) }) // a Wednesday
+    try {
+      renderAt('/admin/ofertas')
+      const wednesday = await screen.findByRole('region', { name: 'Miércoles' })
+      expect(within(wednesday).getByText('Hoy')).toBeInTheDocument()
+      expect(screen.getAllByText('Hoy')).toHaveLength(1)
+      expect(screen.getAllByRole('region').filter((r) => ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].includes(r.getAttribute('aria-label') ?? ''))).toHaveLength(7)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('empty state guides to the first offer', async () => {
     mockRpc({ list_offers_admin: ok(null) })
     renderAt('/admin/ofertas')
@@ -175,7 +188,17 @@ describe('P-09 offer form', () => {
   it('edit prefills the offer', async () => {
     renderAt('/admin/ofertas/o1')
     expect(await screen.findByLabelText('Título')).toHaveValue('2x1 en lattes')
-    expect(screen.getByLabelText('Día de la semana')).toHaveValue('3')
+    expect(screen.getByRole('button', { name: 'Miércoles' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Lunes' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('picks the day with the 7 chips (P-37)', async () => {
+    renderAt('/admin/ofertas/nueva')
+    await screen.findByLabelText('Título')
+    expect(screen.getByRole('group', { name: 'Día de la semana' }).querySelectorAll('button')).toHaveLength(7)
+    fireEvent.click(screen.getByRole('button', { name: 'Viernes' }))
+    expect(screen.getByRole('button', { name: 'Viernes' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Lunes' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('uploads variants under merchants/{id}/offer/{uuid} and saves the base path', async () => {

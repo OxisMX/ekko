@@ -71,7 +71,10 @@ export function ProductCard({ name, description, price, imageUri, featured = fal
           }}
           accessible={false}
         />
-      ) : null}
+      ) : (
+        // A-35: same 88 pt slot as a photo, so cards with and without picture line up.
+        <View testID="product-photo-placeholder" style={{ width: PHOTO_SIZE, aspectRatio: 1, borderRadius: radii.button, backgroundColor: colors.navyTint }} />
+      )}
       <View style={{ flex: 1, gap: spacing.xs }}>
         {featured ? <Pill label="Más pedidos" testID="product-featured" dark={false} /> : null}
         <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>

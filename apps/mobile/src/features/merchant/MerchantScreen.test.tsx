@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import * as Linking from "expo-linking";
-import { Alert } from "react-native";
 
 import MerchantScreen from "../../app/merchant/[id]";
 import { maybeShowPushExplainer } from "../notifications/pushExplainer";
@@ -98,13 +97,21 @@ beforeEach(() => {
 
 describe("A-08..A-11 Detalle de comercio", () => {
   it("shows the skeleton, then the header, tabs and the stamp card", async () => {
+    // WHY: shared skeleton awaits the reduce-motion setting, which lets a render flush resolve instant mocks; delay data so the loading state is observable.
+    const instant = mockSupabase.rpc.getMockImplementation() as (...args: unknown[]) => unknown;
+    mockSupabase.rpc.mockImplementation((...args: unknown[]) => new Promise((resolve) => setTimeout(() => resolve(instant(...args)), 50)));
     await renderScreen();
     expect(screen.getByLabelText("Cargando comercio")).toBeOnTheScreen();
 
-    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
+    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
     expect(screen.queryByLabelText("Cargando comercio")).toBeNull();
-    expect(screen.getByLabelText("Café La Esquina, Cafeterías y Postres")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Café La Esquina, Cafeterías y Postres, 3 de 8 sellos")).toBeOnTheScreen();
     expect(screen.getByRole("tab", { name: "Tarjeta", selected: true })).toBeOnTheScreen();
+    expect(screen.queryByTestId("merchant-terms")).toBeNull();
+    const toggle = screen.getByRole("button", { name: "Términos y condiciones" });
+    expect(toggle).not.toBeExpanded();
+    await fireEvent.press(toggle);
+    expect(screen.getByRole("button", { name: "Términos y condiciones" })).toBeExpanded();
     expect(screen.getByTestId("merchant-terms")).toHaveTextContent("Compra mínima de $100 MXN.");
     expect(screen.queryByText("Agregar a mis tarjetas")).toBeNull();
     expect(rpcCalls("get_merchant_detail")).toEqual([{ p_merchant_id: "m1" }]);
@@ -139,13 +146,13 @@ describe("A-08..A-11 Detalle de comercio", () => {
 
   it("'Gira tu ruleta' shows for available / needs_verification only and opens A-12", async () => {
     const first = await renderScreen();
-    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
-    expect(screen.queryByText("Gira tu ruleta")).toBeNull();
+    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
+    expect(screen.queryByText("Tienes un giro de bienvenida")).toBeNull();
     await first.unmount();
 
     detailResult = { data: makeDetail({ wheelStatus: "needs_verification" }), error: null };
     await renderScreen();
-    await fireEvent.press(await screen.findByText("Gira tu ruleta"));
+    await fireEvent.press(await screen.findByText("Tienes un giro de bienvenida"));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1" } });
   });
 
@@ -169,7 +176,7 @@ describe("A-08..A-11 Detalle de comercio", () => {
     const detail = makeDetail();
     detailResult = { data: { ...detail, merchant: { ...detail.merchant, available: false } }, error: null };
     await renderScreen();
-    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
+    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
     expect(screen.queryByRole("button", { name: "Registrar visita" })).toBeNull();
   });
 
@@ -191,7 +198,7 @@ describe("A-08..A-11 Detalle de comercio", () => {
     await renderScreen();
     await fireEvent.press(await screen.findByRole("tab", { name: "Menú" }));
 
-    expect(screen.getByText("Este negocio aún no publica su menú")).toBeOnTheScreen();
+    expect(screen.getByText("Este negocio aún no publica su menú.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByText("Ver tarjeta"));
     expect(screen.getByRole("tab", { name: "Tarjeta", selected: true })).toBeOnTheScreen();
   });
@@ -203,22 +210,22 @@ describe("A-08..A-11 Detalle de comercio", () => {
     expect(Linking.openURL).toHaveBeenCalledWith("https://g.page/r/review");
   });
 
-  it("E-05 explains the merchant is unavailable and goes back", async () => {
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  it("E-05 explains the merchant is unavailable in the screen and leads to Explorar (A-26)", async () => {
     detailResult = { data: null, error: { message: "E-05", details: null, code: "P0001" } };
     await renderScreen();
 
-    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
-    expect(alert).toHaveBeenCalledWith("Este negocio no está disponible por ahora.");
+    expect(await screen.findByText("Este negocio no está disponible por ahora.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Volver a Explorar" }));
+    expect(mockRouter.replace).toHaveBeenCalledWith("/");
   });
 
-  it("E-05 from a push goes to Mis cupones instead of back (F-13)", async () => {
-    jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  it("E-05 from a push leads to Mis cupones instead (F-13)", async () => {
     mockParams = { id: "m1", from: "push", tab: "promos" };
     detailResult = { data: null, error: { message: "E-05", details: null, code: "P0001" } };
     await renderScreen();
 
-    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/cards", params: { tab: "coupons" } }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver mis cupones" }));
+    expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/cards", params: { tab: "coupons" } });
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 

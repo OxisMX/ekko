@@ -1,11 +1,21 @@
 import { Pressable, Text, View } from "react-native";
 
-import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { formatShortDate } from "../format";
+import { Gift } from "../icons";
 import { MerchantAvatar } from "../merchant/MerchantAvatar";
 
 const LOGO_SIZE = 52;
 const DOT = 10;
+const GIFT = 14;
+
+/** A-50: anticipation copy when 1-2 stamps are left; null otherwise. */
+export function stampsLeftHint(stampsCount: number, stampsRequired: number): string | null {
+  const left = stampsRequired - stampsCount;
+  if (left === 1) return "¡Te falta 1 sello!";
+  if (left === 2) return "¡Te faltan 2 sellos!";
+  return null;
+}
 
 export type CardRowProps = {
   merchantName: string;
@@ -35,7 +45,7 @@ function Badge({ label, filled, onPress, testID }: { label: string; filled?: boo
       style={{
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
-        borderRadius: radii.field,
+        borderRadius: radii.pill,
         backgroundColor: filled ? colors.accent : colors.surface,
         borderWidth: filled ? 0 : 1.5,
         borderColor: colors.navy,
@@ -51,9 +61,10 @@ function Badge({ label, filled, onPress, testID }: { label: string; filled?: boo
 // A-12 row: compact progress as dots plus the "n de m" text, so it never depends on color alone.
 export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cycleExpiresAt, rewardAvailable, wheelAvailable, onWheelPress, available, onPress, testID }: CardRowProps) {
   const progress = `${stampsCount} de ${stampsRequired} sellos`;
+  const hint = rewardAvailable ? null : stampsLeftHint(stampsCount, stampsRequired);
   const expiry = `Vence el ${formatShortDate(cycleExpiresAt)}`;
   const label = available
-    ? [merchantName, progress, expiry, rewardAvailable && "Recompensa disponible", wheelAvailable && "Gira tu ruleta"].filter(Boolean).join(". ")
+    ? [merchantName, hint, progress, expiry, rewardAvailable && "Recompensa disponible", wheelAvailable && "Gira tu ruleta"].filter(Boolean).join(". ")
     : `${merchantName}. No disponible por ahora`;
 
   return (
@@ -88,13 +99,23 @@ export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cy
         {available ? (
           <>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
-              {Array.from({ length: stampsRequired }, (_, i) => (
-                <View
-                  key={i}
-                  style={{ width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 1.5, borderColor: colors.navy, backgroundColor: i < stampsCount ? colors.navy : "transparent" }}
-                />
-              ))}
+              {Array.from({ length: stampsRequired }, (_, i) =>
+                // A-51: the last slot is the reward, same language as the card.
+                i === stampsRequired - 1 ? (
+                  <Gift key={i} size={GIFT} color={i < stampsCount ? colors.navy : colors.textSecondary} />
+                ) : (
+                  <View
+                    key={i}
+                    style={{ width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 1.5, borderColor: colors.navy, backgroundColor: i < stampsCount ? colors.navy : "transparent" }}
+                  />
+                )
+              )}
             </View>
+            {hint ? (
+              <Text testID="card-row-hint" maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { fontFamily: fontFamily.semibold, color: colors.navy }]}>
+                {hint}
+              </Text>
+            ) : null}
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
               {progress} · {expiry}
             </Text>
@@ -107,7 +128,7 @@ export function CardRow({ merchantName, logoUri, stampsCount, stampsRequired, cy
           </>
         ) : (
           <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-            No disponible
+            No disponible por ahora
           </Text>
         )}
       </View>

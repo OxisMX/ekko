@@ -1,5 +1,6 @@
 import { ERRORS, type ErrorCode } from "@ekko/shared";
 import { FunctionsFetchError, FunctionsHttpError } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Platform, ScrollView, Text } from "react-native";
@@ -10,6 +11,9 @@ import { requestAppleAuthorizationCode } from "../auth/socialSignIn";
 import { reportError } from "../../lib/sentry";
 import { supabase } from "../../lib/supabase";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { type MyCard, myCardsKey } from "../cards/myCards";
+import { type MyCoupon, myCouponsKey } from "../coupons/myCoupons";
+import { describeAccountLoss } from "./accountLoss";
 
 const CONFIRMATION_WORD = "ELIMINAR";
 
@@ -37,6 +41,9 @@ async function readAppleCode(hasAppleIdentity: boolean): Promise<AppleCode> {
 // A-22 Eliminar cuenta (F-15, US-05). RN-09: re-registering with the same email does not restore used wheels.
 export function DeleteAccountScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  // A-81: concrete loss from the lists already in cache; generic copy when they were never loaded.
+  const loss = describeAccountLoss(queryClient.getQueryData<MyCard[]>(myCardsKey), queryClient.getQueryData<MyCoupon[]>(myCouponsKey));
   const { session, finishAccountDeletion, endSession } = useAuth();
   const hasAppleIdentity = session?.user.identities?.some((identity) => identity.provider === "apple") ?? false;
   const [appleNotice, setAppleNotice] = useState(false);
@@ -92,7 +99,7 @@ export function DeleteAccountScreen() {
         ¿Eliminar tu cuenta?
       </Text>
       <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]} testID="delete-account-warning">
-        Perderás todos tus sellos, cupones y premios. Esta acción no se puede deshacer. Si te registras de nuevo con el mismo correo, las ruletas que ya usaste no se reactivan.
+        {loss ?? "Perderás todos tus sellos, cupones y premios."} Esta acción no se puede deshacer. Si te registras de nuevo con el mismo correo, las ruletas que ya usaste no se reactivan.
       </Text>
       <TextField
         label="Escribe ELIMINAR para confirmar"

@@ -7,27 +7,23 @@ import { z } from "zod";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { formatDate } from "../../components/format";
-import { Button, ErrorState, FormMessage, Skeleton, TextField } from "../../components/ui";
+import { ChevronRight, Gift, Lock } from "../../components/icons";
+import { Button, ErrorState, FormMessage, Skeleton, TextField, Toast } from "../../components/ui";
 import { toAppError } from "../../lib/appError";
 import { reportError } from "../../lib/sentry";
-import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { type MyProfile, useMyProfile } from "../auth/account";
+import { useMyCards } from "../cards/myCards";
 import { EmailVerificationBanner } from "../auth/EmailVerificationBanner";
 import { DevSimulatePush } from "./DevSimulatePush";
 import { AvatarPermissionError, avatarUrl, pickAvatar, useUpdateProfile } from "./profileEdit";
-import { type PushPermissionState, usePushPermission } from "./notificationsPermission";
-
-const PERMISSION_TEXT: Record<PushPermissionState, { status: string; action?: string }> = {
-  loading: { status: "…" },
-  granted: { status: "Activadas" },
-  askable: { status: "Desactivadas", action: "Activar" },
-  blocked: { status: "Desactivadas en el sistema", action: "Abrir ajustes" },
-};
+import { usePushPermission } from "./notificationsPermission";
+import { useMyRedemptions } from "./redemptions";
 
 const initialsOf = (first: string | null, last: string | null) =>
   `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 
-const LOCKED_NOTE = "🔒 No se puede cambiar";
+const LOCKED_NOTE = "No se puede cambiar";
 const AVATAR_SIZE = 72;
 const nameFieldsSchema = completeProfileSchema.pick({ first_name: true, last_name: true });
 const PERMISSION_DENIED_MESSAGE = "Para elegir una foto, permite el acceso a tus fotos en los ajustes del teléfono.";
@@ -35,6 +31,7 @@ const PERMISSION_DENIED_MESSAGE = "Para elegir una foto, permite el acceso a tus
 // A-20 Perfil (US-06). Name, photo and notification preference are editable; birth date and email are not (RN-04).
 export function ProfileScreen() {
   const profile = useMyProfile();
+  const [saved, setSaved] = useState(false);
   if (profile.isError) return <ErrorState onRetry={() => void profile.refetch()} title="Algo salió mal" message="No pudimos cargar tu perfil. Inténtalo de nuevo." testID="profile-error" />;
   if (!profile.data) {
     return (
@@ -45,21 +42,24 @@ export function ProfileScreen() {
     );
   }
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.surface }} contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
-      <EditableProfile profile={profile.data} />
-      <EmailVerificationBanner />
-      <PermissionRow />
-      <HistoryRow />
-      <SignOutButton />
-      <DeleteAccountEntry />
-      {__DEV__ ? <DevSimulatePush /> : null}
-    </ScrollView>
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
+        <EditableProfile profile={profile.data} onSaved={() => setSaved(true)} />
+        <EmailVerificationBanner />
+        <HistoryRow />
+        <SignOutButton />
+        <DeleteAccountEntry />
+        {__DEV__ ? <DevSimulatePush /> : null}
+      </ScrollView>
+      {/* A-79: success is a transient toast, not a message that lingers in the form. */}
+      {saved ? <Toast title="Cambios guardados" message="Actualizamos tu perfil." onDismiss={() => setSaved(false)} testID="profile-saved-toast" /> : null}
+    </View>
   );
 }
 
-type Notice = { variant: "error" | "success"; message: string };
+type Notice = { variant: "error"; message: string };
 
-function EditableProfile({ profile }: { profile: MyProfile }) {
+function EditableProfile({ profile, onSaved }: { profile: MyProfile; onSaved: () => void }) {
   const { first_name, last_name, birth_date, email, email_verified, avatar_path, push_opt_in } = profile;
   const [first, setFirst] = useState(first_name ?? "");
   const [last, setLast] = useState(last_name ?? "");
@@ -91,7 +91,7 @@ function EditableProfile({ profile }: { profile: MyProfile }) {
       {
         onSuccess: () => {
           setPhotoUri(null);
-          setNotice({ variant: "success", message: "Guardamos tus cambios." });
+          onSaved();
         },
         onError: (error) => setNotice({ variant: "error", message: ERRORS[toAppError(error).code].message }),
       }
@@ -101,20 +101,23 @@ function EditableProfile({ profile }: { profile: MyProfile }) {
   return (
     <>
       <Header name={[first_name, last_name].filter(Boolean).join(" ")} email={email} initials={initialsOf(first_name, last_name)} avatarUri={photoUri ?? avatarUrl(avatar_path)} />
+      <StatsStrip />
       <View style={{ gap: spacing.lg }}>
         <Button title={avatar_path || photoUri ? "Cambiar foto de perfil" : "Agregar foto de perfil"} onPress={choosePhoto} variant="secondary" fullWidth testID="profile-photo-change" />
         <TextField label="Nombre" value={first} onChangeText={setFirst} error={errors.first_name?.[0]} autoCapitalize="words" autoComplete="given-name" testID="profile-first-name" />
         <TextField label="Apellido" value={last} onChangeText={setLast} error={errors.last_name?.[0]} autoCapitalize="words" autoComplete="family-name" testID="profile-last-name" />
-        <NotificationPreference value={optIn} onChange={setOptIn} />
+        <NotificationsSection value={optIn} onChange={setOptIn} />
         {notice ? <FormMessage variant={notice.variant} message={notice.message} testID="profile-notice" /> : null}
-        <Button
-          title={update.isPending ? "Guardando…" : "Guardar cambios"}
-          onPress={save}
-          disabled={!dirty || !parsed.success || update.isPending}
-          loading={update.isPending}
-          fullWidth
-          testID="profile-save"
-        />
+        {dirty ? (
+          <Button
+            title={update.isPending ? "Guardando…" : "Guardar cambios"}
+            onPress={save}
+            disabled={!parsed.success || update.isPending}
+            loading={update.isPending}
+            fullWidth
+            testID="profile-save"
+          />
+        ) : null}
       </View>
       <Section>
         <Row
@@ -130,25 +133,72 @@ function EditableProfile({ profile }: { profile: MyProfile }) {
   );
 }
 
-function NotificationPreference({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+// A-76: one section for both controls; the system row only appears when the OS permission needs attention.
+function NotificationsSection({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+  const { state, act } = usePushPermission();
+  const systemAction = state === "blocked" ? "Abrir ajustes" : state === "askable" ? "Activar" : null;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 48 }}>
-      <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
-          Preferencias de notificaciones
-        </Text>
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-          Recibir promociones y avisos de tus negocios
-        </Text>
+    <View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 48 }}>
+        <View style={{ flex: 1, gap: spacing.xs / 2 }}>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
+            Notificaciones
+          </Text>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            Recibir promociones y avisos de tus negocios
+          </Text>
+        </View>
+        <Switch
+          value={value}
+          onValueChange={onChange}
+          accessibilityLabel="Notificaciones"
+          trackColor={{ true: colors.navy, false: colors.surfaceMuted }}
+          thumbColor={colors.surface}
+          testID="profile-push-opt-in"
+        />
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel="Preferencias de notificaciones"
-        trackColor={{ true: colors.navy, false: colors.surfaceMuted }}
-        thumbColor={colors.surface}
-        testID="profile-push-opt-in"
-      />
+      {systemAction ? (
+        <Pressable
+          onPress={() => void act()}
+          accessibilityRole="button"
+          accessibilityLabel={`Desactivadas en el sistema. ${systemAction}`}
+          testID="profile-notifications-action"
+          style={{ minHeight: 44, justifyContent: "center" }}
+        >
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            Desactivadas en el sistema ·{" "}
+            <Text style={{ fontFamily: fontFamily.semibold, color: colors.navy, textDecorationLine: "underline" }}>{systemAction}</Text>
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+// A-78: achievements from the cached lists; hidden until both are known so it never shows wrong zeros.
+function StatsStrip() {
+  const cards = useMyCards().data;
+  const redemptions = useMyRedemptions();
+  if (!cards || !redemptions.data) return null;
+  const redeemed = redemptions.data.pages.flat().length;
+  const stats = [
+    { label: "Sellos", value: String(cards.reduce((sum, card) => sum + card.stamps_count, 0)) },
+    { label: "Tarjetas", value: String(cards.length) },
+    // WHY: the history is paged; past the first page the exact count isn't known, so it reads "20+".
+    { label: "Canjes", value: redemptions.hasNextPage ? `${redeemed}+` : String(redeemed) },
+  ];
+  return (
+    <View testID="profile-stats" style={{ flexDirection: "row", backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingVertical: spacing.md }}>
+      {stats.map(({ label, value }) => (
+        <View key={label} accessible accessibilityLabel={`${label}: ${value}`} style={{ flex: 1, alignItems: "center" }}>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.navy, fontVariant: ["tabular-nums"] }]}>
+            {value}
+          </Text>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            {label}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -204,24 +254,14 @@ function Row({ label, value, note, testID }: { label: string; value: string; not
         {value}
       </Text>
       {note ? (
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-          {note}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+          <Lock size={14} color={colors.textSecondary} />
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            {note}
+          </Text>
+        </View>
       ) : null}
     </View>
-  );
-}
-
-function PermissionRow() {
-  const { state, act } = usePushPermission();
-  const { status, action } = PERMISSION_TEXT[state];
-  return (
-    <Section>
-      <View style={{ paddingVertical: spacing.md, gap: spacing.sm }}>
-        <Row label="Notificaciones" value={status} testID="profile-notifications" />
-        {action ? <Button title={action} onPress={() => void act()} variant="secondary" fullWidth testID="profile-notifications-action" /> : null}
-      </View>
-    </Section>
   );
 }
 
@@ -233,11 +273,13 @@ function HistoryRow() {
       accessibilityLabel="Historial de canjes"
       onPress={() => router.push("/redemptions")}
       testID="profile-history"
-      style={{ minHeight: 48, justifyContent: "center", backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingHorizontal: spacing.lg }}
+      style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingHorizontal: spacing.lg }}
     >
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
-        Historial de canjes ›
+      <Gift size={20} color={colors.navy} />
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary }]}>
+        Historial de canjes
       </Text>
+      <ChevronRight size={18} color={colors.textSecondary} />
     </Pressable>
   );
 }

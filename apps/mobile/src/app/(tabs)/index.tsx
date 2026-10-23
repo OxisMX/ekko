@@ -1,12 +1,11 @@
 import { ERRORS, MERCHANT_CATEGORIES, type MerchantCategory, merchantCategoryLabel } from "@ekko/shared";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { TabSheet } from "../../components/layout/TabSheet";
-import { MerchantCard } from "../../components/catalog";
+import { MerchantCard, SearchField } from "../../components/catalog";
 import { Chip, EmptyState, ErrorState, FormMessage, MerchantCardSkeleton } from "../../components/ui";
-import { fieldBoxStyle } from "../../components/ui/TextField";
 import { BirthdayGreeting } from "../../features/birthday/BirthdayGreeting";
 import { EmailVerificationBanner } from "../../features/auth/EmailVerificationBanner";
 import { type MerchantListItem, toMerchantCard, useMerchants } from "../../features/catalog/catalog";
@@ -107,20 +106,8 @@ function ExploreScreen() {
       <EmailVerificationBanner />
       <BirthdayGreeting />
     <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
-      <View style={[fieldBoxStyle(false), { marginHorizontal: spacing.lg, paddingHorizontal: spacing.lg }]}>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Busca un negocio"
-          placeholderTextColor={colors.textSecondary}
-          accessibilityLabel="Buscar negocios"
-          returnKeyType="search"
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-          maxFontSizeMultiplier={MAX_FONT_SCALE}
-          style={[textStyles.body, { flex: 1, minHeight: 48, color: colors.textPrimary }]}
-          testID="explore-search"
-        />
+      <View style={{ marginHorizontal: spacing.lg }}>
+        <SearchField value={search} onChangeText={setSearch} testID="explore-search" />
       </View>
       {/* RN-51 / brief §4.2: the 9 categories in one scrollable row. */}
       <ScrollView

@@ -77,6 +77,24 @@ describe('P-06 card config', () => {
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
   })
 
+  it('preview mirrors the app card: progress, reward and expiry copy (P-27)', async () => {
+    renderPage()
+    await loaded()
+    const preview = within(screen.getByTestId('card-preview'))
+    expect(preview.getByText('3 de 6 sellos')).toBeInTheDocument()
+    expect(preview.getByText('Te faltan 3 para tu premio')).toBeInTheDocument()
+    expect(preview.getByText('Premio: Café gratis')).toBeInTheDocument()
+    expect(preview.getByText(/^Vence el /)).toBeInTheDocument()
+    expect(screen.getByTestId('card-preview').className).not.toMatch(/aspect-/)
+  })
+
+  it('names each stepper through its legend (P-30)', async () => {
+    renderPage()
+    await loaded()
+    expect(screen.getByRole('group', { name: 'Sellos para el premio' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Vigencia del ciclo' })).toBeInTheDocument()
+  })
+
   it('stepper changes the preview and respects the 4–10 bounds', async () => {
     renderPage()
     await loaded()
@@ -167,7 +185,7 @@ describe('P-06 card config', () => {
     const paths = upload.mock.calls.map(([p]) => p as string)
     expect(paths[0]).toMatch(/^merchants\/m1\/card\/[0-9a-f-]{36}_540\.webp$/)
     expect(paths[1]).toMatch(/_1080\.webp$/)
-    expect(screen.getByTestId('card-preview')).toHaveStyle({ backgroundImage: 'url("blob:preview")' })
+    expect(screen.getByTestId('card-preview-bg')).toHaveStyle({ backgroundImage: 'url("blob:preview")' })
 
     save()
     rpc.mockResolvedValueOnce({ data: config, error: null })
@@ -203,17 +221,10 @@ describe('P-06 card config', () => {
     await waitFor(() => expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_card_background_path: null })))
   })
 
-  it('offers the push coupon validity as a select 48/36/24/12/6 h and saves the choice', async () => {
+  it('moved the push coupon validity out of the card config (P-31)', async () => {
     renderPage()
     await loaded()
-    const select = screen.getByLabelText('Vigencia de cupones push')
-    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['48 h', '36 h', '24 h', '12 h', '6 h'])
-    expect(select).toHaveValue('24')
-    fireEvent.change(select, { target: { value: '12' } })
-    save()
-    rpc.mockResolvedValueOnce({ data: { ...config, push_coupon_validity_hours: 12 }, error: null })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
-    await waitFor(() => expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_push_coupon_validity_hours: 12 })))
+    expect(screen.queryByLabelText(/Vigencia de cupones push/)).not.toBeInTheDocument()
   })
 
   it('uploads a custom stamp image under merchants/{id}/card/, previews it and saves its path', async () => {

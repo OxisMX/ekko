@@ -1,12 +1,14 @@
 import { ModalDialog } from '../components/ModalDialog'
-import { ERRORS, merchantImageUrl, PUSH_COUPON_VALIDITY_OPTIONS } from '@ekko/shared'
+import { ERRORS, merchantImageUrl } from '@ekko/shared'
 import * as Sentry from '@sentry/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { CardPreview } from '../components/CardPreview'
-import { AlertIcon, CheckCircleIcon } from '../components/Icons'
+import { AlertIcon, CheckCircleIcon, MinusIcon, PlusIcon } from '../components/Icons'
 import { Field } from '../components/FormField'
+import { PageState } from '../components/PageState'
+import { UnsavedBar, UnsavedChangesDialog } from '../components/UnsavedChanges'
 import { ImagePicker } from '../components/ImagePicker'
 import { useMerchantSession } from '../components/panelOutlet'
 import { useAdminRpc } from '../lib/adminUnlockContext'
@@ -14,19 +16,18 @@ import {
   CARD_LIMITS,
   type CardField,
   type CardForm,
-  cardFormSchema,
   describeError,
   fieldErrors,
   toCardForm,
+  updateCardConfig,
 } from '../lib/cardConfig'
+import { useUnsavedChanges } from '../lib/useUnsavedChanges'
 import { supabase } from '../lib/supabase'
 import { useMerchantImageUpload } from '../lib/useMerchantImageUpload'
+import { btnPrimary, btnSecondary, input } from '../components/ui'
 
-const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 
-function Stepper({ id, label, value, range, unit, error, onChange }: {
-  id: string
+function Stepper({ label, value, range, unit, error, onChange }: {
   label: string
   value: number
   range: readonly [number, number]
@@ -34,24 +35,32 @@ function Stepper({ id, label, value, range, unit, error, onChange }: {
   error?: string
   onChange: (value: number) => void
 }) {
-  const step = 'grid size-14 place-items-center rounded-xl bg-surface-muted text-2xl font-semibold hover:bg-black/10 disabled:opacity-40'
+  const step = 'grid size-14 place-items-center rounded-button bg-surface-muted font-semibold transition-[background-color,transform] hover:bg-black/10 active:scale-[.98] active:bg-black/15 disabled:opacity-40'
   return (
-    <Field id={id} label={label} error={error}>
-      <div className="flex items-center gap-3" role="group" aria-labelledby={id}>
+    // WHY fieldset+legend: there is no single control to point a <label> at, so the group carries the name (P-30).
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1.5 font-semibold">{label}</legend>
+      <div className="flex items-center gap-3">
         <button type="button" className={step} aria-label={`Menos ${unit}`} disabled={value <= range[0]} onClick={() => onChange(value - 1)}>
-          −
+          <MinusIcon className="size-6" />
         </button>
-        <output id={`${id}-value`} className="min-w-28 text-center text-xl font-bold">
+        <output className="min-w-28 text-center text-xl font-bold">
           {value} {unit}
         </output>
         <button type="button" className={step} aria-label={`Más ${unit}`} disabled={value >= range[1]} onClick={() => onChange(value + 1)}>
-          +
+          <PlusIcon className="size-6" />
         </button>
         <span className="text-sm text-text-secondary">
           ({range[0]}–{range[1]})
         </span>
       </div>
-    </Field>
+      {error && (
+        <p role="alert" className="flex items-center gap-1.5 text-sm font-medium text-error">
+          <AlertIcon className="size-4 shrink-0" />
+          {error}
+        </p>
+      )}
+    </fieldset>
   )
 }
 
@@ -61,7 +70,7 @@ export function CardConfigPage() {
   const { signOut } = useAuth()
   const queryClient = useQueryClient()
   const adminRpc = useAdminRpc()
-  const ids = { stamps: useId(), months: useId(), title: useId(), description: useId(), terms: useId(), hours: useId() }
+  const ids = { title: useId(), description: useId(), terms: useId() }
   const backgroundUpload = useMerchantImageUpload('card', 'card')
   // WHY 'logo' kind: stamps are square, same crop and widths as the logo.
   const stampUpload = useMerchantImageUpload('logo', 'card')
@@ -85,24 +94,7 @@ export function CardConfigPage() {
   }
 
   const save = useMutation({
-    mutationFn: async (form: CardForm) => {
-      const parsed = cardFormSchema.parse(form)
-      return toCardForm(
-        await adminRpc(() =>
-          supabase.rpc('update_card_config', {
-            p_stamps_required: parsed.stamps_required,
-            p_cycle_months: parsed.cycle_months,
-            p_reward_title: parsed.reward_title,
-            p_reward_description: parsed.reward_description,
-            p_terms: parsed.terms,
-            // WHY: generated types omit `null` for this arg (no DEFAULT), but the RPC accepts it to clear the image.
-            p_card_background_path: parsed.card_background_path as string,
-            p_push_coupon_validity_hours: parsed.push_coupon_validity_hours,
-            p_stamp_image_path: parsed.stamp_image_path as string,
-          }),
-        ),
-      )
-    },
+    mutationFn: async (form: CardForm) => toCardForm(await adminRpc(() => updateCardConfig(form))),
     onSuccess: (next) => {
       queryClient.setQueryData(queryKey, next)
       setDraft({})
@@ -122,21 +114,11 @@ export function CardConfigPage() {
     },
   })
 
-  if (config.isPending)
-    return (
-      <p role="status" className="p-6 text-text-secondary">
-        Cargando la configuración de tu tarjeta…
-      </p>
-    )
+  const { blocker: unsaved } = useUnsavedChanges(Object.keys(draft).length > 0)
+
+  if (config.isPending) return <PageState title="Configuración de tarjeta" loadingLabel="Cargando la configuración de tu tarjeta…" className="max-w-6xl" />
   if (config.isError)
-    return (
-      <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
-        <p className="font-semibold">{ERRORS[describeError(config.error).code].message}</p>
-        <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void config.refetch()}>
-          Reintentar
-        </button>
-      </div>
-    )
+    return <PageState title="Configuración de tarjeta" loadingLabel="" error={ERRORS[describeError(config.error).code].message} onRetry={() => void config.refetch()} className="max-w-6xl" />
 
   const form: CardForm = { ...config.data, ...draft }
   const errors = { ...fieldErrors(form), ...serverErrors }
@@ -180,7 +162,7 @@ export function CardConfigPage() {
 
   return (
     <section aria-labelledby="card-title" className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <h1 id="card-title" className="text-2xl font-bold">
+      <h1 id="card-title" className="text-h1 font-bold">
         Configuración de tarjeta
       </h1>
 
@@ -192,21 +174,16 @@ export function CardConfigPage() {
             if (canSave) setConfirming(true)
           }}
         >
-          <Stepper id={ids.stamps} label="Sellos para el premio" unit="sellos" range={CARD_LIMITS.stamps} value={form.stamps_required} error={errors.stamps_required} onChange={(v) => edit('stamps_required', v)} />
-          <Stepper id={ids.months} label="Vigencia del ciclo" unit="meses" range={CARD_LIMITS.months} value={form.cycle_months} error={errors.cycle_months} onChange={(v) => edit('cycle_months', v)} />
+          <Stepper label="Sellos para el premio" unit="sellos" range={CARD_LIMITS.stamps} value={form.stamps_required} error={errors.stamps_required} onChange={(v) => edit('stamps_required', v)} />
+          <Stepper label="Vigencia del ciclo" unit="meses" range={CARD_LIMITS.months} value={form.cycle_months} error={errors.cycle_months} onChange={(v) => edit('cycle_months', v)} />
           <Field id={ids.title} label="Título del premio" error={errors.reward_title} counter={`${form.reward_title.length}/${CARD_LIMITS.title}`}>
-            <input id={ids.title} className={inputClass} value={form.reward_title} aria-invalid={!!errors.reward_title} aria-describedby={`${ids.title}-error`} onChange={(e) => edit('reward_title', e.target.value)} />
+            <input id={ids.title} className={input} value={form.reward_title} aria-invalid={!!errors.reward_title} aria-describedby={`${ids.title}-error`} onChange={(e) => edit('reward_title', e.target.value)} />
           </Field>
           <Field id={ids.description} label="Descripción del premio" error={errors.reward_description} counter={`${form.reward_description.length}/${CARD_LIMITS.description}`}>
-            <textarea id={ids.description} rows={3} className={inputClass} value={form.reward_description} aria-invalid={!!errors.reward_description} aria-describedby={`${ids.description}-error`} onChange={(e) => edit('reward_description', e.target.value)} />
+            <textarea id={ids.description} rows={3} className={input} value={form.reward_description} aria-invalid={!!errors.reward_description} aria-describedby={`${ids.description}-error`} onChange={(e) => edit('reward_description', e.target.value)} />
           </Field>
           <Field id={ids.terms} label="Términos y condiciones (opcional)" error={errors.terms} counter={`${form.terms.length}/${CARD_LIMITS.terms}`}>
-            <textarea id={ids.terms} rows={4} className={inputClass} value={form.terms} aria-invalid={!!errors.terms} aria-describedby={`${ids.terms}-error`} onChange={(e) => edit('terms', e.target.value)} />
-          </Field>
-          <Field id={ids.hours} label="Vigencia de cupones push" error={errors.push_coupon_validity_hours}>
-            <select id={ids.hours} className={inputClass} value={form.push_coupon_validity_hours} aria-invalid={!!errors.push_coupon_validity_hours} aria-describedby={`${ids.hours}-error`} onChange={(e) => edit('push_coupon_validity_hours', Number(e.target.value))}>
-              {PUSH_COUPON_VALIDITY_OPTIONS.map((h) => <option key={h} value={h}>{h} h</option>)}
-            </select>
+            <textarea id={ids.terms} rows={4} className={input} value={form.terms} aria-invalid={!!errors.terms} aria-describedby={`${ids.terms}-error`} onChange={(e) => edit('terms', e.target.value)} />
           </Field>
 
           {saveError && (
@@ -221,14 +198,17 @@ export function CardConfigPage() {
               Cambios guardados. Aplican a las tarjetas nuevas.
             </p>
           )}
-          <button type="submit" disabled={!canSave} className={`${buttonClass} h-14 bg-navy text-white hover:bg-brand sm:self-start`}>
+          <button type="submit" disabled={!canSave} className={`${btnPrimary} h-14 sm:self-start`}>
             Guardar cambios
           </button>
         </form>
 
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
-          <h2 className="font-semibold">Vista previa</h2>
-          <CardPreview merchantName={merchant.name} stampsRequired={form.stamps_required} rewardTitle={form.reward_title} backgroundUrl={backgroundUrl} stampImageUrl={stampUrl} />
+        {/* WHY contents below xl: the preview floats above the form and stays pinned while scrolling (P-29); from xl the whole column is sticky. */}
+        <aside className="contents xl:sticky xl:top-6 xl:flex xl:flex-col xl:gap-4 xl:self-start">
+          <div className="sticky top-0 z-10 order-first -mx-1 flex flex-col gap-2 bg-surface-muted px-1 py-2 xl:static xl:m-0 xl:gap-4 xl:p-0">
+            <h2 className="font-semibold">Vista previa</h2>
+            <CardPreview merchantName={merchant.name} stampsRequired={form.stamps_required} rewardTitle={form.reward_title} cycleMonths={form.cycle_months} backgroundUrl={backgroundUrl} stampImageUrl={stampUrl} />
+          </div>
           <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
             <p className="font-semibold">Imagen de fondo</p>
             <p className="text-sm text-text-secondary">Se recorta al centro con proporción de tarjeta (1.586:1). Máximo 10 MB.</p>
@@ -242,17 +222,20 @@ export function CardConfigPage() {
         </aside>
       </div>
 
+      <UnsavedBar show={dirty} />
+      <UnsavedChangesDialog blocker={unsaved} />
+
       {confirming && (
         <ModalDialog labelledBy="confirm-title" onClose={() => !save.isPending && setConfirming(false)}>
-          <h2 id="confirm-title" className="text-xl font-semibold">
+          <h2 id="confirm-title" className="text-h2 font-semibold">
             ¿Guardar los cambios?
           </h2>
           <p>Los cambios aplicarán a las tarjetas nuevas. Las tarjetas que tus clientes ya tienen no se modifican.</p>
           <div className="flex flex-wrap justify-end gap-3">
-            <button type="button" disabled={save.isPending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setConfirming(false)}>
+            <button type="button" disabled={save.isPending} className={btnSecondary} onClick={() => setConfirming(false)}>
               Cancelar
             </button>
-            <button type="button" disabled={save.isPending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => save.mutate(form)}>
+            <button type="button" disabled={save.isPending} className={btnPrimary} onClick={() => save.mutate(form)}>
               {save.isPending ? 'Guardando…' : 'Confirmar'}
             </button>
           </div>

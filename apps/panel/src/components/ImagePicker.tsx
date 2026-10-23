@@ -1,14 +1,18 @@
-import { useRef } from 'react'
+import { type ReactNode, useRef } from 'react'
 import { AlertIcon } from './Icons'
+import { btnSecondary } from './ui'
 
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 
 // File chooser + optional "remove" action shared by every merchant image field.
-export function ImagePicker({ inputLabel, hasImage, uploading, error, removeLabel, onPick, onRemove }: {
+export function ImagePicker({ inputLabel, hasImage, uploading, disabled = false, error, errorActions, removeLabel = 'Quitar imagen', onPick, onRemove }: {
   inputLabel: string
   hasImage: boolean
   uploading: boolean
+  // Extra lock while the surrounding form saves (the label reads "Subiendo…" only while `uploading`).
+  disabled?: boolean
   error: string | null
+  // Recovery actions under the error, e.g. "Reintentar" (P-35).
+  errorActions?: ReactNode
   removeLabel?: string
   onPick: (file: File | undefined) => void
   onRemove?: () => void
@@ -29,20 +33,23 @@ export function ImagePicker({ inputLabel, hasImage, uploading, error, removeLabe
         }}
       />
       <div className="flex flex-wrap gap-3">
-        <button type="button" disabled={uploading} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => input.current?.click()}>
+        <button type="button" disabled={uploading || disabled} className={btnSecondary} onClick={() => input.current?.click()}>
           {uploading ? 'Subiendo…' : hasImage ? 'Cambiar imagen' : 'Elegir imagen'}
         </button>
         {hasImage && onRemove && (
-          <button type="button" disabled={uploading} className={`${buttonClass} text-error hover:bg-surface-muted`} onClick={onRemove}>
+          <button type="button" disabled={uploading || disabled} className={`${btnSecondary} text-error`} onClick={onRemove}>
             {removeLabel}
           </button>
         )}
       </div>
       {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-sm font-medium text-error">
-          <AlertIcon className="size-4 shrink-0" />
-          {error}
-        </p>
+        <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-error">
+          <p className="flex items-center gap-1.5">
+            <AlertIcon className="size-4 shrink-0" />
+            {error}
+          </p>
+          {errorActions}
+        </div>
       )}
     </>
   )

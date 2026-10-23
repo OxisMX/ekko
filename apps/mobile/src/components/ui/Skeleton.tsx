@@ -1,6 +1,28 @@
-import { useEffect, useState } from "react";
-import { AccessibilityInfo, Animated, View, type DimensionValue } from "react-native";
+import { useEffect } from "react";
+import { Animated, View, type DimensionValue } from "react-native";
 import { colors, radii, spacing } from "../../theme";
+import { useReduceMotion } from "../useReduceMotion";
+
+// WHY: one loop drives every skeleton on screen, so they pulse in sync and cost one animation, not N.
+const sharedOpacity = new Animated.Value(1);
+const staticOpacity = new Animated.Value(1);
+const pulse = Animated.loop(
+  Animated.sequence([
+    Animated.timing(sharedOpacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+    Animated.timing(sharedOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+  ]),
+);
+let subscribers = 0;
+
+function subscribePulse() {
+  if (subscribers++ === 0) pulse.start();
+  return () => {
+    if (--subscribers === 0) {
+      pulse.stop();
+      sharedOpacity.setValue(1);
+    }
+  };
+}
 
 export type SkeletonProps = {
   width?: DimensionValue;
@@ -13,27 +35,11 @@ const hidden = { accessibilityElementsHidden: true, importantForAccessibility: "
 
 // PX-5: shows the shape of the content while it loads, never a spinner.
 export function Skeleton({ width = "100%", height, radius = radii.field, testID }: SkeletonProps) {
-  const [opacity] = useState(() => new Animated.Value(1));
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    let cancelled = false;
-    // §9: no pulse when the system asks for reduced motion.
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduce) => {
-        if (!cancelled && !reduce) pulse.start();
-      })
-      .catch(() => pulse.start());
-    return () => {
-      cancelled = true;
-      pulse.stop();
-    };
-  }, [opacity]);
+  // §9: no pulse when the system asks for reduced motion (null = not known yet, stays still).
+  const reduceMotion = useReduceMotion();
+  const animate = reduceMotion === false;
+  useEffect(() => (animate ? subscribePulse() : undefined), [animate]);
+  const opacity = animate ? sharedOpacity : staticOpacity;
 
   return (
     <Animated.View

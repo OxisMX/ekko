@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthContext, type AuthState } from '../auth/AuthContext'
 import type { MerchantSession } from '../lib/panelRoute'
 import { AdminLayout, AdminPlaceholderPage } from './AdminLayout'
 import { ADMIN_SECTIONS } from './adminSections'
 
 vi.mock('../lib/supabase', () => ({ supabase: { rpc: vi.fn().mockResolvedValue({ data: { ok: true }, error: null }) } }))
+
+const signOut = vi.fn<AuthState['signOut']>()
 
 function renderAdmin(path: string, adminUnlockedUntil: string | null) {
   const merchantSession: MerchantSession = {
@@ -33,9 +36,12 @@ function renderAdmin(path: string, adminUnlockedUntil: string | null) {
     ],
     { initialEntries: [path] },
   )
+  const auth: AuthState = { session: undefined, authError: null, clearAuthError: vi.fn(), signOut }
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RouterProvider router={router} />
+      <AuthContext value={auth}>
+        <RouterProvider router={router} />
+      </AuthContext>
     </QueryClientProvider>,
   )
 }
@@ -43,30 +49,47 @@ function renderAdmin(path: string, adminUnlockedUntil: string | null) {
 const inFiveMinutes = () => new Date(Date.now() + 5 * 60_000).toISOString()
 
 describe('AdminLayout', () => {
-  it('lists the seven sections and marks the current one with aria-current', () => {
+  beforeEach(() => signOut.mockReset())
+
+  it('groups the seven sections under Mi programa / Mi negocio / Reportes and marks the current one with aria-current (P-17)', () => {
     renderAdmin('/admin/menu', inFiveMinutes())
     const nav = screen.getByRole('navigation', { name: 'Secciones administrativas' })
     const links = Array.from(nav.querySelectorAll('a'))
-    expect(links.map((a) => a.textContent)).toEqual([
-      'Métricas',
-      'Configuración de tarjeta',
-      'Menú',
-      'Ofertas',
-      'Notificaciones',
-      'Perfil del negocio',
-      'Registro de QR',
-    ])
+    expect(links.map((a) => a.textContent)).toEqual(['Tarjeta', 'Menú', 'Ofertas', 'Notificaciones', 'Perfil del negocio', 'Métricas', 'Registro de QR'])
+    const names = (group: string) => within(screen.getByRole('list', { name: group })).getAllByRole('link').map((a) => a.textContent)
+    expect(names('Mi programa')).toEqual(['Tarjeta', 'Menú', 'Ofertas', 'Notificaciones'])
+    expect(names('Mi negocio')).toEqual(['Perfil del negocio'])
+    expect(names('Reportes')).toEqual(['Métricas', 'Registro de QR'])
     expect(screen.getByRole('link', { name: 'Menú' })).toHaveAttribute('aria-current', 'page')
     expect(links.filter((a) => a.hasAttribute('aria-current'))).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1, name: 'Menú' })).toBeInTheDocument()
     expect(screen.getByText('Disponible próximamente')).toBeInTheDocument()
   })
 
-  it('shows the unlocked indicator and a way back to Modo Caja (RT-12)', () => {
+  it('shows a neutral countdown pill and one exit, "Bloquear y volver a Caja" (RT-12, P-15)', () => {
     renderAdmin('/admin/metricas', inFiveMinutes())
-    expect(screen.getByText('Sección administrativa desbloqueada')).toBeInTheDocument()
-    expect(screen.getByText(/Tiempo restante/)).toHaveTextContent(/[45]:\d\d/)
-    expect(screen.getByRole('link', { name: 'Volver a Modo Caja' })).toHaveAttribute('href', '/')
+    expect(screen.getByText(/Se bloquea en/)).toHaveTextContent(/[45]:\d\d/)
+    expect(screen.getByRole('button', { name: 'Bloquear y volver a Caja' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Volver a Modo Caja' })).not.toBeInTheDocument()
+  })
+
+  it('warns "Se bloqueará pronto" in the last minute (P-16)', () => {
+    renderAdmin('/admin/metricas', new Date(Date.now() + 30_000).toISOString())
+    expect(screen.getByText(/Se bloqueará pronto/)).toHaveTextContent(/0:[23]\d/)
+  })
+
+  it('logout moved here and asks first: Cancelar keeps the session, the dialog button signs out (P-14)', () => {
+    renderAdmin('/admin/metricas', inFiveMinutes())
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+    const dialog = screen.getByRole('dialog', { name: '¿Cerrar sesión?' })
+    expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(signOut).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cerrar sesión' }))
+    expect(signOut).toHaveBeenCalledTimes(1)
   })
 
   it('redirects to Modo Caja while admin is locked', async () => {

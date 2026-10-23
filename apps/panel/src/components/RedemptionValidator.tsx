@@ -4,6 +4,7 @@ import { useRedemption, type RedemptionPhase } from '../lib/useRedemption'
 import { AlertIcon, CheckCircleIcon, LockIcon, TicketIcon } from './Icons'
 import { useMerchantSession } from './panelOutlet'
 import { RedemptionResult, Spinner } from './RedemptionResult'
+import { btnPrimary } from './ui'
 
 const GROUP = REDEMPTION_CODE_LENGTH / 2
 
@@ -31,16 +32,16 @@ export function RedemptionValidator({ className = '' }: { className?: string }) 
   const { phase } = redemption
 
   return (
-    <section aria-labelledby="validator-title" className={`flex flex-col rounded-2xl bg-surface p-6 ${className}`}>
+    <section aria-labelledby="validator-title" className={`flex flex-col rounded-card bg-surface p-5 ${className}`}>
       <div className="flex items-center gap-3">
         <TicketIcon className="size-7 text-navy" />
-        <h2 id="validator-title" className="text-xl font-semibold">
+        <h2 id="validator-title" className="text-h2 font-semibold">
           Validar código de canje
         </h2>
       </div>
       <p className="mt-1 text-sm text-text-secondary">Pide al cliente el código de 6 caracteres que aparece en su app.</p>
       {phase.name === 'done' && (
-        <div role="status" className="mt-6 grid flex-1 place-items-center rounded-2xl bg-success p-8 text-center text-white">
+        <div role="status" className="mt-4 grid flex-1 place-items-center rounded-card bg-success p-8 text-center text-white">
           <div>
             <CheckCircleIcon className="mx-auto size-20" />
             <p className="mt-4 text-3xl font-semibold">Canje registrado</p>
@@ -87,8 +88,8 @@ function CodeForm({ redemption }: { redemption: Redemption }) {
   }
 
   return (
-        <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-1 flex-col">
-          <label htmlFor="redemption-code" className="text-xs font-semibold tracking-[1.5px] uppercase">
+        <form onSubmit={onSubmit} noValidate className="mt-4 flex flex-1 flex-col">
+          <label htmlFor="redemption-code" className="field-label">
             Código
           </label>
           <input
@@ -108,14 +109,14 @@ function CodeForm({ redemption }: { redemption: Redemption }) {
             placeholder="••• •••"
             aria-describedby="redemption-code-help"
             aria-invalid={(code.length === REDEMPTION_CODE_LENGTH && !valid) || notice?.code === 'E-12'}
-            className="mt-2 h-24 w-full rounded-xl border-2 border-text-secondary bg-surface text-center text-5xl font-bold tracking-[0.2em] tabular-nums placeholder:text-black/20 disabled:bg-surface-muted aria-invalid:border-error"
+            className="mt-2 h-24 w-full rounded-card border-2 border-text-secondary bg-surface text-center text-5xl font-bold tracking-[0.2em] tabular-nums placeholder:text-black/20 disabled:bg-surface-muted aria-invalid:border-error"
           />
           <p id="redemption-code-help" className="mt-2 text-sm text-text-secondary">
             {helpText(code, valid)}
           </p>
 
           {locked && (
-            <div role="alert" className="mt-4 flex items-start gap-3 rounded-xl bg-surface-muted p-4">
+            <div role="alert" className="mt-4 flex items-start gap-3 rounded-card bg-surface-muted p-4">
               <LockIcon className="size-6 shrink-0 text-error" />
               <div>
                 <p className="font-semibold">{ERRORS['E-13'].message}</p>
@@ -137,7 +138,7 @@ function CodeForm({ redemption }: { redemption: Redemption }) {
             <button
               type="submit"
               disabled={!valid || locked || isLookingUp}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-navy text-lg font-semibold text-white transition-colors hover:bg-brand disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-text-secondary"
+              className={`${btnPrimary} flex h-14 w-full items-center justify-center gap-3 text-lg disabled:bg-black/10 disabled:text-text-secondary disabled:opacity-100`}
             >
               {isLookingUp && <Spinner />}
               {isLookingUp ? 'Validando…' : notice?.code === 'E-01' ? 'Reintentar' : 'Validar código'}

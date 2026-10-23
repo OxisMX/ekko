@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { unlockAdmin } from './supabase-api'
 
 // Runs against the local Supabase with supabase/seed.sql (F-20, F-28, TC-009).
 // E2E_SUPABASE_ANON_KEY=$(pnpm -s supabase status -o json | jq -r .ANON_KEY) pnpm --filter @ekko/panel test:e2e
@@ -18,7 +19,11 @@ test('comercio activo entra a Modo Caja y puede cerrar sesión', async ({ page }
   await expect(page).toHaveURL(/\/$/)
   await expect(page.getByRole('heading', { name: 'Café Ekko Centro' })).toBeVisible()
 
+  // P-14: sign-out is not on the till; it lives in Administración and asks first.
+  await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toHaveCount(0)
+  await unlockAdmin(page)
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(page).toHaveURL(/\/login$/)
 })
 

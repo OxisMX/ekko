@@ -75,6 +75,14 @@ describe('Perfil del negocio', () => {
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
   })
 
+  it('previews how customers see the business and live-updates the name (P-42)', async () => {
+    renderPage()
+    fireEvent.change(await loaded(), { target: { value: 'Nuevo nombre' } })
+    const preview = within(screen.getByRole('region', { name: 'Así te ven tus clientes' }))
+    expect(preview.getByText('Nuevo nombre')).toBeInTheDocument()
+    expect(preview.getByText('Cafeterías y Postres')).toBeInTheDocument()
+  })
+
   it('shows the error and retries', async () => {
     rpc.mockReset()
     rpc.mockResolvedValueOnce(rpcError('E-99')).mockResolvedValueOnce({ data: profile, error: null })

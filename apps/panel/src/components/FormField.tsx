@@ -1,5 +1,6 @@
 import { AlertIcon } from './Icons'
 
+// WHY sentence-case label: long admin forms are read, not scanned; the uppercase `field-label` style is reserved for Login and the redemption validator.
 export function Field({ label, error, counter, children, id }: { label: string; error?: string; counter?: string; children: React.ReactNode; id: string }) {
   return (
     <div className="flex flex-col gap-1.5">

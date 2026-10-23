@@ -33,9 +33,27 @@ describe("StampCard", () => {
     expect(screen.getByText("3 de 8 sellos")).toBeOnTheScreen();
     expect(screen.getByText("Premio: Café americano")).toBeOnTheScreen();
     expect(screen.getByText("Vence el 15/01/2027")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Café La Esquina: 3 de 8 sellos, premio Café americano, vence el 15/01/2027")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Café La Esquina: 3 de 8 sellos, premio Café americano, vence el 15/01/2027. Te faltan 5 para tu premio")).toBeOnTheScreen();
     expect(screen.getAllByTestId("stamp-granted")).toHaveLength(3);
     expect(screen.getAllByTestId("stamp-empty")).toHaveLength(5);
+  });
+
+  it("says how many stamps are missing with a progress bar (A-27)", async () => {
+    await render(<StampCard {...base} />);
+    expect(screen.getByTestId("stamp-remaining")).toHaveTextContent("Te faltan 5 para tu premio");
+  });
+
+  it("with one stamp left says so and rings the gift slot (A-27)", async () => {
+    const seven = Array.from({ length: 7 }, () => stamp("2026-10-01T18:00:00Z"));
+    await render(<StampCard {...base} stamps={seven} />);
+    expect(screen.getByTestId("stamp-remaining")).toHaveTextContent("¡Solo te falta 1!");
+    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderStyle: "dashed", borderColor: "#FF7A3D" });
+  });
+
+  it("draws empty slots dashed (A-30) and shows the reward description inside the card (A-31)", async () => {
+    await render(<StampCard {...base} rewardDescription="Un café de 12 oz." />);
+    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderStyle: "dashed", borderWidth: 1 });
+    expect(screen.getByText("Un café de 12 oz.")).toBeOnTheScreen();
   });
 
   it("draws the gift icon only on the last empty slot", async () => {

@@ -1,47 +1,33 @@
 import { ERRORS, merchantImageUrl } from '@ekko/shared'
 import * as Sentry from '@sentry/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useId, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Field } from '../components/FormField'
 import { AlertIcon } from '../components/Icons'
+import { ImagePicker } from '../components/ImagePicker'
+import { PageState } from '../components/PageState'
+import { UnsavedBar, UnsavedChangesDialog } from '../components/UnsavedChanges'
 import { useMerchantSession } from '../components/panelOutlet'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { imageErrorText, uploadMerchantImage } from '../lib/cardConfig'
 import { createImageVariants, ImageProcessingError, type ImageVariant } from '../lib/imageVariants'
 import { describeMenuError, MENU_LIMITS, MENU_QUERY_KEY, productFieldErrors, productFormSchema, type ProductField, type ProductFormInput, toMenu, useMenuFailure } from '../lib/menu'
+import { useUnsavedChanges } from '../lib/useUnsavedChanges'
 import { supabase } from '../lib/supabase'
+import { btnPrimary, btnSecondary, input } from '../components/ui'
 
-const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
-
-export function Field({ label, error, counter, children, id }: { label: string; error?: string; counter?: string; children: React.ReactNode; id: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="font-semibold">{label}</label>
-        {counter && <span className="text-sm text-text-secondary">{counter}</span>}
-      </div>
-      {children}
-      {error && (
-        <p id={`${id}-error`} role="alert" className="flex items-center gap-1.5 text-sm font-medium text-error">
-          <AlertIcon className="size-4 shrink-0" />
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
 
 // P-08 (F-25). Image is cropped/encoded on pick (preview) but uploaded on save, so a cancelled form leaves no orphan files.
 export function ProductFormPage() {
   const { productId } = useParams()
+  const [searchParams] = useSearchParams()
   const { merchant } = useMerchantSession()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const adminRpc = useAdminRpc()
   const failure = useMenuFailure()
   const ids = { category: useId(), name: useId(), description: useId(), price: useId() }
-  const fileInput = useRef<HTMLInputElement>(null)
 
   const menu = useQuery({
     queryKey: MENU_QUERY_KEY,
@@ -58,15 +44,11 @@ export function ProductFormPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
-  if (menu.isPending)
-    return <p role="status" className="p-6 text-text-secondary">Cargando el producto…</p>
-  if (menu.isError)
-    return (
-      <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
-        <p className="font-semibold">{failure(menu.error).message}</p>
-        <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void menu.refetch()}>Reintentar</button>
-      </div>
-    )
+  const hasChanges = Object.keys(draft).length > 0 || pending !== null || imagePath !== undefined
+  const { blocker: unsaved, allowLeave } = useUnsavedChanges(hasChanges)
+  const title = productId ? 'Editar producto' : 'Nuevo producto'
+  if (menu.isPending) return <PageState title={title} loadingLabel="Cargando el producto…" className="max-w-3xl" />
+  if (menu.isError) return <PageState title={title} loadingLabel="" error={failure(menu.error).message} onRetry={() => void menu.refetch()} className="max-w-3xl" />
 
   const categories = [...menu.data].sort((a, b) => a.position - b.position)
   const existing = productId ? categories.flatMap((c) => c.products).find((p) => p.id === productId) : undefined
@@ -74,12 +56,13 @@ export function ProductFormPage() {
     return (
       <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
         <p className="font-semibold">Este producto ya no existe.</p>
-        <Link to="/admin/menu" className={`${buttonClass} flex items-center bg-navy text-white`}>Volver al menú</Link>
+        <Link to="/admin/menu" className={`${btnPrimary} flex items-center`}>Volver al menú</Link>
       </div>
     )
 
   const base: ProductFormInput = {
-    category_id: existing?.category_id ?? categories[0]?.id ?? '',
+    // P-34: `?categoria=` comes from a per-category "Agregar producto" link; ignore ids that no longer exist.
+    category_id: existing?.category_id ?? categories.find((c) => c.id === searchParams.get('categoria'))?.id ?? categories[0]?.id ?? '',
     name: existing?.name ?? '',
     description: existing?.description ?? '',
     price: existing ? String(existing.price) : '',
@@ -110,8 +93,6 @@ export function ProductFormPage() {
     } catch (err) {
       if (!(err instanceof ImageProcessingError)) Sentry.captureException(err)
       setImageError(err instanceof ImageProcessingError ? imageErrorText[err.code] : ERRORS['E-22'].message)
-    } finally {
-      if (fileInput.current) fileInput.current.value = ''
     }
   }
 
@@ -163,6 +144,7 @@ export function ProductFormPage() {
         }),
       )
       await queryClient.invalidateQueries({ queryKey: MENU_QUERY_KEY })
+      allowLeave()
       navigate('/admin/menu', { state: { notice: productId ? 'Producto actualizado.' : 'Producto creado.' } })
     } catch (err) {
       const { message } = failure(err)
@@ -176,27 +158,27 @@ export function ProductFormPage() {
   return (
     <section aria-labelledby="product-title" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id="product-title" className="text-2xl font-bold">{existing ? 'Editar producto' : 'Nuevo producto'}</h1>
+        <h1 id="product-title" className="text-h1 font-bold">{existing ? 'Editar producto' : 'Nuevo producto'}</h1>
         <Link to="/admin/menu" className="font-semibold text-text-secondary underline">Volver al menú</Link>
       </div>
 
       <form className="grid gap-6 rounded-2xl bg-surface p-6 md:grid-cols-[1fr_16rem]" noValidate onSubmit={(e) => { e.preventDefault(); if (!busy) void submit() }}>
         <div className="flex flex-col gap-5">
           <Field id={ids.category} label="Categoría" error={errors.category_id}>
-            <select id={ids.category} className={inputClass} value={form.category_id} aria-invalid={!!errors.category_id} aria-describedby={`${ids.category}-error`} onChange={(e) => edit('category_id', e.target.value)}>
+            <select id={ids.category} className={input} value={form.category_id} aria-invalid={!!errors.category_id} aria-describedby={`${ids.category}-error`} onChange={(e) => edit('category_id', e.target.value)}>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </Field>
           <Field id={ids.name} label="Nombre" error={errors.name} counter={`${form.name.length}/${MENU_LIMITS.productName}`}>
-            <input id={ids.name} className={inputClass} value={form.name} aria-invalid={!!errors.name} aria-describedby={`${ids.name}-error`} onChange={(e) => edit('name', e.target.value)} />
+            <input id={ids.name} className={input} value={form.name} aria-invalid={!!errors.name} aria-describedby={`${ids.name}-error`} onChange={(e) => edit('name', e.target.value)} />
           </Field>
           <Field id={ids.description} label="Descripción (opcional)" error={errors.description} counter={`${form.description.length}/${MENU_LIMITS.description}`}>
-            <textarea id={ids.description} rows={3} className={inputClass} value={form.description} aria-invalid={!!errors.description} aria-describedby={`${ids.description}-error`} onChange={(e) => edit('description', e.target.value)} />
+            <textarea id={ids.description} rows={3} className={input} value={form.description} aria-invalid={!!errors.description} aria-describedby={`${ids.description}-error`} onChange={(e) => edit('description', e.target.value)} />
           </Field>
           <Field id={ids.price} label="Precio (MXN)" error={errors.price}>
-            <input id={ids.price} inputMode="decimal" placeholder="0.00" className={inputClass} value={form.price} aria-invalid={!!errors.price} aria-describedby={`${ids.price}-error`} onChange={(e) => edit('price', e.target.value)} />
+            <input id={ids.price} inputMode="decimal" placeholder="0.00" className={input} value={form.price} aria-invalid={!!errors.price} aria-describedby={`${ids.price}-error`} onChange={(e) => edit('price', e.target.value)} />
           </Field>
         </div>
 
@@ -205,29 +187,23 @@ export function ProductFormPage() {
           <div className="aspect-square w-full overflow-hidden rounded-2xl bg-surface-muted">
             {previewUrl ? <img src={previewUrl} alt="Vista previa del producto" className="size-full object-cover" /> : <p className="grid size-full place-items-center p-4 text-center text-sm text-text-secondary">Sin imagen. Se recorta al centro en cuadrado.</p>}
           </div>
-          <input ref={fileInput} type="file" accept="image/*" aria-label="Elegir imagen del producto" className="sr-only" onChange={(e) => void pickImage(e.target.files?.[0])} />
-          <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={busy} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => fileInput.current?.click()}>
-              {previewUrl ? 'Cambiar imagen' : 'Elegir imagen'}
-            </button>
-            {previewUrl && (
-              <button type="button" disabled={busy} className={`${buttonClass} text-error hover:bg-surface-muted`} onClick={removeImage}>Quitar imagen</button>
-            )}
-          </div>
-          {imageError && (
-            <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-error">
-              <p className="flex items-center gap-1.5">
-                <AlertIcon className="size-4 shrink-0" />
-                {imageError}
-              </p>
-              {uploadFailed && (
+          <ImagePicker
+            inputLabel="Elegir imagen del producto"
+            hasImage={!!previewUrl}
+            uploading={phase === 'uploading'}
+            disabled={busy}
+            error={imageError}
+            errorActions={
+              uploadFailed && (
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={busy} className={`${buttonClass} bg-navy text-white`} onClick={() => void submit()}>Reintentar</button>
-                  <button type="button" disabled={busy} className={`${buttonClass} border border-black/15 text-text-primary`} onClick={() => void submit(true)}>Guardar sin imagen</button>
+                  <button type="button" disabled={busy} className={btnPrimary} onClick={() => void submit()}>Reintentar</button>
+                  <button type="button" disabled={busy} className={btnSecondary} onClick={() => void submit(true)}>Guardar sin imagen</button>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            }
+            onPick={(f) => void pickImage(f)}
+            onRemove={removeImage}
+          />
         </div>
 
         <div className="flex flex-col gap-3 md:col-span-2">
@@ -238,11 +214,13 @@ export function ProductFormPage() {
             </p>
           )}
           {phase === 'uploading' && <p role="status" className="text-text-secondary">Subiendo imagen…</p>}
-          <button type="submit" disabled={busy} className={`${buttonClass} h-14 bg-navy text-white hover:bg-brand sm:self-start`}>
+          <button type="submit" disabled={busy} className={`${btnPrimary} h-14 sm:self-start`}>
             {phase === 'saving' ? 'Guardando…' : 'Guardar producto'}
           </button>
         </div>
       </form>
+      <UnsavedBar show={hasChanges} />
+      <UnsavedChangesDialog blocker={unsaved} />
     </section>
   )
 }

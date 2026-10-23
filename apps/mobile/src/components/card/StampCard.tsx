@@ -1,11 +1,15 @@
 import { stampGridRows } from "@ekko/shared";
 import { Image } from "expo-image";
-import { useEffect, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
+import * as haptics from "../../lib/haptics";
 import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { formatDate } from "../format";
 import { MerchantAvatar } from "../merchant/MerchantAvatar";
+import { Gift as GiftIcon } from "../icons";
+import { Entrance, Pop } from "../motion";
+import { ProgressBar } from "../merchant/ProgressBar";
 import { useReduceMotion } from "../useReduceMotion";
 import { Button } from "../ui/Button";
 
@@ -22,6 +26,8 @@ export type StampCardProps = {
   merchantName: string;
   backgroundUri: string | null;
   rewardTitle: string;
+  /** Shown under "Premio: …" inside the card (A-31). */
+  rewardDescription?: string | null;
   cycleExpiresAt: string;
   pendingExtraStamps: number;
   rewardAvailable: boolean;
@@ -34,24 +40,11 @@ export type StampCardProps = {
 };
 
 // Brief §6.2: card backgrounds (1.586:1, cropped with `cover`) always sit under a translucent veil.
-const VEIL = "rgba(255, 255, 255, 0.78)";
 const STAMP_MAX = 64;
 const NEW_RING = 3;
-// expo-animation: strong ease-out for entrances.
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const RING_FADE_MS = 1500;
 
 const dateText = [textStyles.label, { letterSpacing: 0, textTransform: "none" as const, color: colors.textPrimary, textAlign: "center" as const }];
-
-export function GiftIcon({ size, testID }: { size: number; testID?: string }) {
-  const stroke = { stroke: colors.navy, strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
-  return (
-    <Svg testID={testID} width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
-      <Rect x={4} y={10} width={16} height={10} rx={1.5} {...stroke} />
-      <Rect x={3} y={7} width={18} height={3} rx={1} {...stroke} />
-      <Path d="M12 7v13M12 7c-1.5-3-5-3.5-5-1.2C7 7 9.5 7 12 7zM12 7c1.5-3 5-3.5 5-1.2C17 7 14.5 7 12 7z" {...stroke} />
-    </Svg>
-  );
-}
 
 export function StarIcon({ size }: { size: number }) {
   return (
@@ -67,46 +60,64 @@ export function StarIcon({ size }: { size: number }) {
   );
 }
 
-// PX-6: short entrance (scale 0.9 → 1 + fade, 250 ms); §9: skipped entirely with reduce motion.
-function NewStampEntrance({ children }: { children: React.ReactNode }) {
+// A-30: empty slots are dashed outlines that read as "to fill"; A-27: with one left the gift slot turns accent.
+const emptySlot = (accent: boolean) =>
+  ({
+    borderWidth: accent ? 2 : 1,
+    borderStyle: "dashed",
+    borderColor: accent ? colors.accent : colors.textSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  }) as const;
+
+// A-28: accent ring around the newest stamp that fades out in 1.5 s; it stays visible under reduce motion.
+function NewStampRing() {
   const reduce = useReduceMotion();
-  const [progress] = useState(() => new Animated.Value(0));
+  const [opacity] = useState(() => new Animated.Value(1));
   useEffect(() => {
-    if (reduce === null) return;
-    if (reduce) {
-      progress.setValue(1);
-      return;
-    }
-    const anim = Animated.timing(progress, { toValue: 1, duration: 250, easing: EASE_OUT, useNativeDriver: true });
+    if (reduce !== false) return;
+    const anim = Animated.timing(opacity, { toValue: 0, duration: RING_FADE_MS, useNativeDriver: true });
     anim.start();
     return () => anim.stop();
-  }, [reduce, progress]);
-  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
-  return <Animated.View style={{ width: "100%", alignItems: "center", opacity: progress, transform: [{ scale }] }}>{children}</Animated.View>;
+  }, [reduce, opacity]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="stamp-new-ring"
+      style={[StyleSheet.absoluteFill, { borderRadius: STAMP_MAX / 2, borderWidth: NEW_RING, borderColor: colors.accent, opacity }]}
+    />
+  );
+}
+
+export function remainingText(remaining: number): string | null {
+  if (remaining <= 0) return null;
+  return remaining === 1 ? "¡Solo te falta 1!" : `Te faltan ${remaining} para tu premio`;
 }
 
 type SlotProps = {
   stamp: StampCardStamp | undefined;
   isLast: boolean;
   isNew: boolean;
+  /** One stamp left: the gift slot gets a dashed accent ring. */
+  oneLeft: boolean;
   merchantName: string;
   imageUri: string | null;
   grayscale: boolean;
 };
 
-function StampSlot({ stamp, isLast, isNew, merchantName, imageUri, grayscale }: SlotProps) {
+function StampSlot({ stamp, isLast, isNew, oneLeft, merchantName, imageUri, grayscale }: SlotProps) {
   const circle = { width: "100%" as const, maxWidth: STAMP_MAX, aspectRatio: 1, borderRadius: STAMP_MAX / 2 } as const;
   let face: React.ReactNode;
   if (!stamp) {
     face = (
-      <View testID="stamp-empty" style={[circle, { backgroundColor: colors.surfaceMuted, borderWidth: 1.5, borderColor: colors.textSecondary, alignItems: "center", justifyContent: "center" }]}>
+      <View testID="stamp-empty" style={[circle, emptySlot(isLast && oneLeft)]}>
         {isLast ? <GiftIcon size={24} testID="stamp-gift" /> : null}
       </View>
     );
   } else {
-    const ring = isNew ? NEW_RING : 0;
     face = (
-      <View testID={isNew ? "stamp-new" : "stamp-granted"} style={[circle, { borderWidth: ring, borderColor: colors.accent, alignItems: "center", justifyContent: "center" }]}>
+      <View testID={isNew ? "stamp-new" : "stamp-granted"} style={[circle, { alignItems: "center", justifyContent: "center" }]}>
+        {isNew ? <NewStampRing /> : null}
         <MerchantAvatar name={merchantName} uri={imageUri} size={STAMP_MAX} grayscale={grayscale} style={{ width: "100%", height: "100%" }} />
         {/* RN-36: a bonus stamp carries a star (not only a colour) so it reads apart from a visit stamp. */}
         {stamp.isBonus ? (
@@ -116,7 +127,8 @@ function StampSlot({ stamp, isLast, isNew, merchantName, imageUri, grayscale }: 
         ) : null}
       </View>
     );
-    if (isNew) face = <NewStampEntrance>{face}</NewStampEntrance>;
+    // A-28: the new stamp lands with a spring from 0.6 (overshoot); static under reduce motion.
+    if (isNew) face = <Entrance from={0.6} spring style={{ width: "100%", alignItems: "center" }}>{face}</Entrance>;
   }
   return (
     <View style={{ flex: 1, alignItems: "center", gap: spacing.xs }}>
@@ -137,6 +149,7 @@ export function StampCard({
   merchantName,
   backgroundUri,
   rewardTitle,
+  rewardDescription = null,
   cycleExpiresAt,
   pendingExtraStamps,
   rewardAvailable,
@@ -151,9 +164,27 @@ export function StampCard({
   const granted = Math.min(stamps.length, stampsRequired);
   const expires = formatDate(cycleExpiresAt);
   const progressText = `${granted} de ${stampsRequired} sellos`;
+  const remaining = stampsRequired - granted;
+  const remainingLabel = rewardAvailable ? null : remainingText(remaining);
+  const oneLeft = !rewardAvailable && remaining === 1;
+  const [rewardPopped, setRewardPopped] = useState(false);
+  const buzzed = useRef(false);
+  // WHY: the reward moment (new stamp or reward notice) buzzes and pops once per mount, not on every re-render.
+  useEffect(() => {
+    // WHY: a frame later, so the Pop sees a false → true change and plays once the card is on screen.
+    const frame = rewardAvailable ? requestAnimationFrame(() => setRewardPopped(true)) : null;
+    if (!buzzed.current && (rewardAvailable || (highlightLast && granted > 0))) {
+      buzzed.current = true;
+      haptics.success();
+    }
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [rewardAvailable, highlightLast, granted]);
   const bonusCount = stamps.slice(0, granted).filter((s) => s.isBonus).length;
   const summary = [
     `${merchantName}: ${progressText}, premio ${rewardTitle}, vence el ${expires}`,
+    remainingLabel,
     bonusCount > 0 ? `${bonusCount} ${bonusCount === 1 ? "sello extra" : "sellos extra"}` : null,
     pendingExtraStamps > 0 ? "+1 sello extra en tu próxima visita" : null,
     available ? null : "No disponible",
@@ -176,6 +207,7 @@ export function StampCard({
                 stamp={index < granted ? stamps[index] : undefined}
                 isLast={index === stampsRequired - 1}
                 isNew={highlightLast && index === granted - 1}
+                oneLeft={oneLeft}
                 merchantName={merchantName}
                 imageUri={stampImageUri ?? logoUri}
                 grayscale={!available}
@@ -209,7 +241,7 @@ export function StampCard({
             style={[StyleSheet.absoluteFill, { filter: available ? undefined : [{ grayscale: 1 }] }]}
             accessible={false}
           />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: VEIL }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.veil }]} />
         </>
       ) : null}
 
@@ -235,6 +267,20 @@ export function StampCard({
           </View>
         ) : null}
 
+        {rewardAvailable ? (
+          <View testID="stamp-reward-available" style={{ borderRadius: radii.card, borderCurve: "continuous", backgroundColor: colors.surface, borderLeftWidth: 6, borderLeftColor: colors.accent, padding: spacing.lg, gap: spacing.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <Pop trigger={rewardPopped}>
+                <GiftIcon size={22} />
+              </Pop>
+              <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textPrimary, flexShrink: 1 }]}>
+                Recompensa disponible
+              </Text>
+            </View>
+            {onViewReward ? <Button title="Ver recompensa" onPress={onViewReward} fullWidth testID={testID && `${testID}-view-reward`} /> : null}
+          </View>
+        ) : null}
+
         {/* PX-1: the grid is the visual center; one summary label keeps the screen-reader order short. */}
         <View
           accessible
@@ -247,9 +293,22 @@ export function StampCard({
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary, fontVariant: ["tabular-nums"] }]}>
               {progressText}
             </Text>
+            {remainingLabel ? (
+              <View style={{ gap: spacing.xs }}>
+                <Text testID="stamp-remaining" maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary, fontFamily: fontFamily.semibold }]}>
+                  {remainingLabel}
+                </Text>
+                <ProgressBar value={granted} total={stampsRequired} accent={oneLeft} />
+              </View>
+            ) : null}
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
               Premio: {rewardTitle}
             </Text>
+            {rewardDescription ? (
+              <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: showBg ? colors.textPrimary : colors.textSecondary }]}>
+                {rewardDescription}
+              </Text>
+            ) : null}
             {/* WHY: over a dark merchant image the 78% veil leaves ~3.4:1 for textSecondary; textPrimary stays AA. */}
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: showBg ? colors.textPrimary : colors.textSecondary }]}>
               Vence el {expires}
@@ -257,17 +316,6 @@ export function StampCard({
           </View>
         </View>
 
-        {rewardAvailable ? (
-          <View testID="stamp-reward-available" style={{ borderRadius: radii.card, borderCurve: "continuous", backgroundColor: colors.surface, borderLeftWidth: 6, borderLeftColor: colors.accent, padding: spacing.lg, gap: spacing.md }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-              <GiftIcon size={22} />
-              <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textPrimary, flexShrink: 1 }]}>
-                Recompensa disponible
-              </Text>
-            </View>
-            {onViewReward ? <Button title="Ver recompensa" onPress={onViewReward} fullWidth testID={testID && `${testID}-view-reward`} /> : null}
-          </View>
-        ) : null}
       </View>
     </View>
   );
@@ -289,6 +337,6 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: 999, // capsule
+    borderRadius: radii.pill,
   },
 });

@@ -6,7 +6,9 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
-import { AlertIcon } from '../components/Icons'
+import { AlertIcon, EyeIcon, EyeOffIcon } from '../components/Icons'
+import { SupportLink } from '../components/SupportLink'
+import { btnPrimary, input } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { loginSchema, type LoginValues } from './loginSchema'
 
@@ -26,9 +28,27 @@ function authNotice(code: ErrorCode): string {
   return code === 'E-18' ? `${ERRORS[code].message} Inicia sesión de nuevo.` : ERRORS[code].message
 }
 
-const fieldClass =
-  'mt-2 h-12 w-full rounded-lg border border-text-secondary bg-surface px-4 text-base aria-invalid:border-2 aria-invalid:border-error'
-const labelClass = 'text-xs font-semibold tracking-[1.5px] uppercase'
+const fieldClass = `${input} mt-2 h-12 aria-invalid:border-2`
+const labelClass = 'field-label'
+
+// P-11: same overlapping navy circles as the app's BrandPattern (apps/mobile), decorative only.
+const CIRCLES = [
+  { cx: 40, cy: 30, r: 90, opacity: 0.9 },
+  { cx: 150, cy: -20, r: 70, opacity: 0.55 },
+  { cx: 330, cy: 60, r: 110, opacity: 0.8 },
+  { cx: 250, cy: 190, r: 80, opacity: 0.5 },
+  { cx: 90, cy: 210, r: 60, opacity: 0.65 },
+]
+
+function BrandPattern() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 375 240" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-x-0 top-0 h-72 w-full">
+      {CIRCLES.map((c) => (
+        <circle key={`${c.cx}-${c.cy}`} cx={c.cx} cy={c.cy} r={c.r} fill="var(--color-pattern)" fillOpacity={c.opacity} />
+      ))}
+    </svg>
+  )
+}
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
@@ -44,6 +64,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 export function LoginPage() {
   const { session, authError, clearAuthError } = useAuth()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -67,14 +88,15 @@ export function LoginPage() {
   const formError = submitError ?? (authError ? authNotice(authError) : null)
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-brand p-6">
-      <div className="w-full max-w-md">
-        <p className="mb-6 text-center text-white">
-          <span className="block text-3xl font-bold tracking-tight">Ekko Rewards</span>
-          <span className="text-sm text-white/80">Panel del comercio</span>
-        </p>
-        <div className="rounded-[32px] bg-surface p-8 sm:p-10">
-          <h1 className="text-[32px] leading-9 font-bold">Iniciar sesión</h1>
+    <main className="relative flex min-h-dvh flex-col items-center overflow-hidden bg-brand">
+      <BrandPattern />
+      <p className="relative px-6 pt-14 pb-10 text-center text-white">
+        <span className="block text-3xl font-bold tracking-tight">Ekko Rewards</span>
+        <span className="text-sm text-white/80">Panel del comercio</span>
+      </p>
+      <div className="relative w-full max-w-md flex-1 rounded-t-sheet bg-surface p-8 sm:mb-12 sm:flex-none sm:rounded-sheet sm:p-10">
+        <div>
+          <h1 className="text-display font-bold">Iniciar sesión</h1>
           <p className="mt-2 text-text-secondary">Entra con la cuenta de tu negocio.</p>
 
           {formError && (
@@ -108,28 +130,42 @@ export function LoginPage() {
               <label htmlFor="password" className={labelClass}>
                 Contraseña
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                className={fieldClass}
-                {...register('password', { onChange: clearAuthError })}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  className={`${fieldClass} pr-14`}
+                  {...register('password', { onChange: clearAuthError })}
+                />
+                {/* WHY "clave": Playwright's getByLabel('Contraseña') is a substring match and must stay unique. */}
+                <button
+                  type="button"
+                  aria-label="Mostrar clave"
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((shown) => !shown)}
+                  className="absolute top-2 right-0 grid size-12 place-items-center rounded-button text-text-secondary hover:text-text-primary"
+                >
+                  {showPassword ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
+                </button>
+              </div>
               <FieldError id="password-error" message={errors.password?.message} />
             </div>
             <button
               type="submit"
               disabled={isSubmitting}
               aria-busy={isSubmitting}
-              className="h-14 w-full rounded-xl bg-brand text-lg font-semibold text-white transition-colors hover:bg-navy disabled:cursor-wait disabled:opacity-70"
+              className={`${btnPrimary} h-14 w-full text-lg disabled:cursor-wait`}
             >
               {isSubmitting ? 'Entrando…' : 'Entrar'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-text-secondary">¿Olvidaste tu contraseña? Contacta a Oxis.</p>
+          <p className="mt-6 text-center text-sm text-text-secondary">
+            ¿Olvidaste tu contraseña? <SupportLink>Contacta a Oxis</SupportLink>.
+          </p>
         </div>
       </div>
     </main>

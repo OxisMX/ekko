@@ -11,10 +11,10 @@ type Row = Record<string, string | number>
 
 // WHY aria-hidden + sr-only table: SVG charts are opaque to screen readers, the table carries the same numbers.
 // NOTE: accessibilityLayer off — recharts would make the hidden SVG focusable (axe aria-hidden-focus).
-function ChartCard({ title, rows, columns, children }: { title: string; rows: Row[]; columns: { key: string; label: string }[]; children: ReactNode }) {
+function ChartCard({ title, rows, columns, wide = false, children }: { title: string; rows: Row[]; columns: { key: string; label: string }[]; wide?: boolean; children: ReactNode }) {
   const empty = rows.every((row) => columns.slice(1).every(({ key }) => row[key] === 0))
   return (
-    <figure className="flex flex-col gap-3 rounded-2xl bg-surface p-6">
+    <figure className={`flex flex-col gap-3 rounded-card bg-surface p-6 ${wide ? 'xl:col-span-2' : ''}`}>
       <figcaption className="font-semibold">{title}</figcaption>
       {empty ? (
         <p className="py-10 text-center text-text-secondary">Aún no hay datos</p>
@@ -41,13 +41,22 @@ function ChartCard({ title, rows, columns, children }: { title: string; rows: Ro
   )
 }
 
-const axes = (xLabel: string, yLabel: string) => (
+// WHY style props: recharts draws the tooltip with inline styles, so tokens go through CSS variables.
+const tooltipStyle = {
+  borderRadius: 'var(--radius-field)',
+  border: '1px solid rgb(0 0 0 / 0.15)',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
+}
+
+// P-24: the legend only earns its space where two series share a chart.
+const axes = (xLabel: string, yLabel: string, legend = false) => (
   <>
     <CartesianGrid strokeDasharray="3 3" vertical={false} />
     <XAxis dataKey="label" stroke={AXIS} tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={24} label={{ value: xLabel, position: 'insideBottom', offset: -4, fill: AXIS, fontSize: 12 }} height={44} />
     <YAxis stroke={AXIS} tick={{ fontSize: 12 }} allowDecimals={false} tickFormatter={formatCount} width={56} label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: AXIS, fontSize: 12 }} />
-    <Tooltip />
-    <Legend verticalAlign="top" height={32} />
+    <Tooltip formatter={(value) => formatCount(Number(value))} contentStyle={tooltipStyle} cursor={{ fill: 'rgb(0 0 0 / 0.05)' }} />
+    {legend && <Legend verticalAlign="top" height={32} />}
   </>
 )
 
@@ -62,7 +71,7 @@ export function MetricsCharts({ series, range }: { series: MetricsSeries; range:
   const bucketColumn = { key: 'label', label: xLabel }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 xl:grid-cols-2">
       <ChartCard title="Visitas" rows={visits} columns={[bucketColumn, { key: 'visits', label: 'Visitas' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
           <LineChart data={visits} accessibilityLayer={false}>
@@ -74,13 +83,20 @@ export function MetricsCharts({ series, range }: { series: MetricsSeries; range:
       <ChartCard title="Cupones emitidos y canjeados" rows={coupons} columns={[bucketColumn, { key: 'issued', label: 'Emitidos' }, { key: 'redeemed', label: 'Canjeados' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
           <BarChart data={coupons} accessibilityLayer={false}>
-            {axes(xLabel, 'Cupones')}
+            {/* P-24: redeemed is striped as well as green, so the two series differ without relying on color. */}
+            <defs>
+              <pattern id="redeemed-stripes" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" fill="white" />
+                <rect width="3" height="6" fill={SUCCESS} />
+              </pattern>
+            </defs>
+            {axes(xLabel, 'Cupones', true)}
             <Bar dataKey="issued" name="Emitidos" fill={NAVY} />
-            <Bar dataKey="redeemed" name="Canjeados" fill={SUCCESS} />
+            <Bar dataKey="redeemed" name="Canjeados" fill="url(#redeemed-stripes)" stroke={SUCCESS} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
-      <ChartCard title="Clientes activos por semana (últimas 12 semanas)" rows={customers} columns={[{ key: 'label', label: 'Semana' }, { key: 'customers', label: 'Clientes activos' }]}>
+      <ChartCard wide title="Clientes activos por semana (últimas 12 semanas)" rows={customers} columns={[{ key: 'label', label: 'Semana' }, { key: 'customers', label: 'Clientes activos' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
           <BarChart data={customers} accessibilityLayer={false}>
             {axes('Semana', 'Clientes')}

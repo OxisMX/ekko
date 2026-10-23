@@ -9,15 +9,16 @@ import type { MerchantSession } from '../lib/panelRoute'
 import { createFakeRealtime } from '../test/fakeRealtime'
 import { CashierModePage } from './CashierModePage'
 
-const { rpc, realtime } = vi.hoisted(() => ({
+const { rpc, qrStatus, realtime } = vi.hoisted(() => ({
   rpc: vi.fn(),
+  qrStatus: vi.fn(),
   realtime: { current: null as unknown as ReturnType<typeof createFakeRealtime> },
 }))
 vi.mock('../lib/supabase', () => ({
   supabase: {
     // WHY: the catch-up poll on SUBSCRIBED (get_qr_status) must not consume the generate_visit_qr queue.
     rpc: (name: string, ...args: unknown[]) =>
-      name === 'get_qr_status' ? Promise.resolve({ data: { status: 'pending' }, error: null }) : rpc(name, ...args),
+      name === 'get_qr_status' ? Promise.resolve(qrStatus()) : rpc(name, ...args),
     channel: (n: string) => realtime.current.channel(n),
     removeChannel: (c: never) => realtime.current.removeChannel(c),
   },
@@ -67,6 +68,7 @@ const liveRegion = () => document.querySelector('[aria-live="polite"]')!
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'] })
   rpc.mockReset()
+  qrStatus.mockReset().mockReturnValue({ data: { status: 'pending' }, error: null })
   realtime.current = createFakeRealtime((ch) => ch.status('SUBSCRIBED'))
   signOut.mockReset()
   queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -167,6 +169,17 @@ describe('CashierModePage — visit QR (US-19, F-21)', () => {
     expect(screen.getByText('El QR aparecerá aquí')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Generar QR' })).toBeEnabled()
     expect(rpc).toHaveBeenCalledTimes(1) // no polling while Realtime is subscribed
+  })
+
+  it('P-20: "Visita registrada" shows the customer progress fetched after the Realtime event', async () => {
+    rpc.mockResolvedValueOnce(qrResponse(1))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Generar QR' }))
+    await flush()
+    qrStatus.mockReturnValue({ data: { status: 'used', stamps: 4, stamps_required: 8, reward_available: false }, error: null })
+    await act(async () => realtime.current.channels[0].emit({ used_at: '2026-10-21T10:00:00Z', invalidated_at: null }))
+    await flush()
+    expect(screen.getByText('Lleva 4 de 8 · faltan 4 para su premio')).toBeVisible()
   })
 
   it('Realtime "invalidated" (another device generated a QR) → "QR reemplazado"', async () => {

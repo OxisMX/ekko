@@ -57,7 +57,7 @@ const rpcError = (message: string, details: object | null = null) => ({
   error: { message, details: details && JSON.stringify(details), code: 'P0001' },
 })
 const ok = (data: unknown = {}) => ({ data, error: null })
-const status = { remaining_this_month: 3, limit: 5, resets_on: '2026-11-01', recipients_count: 42, push_coupon_validity_hours: 36 }
+const status = { remaining_this_month: 3, limit: 5, resets_on: '2026-11-01', recipients_count: 42, eligible_recipients: 30, push_coupon_validity_hours: 36 }
 const campaign = { id: 'k1', title: 'Hoy 2x1', has_coupon: true, status: 'sent', recipients_count: 40, sent_count: 38, failed_count: 2, created_at: '2026-10-05T18:30:00Z' }
 const success = { campaign_id: 'k1', recipients: 42, sent: 40, failed: 2, push_remaining_this_month: 2 }
 const httpError = (error: string, details?: object, status = 400) =>
@@ -82,7 +82,38 @@ const fillMessage = () => {
 const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Enviar notificación' }))
 const confirmSend = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Enviar ahora' }))
 
+const cardConfig = { stamps_required: 6, cycle_months: 6, reward_title: 'Café', reward_description: 'Un café', terms: null, card_background_path: null, stamp_image_path: null, push_coupon_validity_hours: 36 }
+
 describe('P-10 push', () => {
+  it('tells how many customers will actually receive it (P-40) and hints the title (P-39)', async () => {
+    renderAt('/admin/notificaciones')
+    expect(await screen.findByText('Llegará a 30 clientes')).toBeInTheDocument()
+    expect(screen.getByText('Incluye el nombre de tu negocio')).toBeInTheDocument()
+  })
+
+  it('saves the default coupon validity through update_card_config keeping the rest of the config (P-31)', async () => {
+    mockRpc({ get_card_config: ok(cardConfig), update_card_config: ok({ ...cardConfig, push_coupon_validity_hours: 12 }) })
+    renderAt('/admin/notificaciones')
+    const select = await screen.findByLabelText('Vigencia predeterminada')
+    expect(select).toHaveValue('36')
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    fireEvent.change(select, { target: { value: '12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() =>
+      expect(rpc).toHaveBeenCalledWith('update_card_config', expect.objectContaining({ p_push_coupon_validity_hours: 12, p_reward_title: 'Café', p_stamps_required: 6 })),
+    )
+  })
+
+  it('previews the coupon as a ticket with source label and expiry (P-38)', async () => {
+    renderAt('/admin/notificaciones')
+    await screen.findByLabelText('Título')
+    fireEvent.click(screen.getByRole('switch', { name: 'Adjuntar cupón' }))
+    const ticket = within(screen.getByTestId('coupon-preview'))
+    expect(ticket.getByText('Promoción')).toBeInTheDocument()
+    expect(ticket.getByText(/^Vence en 1 día · /)).toBeInTheDocument()
+    expect(ticket.getByText('Mostrar código')).toBeInTheDocument()
+  })
+
   it('shows the quota header with the local reset date', async () => {
     renderAt('/admin/notificaciones')
     expect(await screen.findByText('Te quedan 3 de 5 envíos este mes')).toBeInTheDocument()

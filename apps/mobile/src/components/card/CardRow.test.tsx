@@ -29,3 +29,24 @@ describe("CardRow accessibility", () => {
     expect(screen.getByTestId("my-card-1").props.accessibilityActions).toBeUndefined();
   });
 });
+
+describe("CardRow anticipation (A-50)", () => {
+  it.each([
+    [7, "¡Te falta 1 sello!"],
+    [6, "¡Te faltan 2 sellos!"],
+  ])("with %i of 8 stamps says %s", async (stampsCount, text) => {
+    await render(<CardRow {...base} stampsCount={stampsCount} wheelAvailable={false} />);
+    expect(screen.getByText(text)).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: new RegExp(text) })).toBeOnTheScreen();
+  });
+
+  it("stays quiet far from the reward, with a reward ready, and when unavailable", async () => {
+    const { rerender } = await render(<CardRow {...base} stampsCount={3} wheelAvailable={false} />);
+    expect(screen.queryByTestId("card-row-hint")).toBeNull();
+    await rerender(<CardRow {...base} stampsCount={7} rewardAvailable wheelAvailable={false} />);
+    expect(screen.queryByTestId("card-row-hint")).toBeNull();
+    await rerender(<CardRow {...base} stampsCount={7} available={false} wheelAvailable={false} />);
+    expect(screen.queryByTestId("card-row-hint")).toBeNull();
+    expect(screen.getByText("No disponible por ahora")).toBeOnTheScreen();
+  });
+});

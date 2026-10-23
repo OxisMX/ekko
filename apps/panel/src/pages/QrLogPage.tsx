@@ -1,10 +1,15 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
+import { CheckCircleIcon, ClockIcon, QrIcon, RefreshIcon, XCircleIcon } from '../components/Icons'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { useMenuFailure } from '../lib/menu'
-import { formatQrDate, NO_AUTO_REFETCH, QR_LOG_KEY, QR_LOG_PAGE_SIZE, QR_STATUS_LABEL, toQrEntries } from '../lib/metrics'
+import { formatQrDate, type QrEntry, NO_AUTO_REFETCH, QR_LOG_KEY, QR_LOG_PAGE_SIZE, QR_STATUS_LABEL, toQrEntries } from '../lib/metrics'
 import { supabase } from '../lib/supabase'
+import { btnPrimary, btnSecondary } from '../components/ui'
 
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold disabled:opacity-40'
+
+// WHY icon + text: the status is never carried by colour alone.
+const STATUS_ICON: Record<QrEntry['status'], typeof QrIcon> = { used: CheckCircleIcon, pending: ClockIcon, invalidated: RefreshIcon, expired: XCircleIcon }
 
 // P-11 (US-26, RN-66).
 export function QrLogPage() {
@@ -23,39 +28,56 @@ export function QrLogPage() {
 
   return (
     <section aria-labelledby="qr-log-title" className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <h1 id="qr-log-title" className="text-2xl font-bold">Registro de QR</h1>
+      <h1 id="qr-log-title" className="text-h1 font-bold">Registro de QR</h1>
 
       {log.isPending && <div role="status" aria-label="Cargando el registro" className="h-40 animate-pulse rounded-2xl bg-surface" />}
       {log.isError && (
         <div role="alert" className="flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
           <p className="font-semibold">{failure(log.error).message}</p>
-          <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void log.refetch()}>Reintentar</button>
+          <button type="button" className={btnPrimary} onClick={() => void log.refetch()}>Reintentar</button>
         </div>
       )}
       {log.data && entries.length === 0 && (
-        <p className="rounded-2xl bg-surface p-6 text-text-secondary">Aún no generas códigos QR. Genera uno desde Modo Caja.</p>
+        <div className="flex flex-col items-center rounded-2xl bg-surface px-6 py-12 text-center">
+          <QrIcon className="size-12 text-navy" />
+          <p className="mt-4 text-lg font-semibold">Aún no generas códigos QR</p>
+          <p className="mt-1 max-w-md text-text-secondary">Cada código que muestres a tus clientes aparecerá aquí con su estado.</p>
+          <Link to="/" className={`${btnPrimary} mt-6 flex items-center`}>Ir a Modo Caja</Link>
+        </div>
       )}
       {entries.length > 0 && (
-        <ul className="flex flex-col divide-y divide-black/10 rounded-2xl bg-surface px-5">
-          {entries.map((entry, i) => (
-            <li key={`${entry.created_at}-${i}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3">
-              <div>
-                <p className="text-sm text-text-secondary">Generado</p>
-                <p className="font-semibold">{formatQrDate(entry.created_at)}</p>
-              </div>
-              {entry.used_at && (
-                <div>
-                  <p className="text-sm text-text-secondary">Usado a las</p>
-                  <p className="font-semibold">{formatQrDate(entry.used_at)}</p>
-                </div>
-              )}
-              <span className="rounded-full border border-black/20 px-3 py-1 text-sm font-semibold">{QR_STATUS_LABEL[entry.status]}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto rounded-2xl bg-surface px-5">
+          <table className="w-full text-left">
+            <caption className="sr-only">Códigos QR generados</caption>
+            <thead>
+              <tr className="border-b border-black/10 text-sm text-text-secondary">
+                <th scope="col" className="py-3 pr-4 font-medium">Generado</th>
+                <th scope="col" className="py-3 pr-4 font-medium">Usado</th>
+                <th scope="col" className="py-3 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/10">
+              {entries.map((entry, i) => {
+                const Status = STATUS_ICON[entry.status]
+                return (
+                  <tr key={`${entry.created_at}-${i}`}>
+                    <td className="py-3 pr-4 font-semibold">{formatQrDate(entry.created_at)}</td>
+                    <td className="py-3 pr-4">{entry.used_at ? formatQrDate(entry.used_at) : '—'}</td>
+                    <td className="py-3">
+                      <span className="inline-flex items-center gap-1.5 font-semibold">
+                        <Status className="size-5 shrink-0" />
+                        {QR_STATUS_LABEL[entry.status]}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       {log.hasNextPage && (
-        <button type="button" disabled={log.isFetchingNextPage} className={`${buttonClass} w-fit border border-black/15`} onClick={() => void log.fetchNextPage()}>
+        <button type="button" disabled={log.isFetchingNextPage} className={`${btnSecondary} w-fit`} onClick={() => void log.fetchNextPage()}>
           {log.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
         </button>
       )}

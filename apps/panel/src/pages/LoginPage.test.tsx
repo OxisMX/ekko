@@ -134,3 +134,19 @@ it('shows nothing when the user signed out (in this or another tab)', async () =
   emit('SIGNED_IN', merchant)
   expect(localStorage.getItem(USER_SIGN_OUT_KEY)).toBeNull()
 })
+
+it('shows and hides the password with an accessible toggle, and links Contacta a Oxis (P-12)', async () => {
+  const user = renderLogin()
+  const password = screen.getByLabelText('Contraseña')
+  const toggle = screen.getByRole('button', { name: 'Mostrar clave' })
+  expect(password).toHaveAttribute('type', 'password')
+  expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+  await user.click(toggle)
+  expect(password).toHaveAttribute('type', 'text')
+  expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await user.click(toggle)
+  expect(password).toHaveAttribute('type', 'password')
+
+  expect(screen.getByRole('link', { name: 'Contacta a Oxis' })).toHaveAttribute('href', expect.stringMatching(/^mailto:.+@.+/))
+})

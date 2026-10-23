@@ -16,6 +16,8 @@ const appleSession = { user: { identities: [{ provider: "email" }, { provider: "
 jest.mock("../../lib/supabase", () => ({ supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } } }));
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 jest.mock("../auth/socialSignIn", () => ({ requestAppleAuthorizationCode: () => mockAppleCode() }));
+const mockCache: Record<string, unknown> = {};
+jest.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ getQueryData: (key: string[]) => mockCache[key[0]!] }) }));
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("../../auth/AuthProvider", () => ({ useAuth: () => mockAuth }));
 
@@ -25,6 +27,7 @@ const submit = () => fireEvent.press(screen.getByTestId("delete-account-submit")
 
 beforeEach(() => {
   jest.clearAllMocks();
+  for (const key of Object.keys(mockCache)) delete mockCache[key];
   mockAuth.session = { user: { identities: [{ provider: "email" }] } };
   mockAppleCode.mockResolvedValue("apple-code");
   mockAuth.finishAccountDeletion.mockResolvedValue(undefined);
@@ -32,6 +35,16 @@ beforeEach(() => {
 });
 
 describe("A-22 Eliminar cuenta", () => {
+  it("states the concrete loss from cached data, else the generic copy (A-81)", async () => {
+    const view = await render(<DeleteAccountScreen />);
+    expect(screen.getByTestId("delete-account-warning")).toHaveTextContent(/^Perderás todos tus sellos, cupones y premios\. Esta acción/);
+    await view.unmount();
+    mockCache["my-cards"] = [{ stamps_count: 5 }, { stamps_count: 9 }];
+    mockCache["my-coupons"] = [{}];
+    await render(<DeleteAccountScreen />);
+    expect(screen.getByTestId("delete-account-warning")).toHaveTextContent(/^Perderás 2 tarjetas, 14 sellos y 1 cupón\. Esta acción/);
+  });
+
   it("keeps the button disabled until the exact word is typed", async () => {
     await render(<DeleteAccountScreen />);
     const disabled = () => screen.getByTestId("delete-account-submit").props.accessibilityState.disabled;

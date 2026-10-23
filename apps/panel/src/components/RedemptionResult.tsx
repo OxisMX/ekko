@@ -1,13 +1,10 @@
-import { ERRORS, type ErrorCode } from '@ekko/shared'
+import { couponSourceLabel, ERRORS, type ErrorCode } from '@ekko/shared'
+import { useNow } from '../lib/useNow'
 import type { RedemptionCoupon } from '../lib/useRedemption'
 import { AlertIcon, TicketIcon } from './Icons'
+import { btnPrimary, btnSecondary } from './ui'
 
-const SOURCE_LABEL: Record<RedemptionCoupon['source'], string> = {
-  card_reward: 'Premio de tarjeta',
-  wheel: 'Ruleta de bienvenida',
-  push: 'Promoción',
-  birthday: 'Cumpleaños',
-}
+const DAY_MS = 24 * 60 * 60_000
 
 const formatExpiry = (iso: string) =>
   new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(iso))
@@ -22,21 +19,31 @@ type Props = {
 
 // P-03 Resultado de validación (F-22): the cashier checks who and what before confirming.
 export function RedemptionResult({ coupon, confirming, error, onConfirm, onCancel }: Props) {
+  // P-22: the cashier hands over the benefit, so it leads; the customer name only confirms identity.
+  const now = useNow()
+  const expiresToday = Date.parse(coupon.expires_at) - now < DAY_MS
   return (
-    <div className="mt-6 flex flex-1 flex-col">
-      <p className="text-xs font-semibold tracking-[1.5px] text-text-secondary uppercase">Cliente</p>
-      <p className="text-3xl font-semibold">{coupon.customer_full_name}</p>
-
-      <div className="mt-4 rounded-xl bg-surface-muted p-4">
-        <p className="flex items-center gap-2 text-xs font-semibold tracking-[1.5px] text-navy uppercase">
+    <div className="mt-4 flex flex-1 flex-col">
+      <div className="rounded-card bg-surface-muted p-4">
+        <p className="flex items-center gap-2 field-label text-navy">
           <TicketIcon className="size-5" />
-          {SOURCE_LABEL[coupon.source]}
+          {couponSourceLabel[coupon.source]}
         </p>
-        <p className="mt-2 text-2xl font-semibold">{coupon.title}</p>
-        <p className="mt-1">{coupon.description}</p>
+        <p className="mt-2 text-display font-bold">{coupon.title}</p>
+        <p className="mt-1 text-lg">{coupon.description}</p>
         {coupon.terms && <p className="mt-2 text-sm text-text-secondary">{coupon.terms}</p>}
       </div>
-      <p className="mt-3 text-sm text-text-secondary">Vence el {formatExpiry(coupon.expires_at)}</p>
+      <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+        {expiresToday && (
+          <span className="flex items-center gap-1 rounded-full bg-warning/25 px-3 py-1 font-semibold text-text-primary">
+            <AlertIcon className="size-4 shrink-0" />
+            Vence hoy
+          </span>
+        )}
+        Vence el {formatExpiry(coupon.expires_at)}
+      </p>
+      <p className="mt-4 text-sm text-text-secondary">Cliente</p>
+      <p className="text-h2 font-semibold">{coupon.customer_full_name}</p>
 
       <div className="mt-auto pt-6">
         {error && (
@@ -49,7 +56,7 @@ export function RedemptionResult({ coupon, confirming, error, onConfirm, onCance
           type="button"
           onClick={onConfirm}
           disabled={confirming}
-          className="flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-navy text-lg font-semibold text-white transition-colors hover:bg-brand disabled:cursor-wait disabled:opacity-70"
+          className={`${btnPrimary} flex h-16 w-full items-center justify-center gap-3 text-lg disabled:cursor-wait disabled:opacity-70`}
         >
           {confirming && <Spinner />}
           {confirming ? 'Confirmando…' : error ? 'Reintentar' : 'Confirmar canje'}
@@ -58,7 +65,7 @@ export function RedemptionResult({ coupon, confirming, error, onConfirm, onCance
           type="button"
           onClick={onCancel}
           disabled={confirming}
-          className="mt-3 h-14 w-full rounded-xl border-2 border-navy text-lg font-semibold text-navy transition-colors hover:bg-surface-muted disabled:opacity-50"
+          className={`${btnSecondary} mt-3 h-14 w-full text-lg`}
         >
           Cancelar
         </button>

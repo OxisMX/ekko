@@ -413,6 +413,9 @@ isOneToOne: false
 "get_card_config":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"get_coupon_status":
+{ Args: { "p_coupon_id": string }; Returns: Json
+                           },
 "get_merchant_detail":
 { Args: { "p_merchant_id": string }; Returns: Json
                            },

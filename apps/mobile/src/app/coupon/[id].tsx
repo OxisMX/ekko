@@ -1,21 +1,26 @@
 import { ERRORS } from "@ekko/shared";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo } from "react";
 import { AppState, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { formatDate } from "../../components/format";
+import { Check } from "../../components/icons";
+import { Entrance } from "../../components/motion";
 import { Button, EmptyState, ErrorState, Skeleton } from "../../components/ui";
 import { myCardsKey } from "../../features/cards/myCards";
 import { myCouponsKey } from "../../features/coupons/myCoupons";
+import { useCouponRedeemed } from "../../features/coupons/couponStatus";
 import { useRevealedCoupon } from "../../features/coupons/revealCoupon";
 import { merchantDetailKey } from "../../features/merchant/merchantDetail";
 import { toAppError } from "../../lib/appError";
+import { success } from "../../lib/haptics";
 import {
   colors,
   fontFamily,
   MAX_FONT_SCALE,
+  radii,
   spacing,
   textStyles,
 } from "../../theme";
@@ -30,6 +35,9 @@ export default function CouponCodeScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const reveal = useRevealedCoupon(couponId);
+  // A-65: poll only while the code is visible on a focused screen.
+  const focused = useIsFocused();
+  const redeemed = useCouponRedeemed(couponId, focused && Boolean(reveal.data));
 
   const refreshLists = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: myCouponsKey });
@@ -39,6 +47,12 @@ export default function CouponCodeScreen() {
         queryKey: merchantDetailKey(merchantId),
       });
   }, [queryClient, merchantId]);
+
+  useEffect(() => {
+    if (!redeemed) return;
+    success();
+    refreshLists();
+  }, [redeemed, refreshLists]);
 
   // F-11: coming back from the cashier counter, the coupon may already be redeemed.
   useEffect(() => {
@@ -61,7 +75,9 @@ export default function CouponCodeScreen() {
   );
 
   let body;
-  if (reveal.data) {
+  if (reveal.data && redeemed) {
+    body = <RedeemedView title={reveal.data.title} merchantName={reveal.data.merchant_name} />;
+  } else if (reveal.data) {
     body = <CodeView {...reveal.data} />;
   } else if (errorCode === "E-06") {
     body = (
@@ -133,6 +149,25 @@ export default function CouponCodeScreen() {
   );
 }
 
+// A-65: the cashier validated the code; celebrate instead of showing a stale code.
+function RedeemedView({ title, merchantName }: { title: string; merchantName: string }) {
+  return (
+    <Entrance from={0.9} spring>
+      <View accessible accessibilityLiveRegion="polite" testID="coupon-redeemed" style={{ alignItems: "center", gap: spacing.lg }}>
+        <View style={{ width: 96, height: 96, borderRadius: 48, borderWidth: 4, borderColor: colors.accent, alignItems: "center", justifyContent: "center" }}>
+          <Check size={44} color={colors.navy} />
+        </View>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h1, { color: colors.textPrimary, textAlign: "center" }]}>
+          {`¡Listo! Disfruta tu ${title}`}
+        </Text>
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+          {merchantName}
+        </Text>
+      </View>
+    </Entrance>
+  );
+}
+
 function CodeView({
   code,
   title,
@@ -163,6 +198,8 @@ function CodeView({
       >
         {title}
       </Text>
+      {/* A-66: the code fades and scales in once instead of appearing abruptly. */}
+      <Entrance from={0.96}>
       <View
         accessible
         accessibilityLabel={`Código de canje: ${code.split("").join(", ")}`}
@@ -171,28 +208,24 @@ function CodeView({
           flexDirection: "row",
           gap: spacing.lg,
           backgroundColor: colors.surfaceMuted,
-          borderRadius: 16,
+          borderRadius: radii.card,
           paddingHorizontal: spacing.lg,
           paddingVertical: spacing.xl,
         }}
       >
-        {groups.map((group) => (
+        {groups.map((group, index) => (
           <Text
-            key={group}
+            // WHY: the key is the position — a code like "ABCABC" repeats a group and would collide (A-67).
+            key={index}
             importantForAccessibility="no"
             maxFontSizeMultiplier={MAX_FONT_SCALE}
-            style={{
-              fontFamily: fontFamily.bold,
-              fontSize: 48,
-              lineHeight: 56,
-              letterSpacing: 8,
-              color: colors.textPrimary,
-            }}
+            style={[textStyles.codeLarge, { letterSpacing: 8, color: colors.textPrimary }]}
           >
             {group}
           </Text>
         ))}
       </View>
+      </Entrance>
       <Text
         maxFontSizeMultiplier={MAX_FONT_SCALE}
         style={[
