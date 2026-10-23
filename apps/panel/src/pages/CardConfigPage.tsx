@@ -1,11 +1,13 @@
 import { ModalDialog } from '../components/ModalDialog'
-import { ERRORS, merchantImageUrl } from '@ekko/shared'
+import { ERRORS, merchantImageUrl, PUSH_COUPON_VALIDITY_OPTIONS } from '@ekko/shared'
 import * as Sentry from '@sentry/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { CardPreview } from '../components/CardPreview'
 import { AlertIcon, CheckCircleIcon } from '../components/Icons'
+import { Field } from '../components/FormField'
+import { ImagePicker } from '../components/ImagePicker'
 import { useMerchantSession } from '../components/panelOutlet'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import {
@@ -15,35 +17,13 @@ import {
   cardFormSchema,
   describeError,
   fieldErrors,
-  imageErrorText,
   toCardForm,
-  uploadCardBackground,
 } from '../lib/cardConfig'
-import { createImageVariants, ImageProcessingError } from '../lib/imageVariants'
 import { supabase } from '../lib/supabase'
+import { useMerchantImageUpload } from '../lib/useMerchantImageUpload'
 
 const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
 const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
-
-function Field({ label, error, counter, children, id }: { label: string; error?: string; counter?: string; children: React.ReactNode; id: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="font-semibold">
-          {label}
-        </label>
-        {counter && <span className="text-sm text-text-secondary">{counter}</span>}
-      </div>
-      {children}
-      {error && (
-        <p id={`${id}-error`} role="alert" className="flex items-center gap-1.5 text-sm font-medium text-error">
-          <AlertIcon className="size-4 shrink-0" />
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
 
 function Stepper({ id, label, value, range, unit, error, onChange }: {
   id: string
@@ -82,15 +62,14 @@ export function CardConfigPage() {
   const queryClient = useQueryClient()
   const adminRpc = useAdminRpc()
   const ids = { stamps: useId(), months: useId(), title: useId(), description: useId(), terms: useId(), hours: useId() }
-  const fileInput = useRef<HTMLInputElement>(null)
+  const backgroundUpload = useMerchantImageUpload('card', 'card')
+  // WHY 'logo' kind: stamps are square, same crop and widths as the logo.
+  const stampUpload = useMerchantImageUpload('logo', 'card')
   const queryKey = ['card-config', merchant.id]
 
   // Edits live apart from the loaded config so a refetch or an E-16 detour never loses them.
   const [draft, setDraft] = useState<Partial<CardForm>>({})
   const [serverErrors, setServerErrors] = useState<Partial<Record<CardField, string>>>({})
-  const [localPreview, setLocalPreview] = useState<string | null>(null)
-  const [imageError, setImageError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -119,6 +98,7 @@ export function CardConfigPage() {
             // WHY: generated types omit `null` for this arg (no DEFAULT), but the RPC accepts it to clear the image.
             p_card_background_path: parsed.card_background_path as string,
             p_push_coupon_validity_hours: parsed.push_coupon_validity_hours,
+            p_stamp_image_path: parsed.stamp_image_path as string,
           }),
         ),
       )
@@ -126,7 +106,8 @@ export function CardConfigPage() {
     onSuccess: (next) => {
       queryClient.setQueryData(queryKey, next)
       setDraft({})
-      setLocalPreview(null)
+      backgroundUpload.reset()
+      stampUpload.reset()
       setConfirming(false)
       setSaveError(null)
       setSaved(true)
@@ -160,6 +141,7 @@ export function CardConfigPage() {
   const form: CardForm = { ...config.data, ...draft }
   const errors = { ...fieldErrors(form), ...serverErrors }
   const dirty = Object.keys(draft).length > 0
+  const uploading = backgroundUpload.uploading || stampUpload.uploading
   const canSave = dirty && Object.keys(errors).length === 0 && !uploading && !save.isPending
 
   const edit = <K extends CardField>(field: K, value: CardForm[K]) => {
@@ -169,40 +151,31 @@ export function CardConfigPage() {
     setDraft((prev) => (value === config.data[field] ? omit(prev, field) : { ...prev, [field]: value }))
   }
 
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
   const backgroundUrl =
-    localPreview ??
-    (form.card_background_path ? merchantImageUrl(import.meta.env.VITE_SUPABASE_URL ?? '', form.card_background_path, 'card', 1) : null)
+    backgroundUpload.preview ?? (form.card_background_path ? merchantImageUrl(supabaseUrl, form.card_background_path, 'card', 1) : null)
+  // null stamp image = the business logo.
+  const stampPath = form.stamp_image_path ?? merchant.logo_path
+  const stampUrl = stampUpload.preview ?? (stampPath ? merchantImageUrl(supabaseUrl, stampPath, 'logo', 1) : null)
 
-  async function pickImage(file: File | undefined) {
-    if (!file) return
-    setImageError(null)
-    setUploading(true)
-    try {
-      const variants = await createImageVariants(file, 'card')
-      const path = await adminRpc(() => uploadCardBackground(merchant.id, variants))
-      if (!path) throw new ImageProcessingError('ENCODE_FAILED', 'Sin ruta')
-      // Preview the cropped result, not the raw file, so the merchant sees what customers will.
-      const largest = variants[variants.length - 1]
-      setLocalPreview((old) => {
-        if (old) URL.revokeObjectURL(old)
-        return URL.createObjectURL(largest.blob)
-      })
-      edit('card_background_path', path)
-    } catch (err) {
-      const { code } = describeError(err)
-      handleSessionError(code)
-      setImageError(err instanceof ImageProcessingError ? imageErrorText[err.code] : ERRORS[code].message)
-      if (!(err instanceof ImageProcessingError)) Sentry.captureException(err)
-    } finally {
-      setUploading(false)
-      if (fileInput.current) fileInput.current.value = ''
-    }
+  async function pickBackground(file: File | undefined) {
+    const path = await backgroundUpload.pick(file)
+    if (path) edit('card_background_path', path)
   }
 
-  function removeImage() {
-    setLocalPreview(null)
-    setImageError(null)
+  async function pickStamp(file: File | undefined) {
+    const path = await stampUpload.pick(file)
+    if (path) edit('stamp_image_path', path)
+  }
+
+  function removeBackground() {
+    backgroundUpload.reset()
     edit('card_background_path', null)
+  }
+
+  function clearStampImage() {
+    stampUpload.reset()
+    edit('stamp_image_path', null)
   }
 
   return (
@@ -230,7 +203,11 @@ export function CardConfigPage() {
           <Field id={ids.terms} label="Términos y condiciones (opcional)" error={errors.terms} counter={`${form.terms.length}/${CARD_LIMITS.terms}`}>
             <textarea id={ids.terms} rows={4} className={inputClass} value={form.terms} aria-invalid={!!errors.terms} aria-describedby={`${ids.terms}-error`} onChange={(e) => edit('terms', e.target.value)} />
           </Field>
-          <Stepper id={ids.hours} label="Vigencia de cupones push" unit="horas" range={CARD_LIMITS.hours} value={form.push_coupon_validity_hours} error={errors.push_coupon_validity_hours} onChange={(v) => edit('push_coupon_validity_hours', v)} />
+          <Field id={ids.hours} label="Vigencia de cupones push" error={errors.push_coupon_validity_hours}>
+            <select id={ids.hours} className={inputClass} value={form.push_coupon_validity_hours} aria-invalid={!!errors.push_coupon_validity_hours} aria-describedby={`${ids.hours}-error`} onChange={(e) => edit('push_coupon_validity_hours', Number(e.target.value))}>
+              {PUSH_COUPON_VALIDITY_OPTIONS.map((h) => <option key={h} value={h}>{h} h</option>)}
+            </select>
+          </Field>
 
           {saveError && (
             <p role="alert" className="flex items-center gap-2 font-medium text-error">
@@ -251,27 +228,16 @@ export function CardConfigPage() {
 
         <aside className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
           <h2 className="font-semibold">Vista previa</h2>
-          <CardPreview merchantName={merchant.name} stampsRequired={form.stamps_required} rewardTitle={form.reward_title} backgroundUrl={backgroundUrl} />
+          <CardPreview merchantName={merchant.name} stampsRequired={form.stamps_required} rewardTitle={form.reward_title} backgroundUrl={backgroundUrl} stampImageUrl={stampUrl} />
           <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
             <p className="font-semibold">Imagen de fondo</p>
             <p className="text-sm text-text-secondary">Se recorta al centro con proporción de tarjeta (1.586:1). Máximo 10 MB.</p>
-            <input ref={fileInput} type="file" accept="image/*" aria-label="Elegir imagen de fondo" className="sr-only" onChange={(e) => void pickImage(e.target.files?.[0])} />
-            <div className="flex flex-wrap gap-3">
-              <button type="button" disabled={uploading} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => fileInput.current?.click()}>
-                {uploading ? 'Subiendo…' : form.card_background_path ? 'Cambiar imagen' : 'Elegir imagen'}
-              </button>
-              {form.card_background_path && (
-                <button type="button" disabled={uploading} className={`${buttonClass} text-error hover:bg-surface-muted`} onClick={removeImage}>
-                  Quitar imagen
-                </button>
-              )}
-            </div>
-            {imageError && (
-              <p role="alert" className="flex items-center gap-1.5 text-sm font-medium text-error">
-                <AlertIcon className="size-4 shrink-0" />
-                {imageError}
-              </p>
-            )}
+            <ImagePicker inputLabel="Elegir imagen de fondo" hasImage={!!form.card_background_path} uploading={backgroundUpload.uploading} error={backgroundUpload.error} removeLabel="Quitar imagen" onPick={(f) => void pickBackground(f)} onRemove={removeBackground} />
+          </div>
+          <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
+            <p className="font-semibold">Imagen del sello</p>
+            <p className="text-sm text-text-secondary">Aparece en cada sello ganado. Se recorta cuadrada. Por defecto se usa el logo de tu negocio.</p>
+            <ImagePicker inputLabel="Elegir imagen del sello" hasImage={!!form.stamp_image_path} uploading={stampUpload.uploading} error={stampUpload.error} removeLabel="Usar logo del negocio" onPick={(f) => void pickStamp(f)} onRemove={clearStampImage} />
           </div>
         </aside>
       </div>

@@ -3,12 +3,14 @@ import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, type ListRenderItem, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 
+import { TabSheet } from "../../components/layout/TabSheet";
 import { MerchantCard } from "../../components/catalog";
 import { Chip, EmptyState, ErrorState, FormMessage, MerchantCardSkeleton } from "../../components/ui";
 import { fieldBoxStyle } from "../../components/ui/TextField";
 import { BirthdayGreeting } from "../../features/birthday/BirthdayGreeting";
 import { EmailVerificationBanner } from "../../features/auth/EmailVerificationBanner";
 import { type MerchantListItem, toMerchantCard, useMerchants } from "../../features/catalog/catalog";
+import { useToggleFavorite } from "../../features/favorites/favorites";
 import { toAppError } from "../../lib/appError";
 import { openExternalUrl } from "../../lib/openExternal";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
@@ -17,13 +19,22 @@ import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 const SEARCH_DELAY_MS = 300; // F-06
 
 // A-07 Explorar (US-07, F-06).
-export default function ExploreScreen() {
+export default function ExploreRoute() {
+  return (
+    <TabSheet>
+      <ExploreScreen />
+    </TabSheet>
+  );
+}
+
+function ExploreScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<MerchantCategory | null>(null);
   const query = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
   const merchants = useMerchants({ query, category });
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } = merchants;
+  const toggleFavorite = useToggleFavorite();
   const [pulling, setPulling] = useState(false);
   const items = useMemo(() => merchants.data?.pages.flatMap((page) => page.items) ?? [], [merchants.data]);
   const filtered = query !== "" || category !== null;
@@ -49,10 +60,11 @@ export default function ExploreScreen() {
         merchant={toMerchantCard(item)}
         onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.id, name: item.name } })}
         onOpenMap={() => openExternalUrl(item.maps_url, "No pudimos abrir la ubicación de este negocio.")}
+        onToggleFavorite={() => toggleFavorite.mutate({ merchantId: item.id, isFavorite: item.is_favorite })}
         testID={`merchant-card-${item.id}`}
       />
     ),
-    [router]
+    [router, toggleFavorite]
   );
 
   let emptyState;

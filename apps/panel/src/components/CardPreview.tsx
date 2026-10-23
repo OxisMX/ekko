@@ -7,11 +7,13 @@ export function CardPreview({
   stampsRequired,
   rewardTitle,
   backgroundUrl,
+  stampImageUrl = null,
 }: {
   merchantName: string
   stampsRequired: number
   rewardTitle: string
   backgroundUrl: string | null
+  stampImageUrl?: string | null
 }) {
   const rows = stampGridRows(stampsRequired)
   const sampleStamps = Math.ceil(stampsRequired / 2)
@@ -42,7 +44,7 @@ export function CardPreview({
                       i < sampleStamps ? 'bg-navy text-white' : 'bg-surface-muted text-navy'
                     }`}
                   >
-                    {i < sampleStamps ? <CheckCircleIcon className="size-1/2" /> : last ? '★' : null}
+                    {i < sampleStamps ? stampImageUrl ? <img src={stampImageUrl} alt="" className="size-full rounded-full object-cover" /> : <CheckCircleIcon className="size-1/2" /> : last ? '★' : null}
                   </span>
                 )
               })}

@@ -43,7 +43,7 @@ function renderAdmin(path: string, adminUnlockedUntil: string | null) {
 const inFiveMinutes = () => new Date(Date.now() + 5 * 60_000).toISOString()
 
 describe('AdminLayout', () => {
-  it('lists the six sections and marks the current one with aria-current', () => {
+  it('lists the seven sections and marks the current one with aria-current', () => {
     renderAdmin('/admin/menu', inFiveMinutes())
     const nav = screen.getByRole('navigation', { name: 'Secciones administrativas' })
     const links = Array.from(nav.querySelectorAll('a'))
@@ -53,6 +53,7 @@ describe('AdminLayout', () => {
       'Menú',
       'Ofertas',
       'Notificaciones',
+      'Perfil del negocio',
       'Registro de QR',
     ])
     expect(screen.getByRole('link', { name: 'Menú' })).toHaveAttribute('aria-current', 'page')

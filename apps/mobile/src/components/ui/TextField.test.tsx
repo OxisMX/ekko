@@ -9,7 +9,9 @@ describe("TextField", () => {
 
   it("shows the error as text and as the field hint", async () => {
     await render(<TextField label="Correo electrónico" error="Revisa el formato del correo." />);
-    expect(screen.getByText("Error: Revisa el formato del correo.")).toBeOnTheScreen();
+    expect(screen.getByText("Revisa el formato del correo.")).toBeOnTheScreen();
+    expect(screen.getByRole("alert")).toBeOnTheScreen();
+    expect(screen.getByTestId("status-icon-error", { includeHiddenElements: true })).toBeOnTheScreen();
     expect(screen.getByLabelText("Correo electrónico").props.accessibilityHint).toBe("Revisa el formato del correo.");
   });
 

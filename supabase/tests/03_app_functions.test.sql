@@ -29,10 +29,10 @@ select is(pg_temp.raised_detail()::jsonb, '{"next_available_on":"2026-10-21"}'::
 select throws_ok($$ select app.raise('E-99') $$, 'P0001', 'E-99', 'raise works without detail');
 
 -- is_email_verified
-select ok(app.is_email_verified(row(null, null, null, null, null, null, 'google', 'active', null, null, null)::public.customers), 'google counts as verified');
-select ok(app.is_email_verified(row(null, null, null, null, null, null, 'apple', 'active', null, null, null)::public.customers), 'apple counts as verified');
-select ok(not app.is_email_verified(row(null, null, null, null, null, null, 'email', 'active', null, null, null)::public.customers), 'email without email_verified_at is not verified');
-select ok(app.is_email_verified(row(null, null, null, null, null, '2026-01-01', 'email', 'active', null, null, null)::public.customers), 'email with email_verified_at is verified');
+select ok(app.is_email_verified(row(null, null, null, null, null, null, 'google', 'active', null, null, null, null, true)::public.customers), 'google counts as verified');
+select ok(app.is_email_verified(row(null, null, null, null, null, null, 'apple', 'active', null, null, null, null, true)::public.customers), 'apple counts as verified');
+select ok(not app.is_email_verified(row(null, null, null, null, null, null, 'email', 'active', null, null, null, null, true)::public.customers), 'email without email_verified_at is not verified');
+select ok(app.is_email_verified(row(null, null, null, null, null, '2026-01-01', 'email', 'active', null, null, null, null, true)::public.customers), 'email with email_verified_at is verified');
 
 -- peppered_hash (TC-195); the test does not depend on seed.sql for the pepper
 select vault.create_secret('test-pepper', 'hash_pepper')

@@ -54,7 +54,15 @@ export function AdminLayout() {
     if (!unlockWaiter && now - lastActivity.current >= ADMIN_IDLE_MS) leave()
   }, [now, unlockWaiter, leave])
 
-  const requestUnlock = useCallback(() => new Promise<void>((resolve, reject) => setUnlockWaiter({ resolve, reject })), [])
+  // WHY shared: sections fire several admin RPCs at once (e.g. metrics + series); all of them must
+  // wait on the same PIN dialog instead of the last one overwriting the others' waiter.
+  const pendingUnlock = useRef<Promise<void> | null>(null)
+  const requestUnlock = useCallback(() => {
+    pendingUnlock.current ??= new Promise<void>((resolve, reject) => setUnlockWaiter({ resolve, reject })).finally(() => {
+      pendingUnlock.current = null
+    })
+    return pendingUnlock.current
+  }, [])
 
   // A lapsed window with the PIN dialog open is the E-16 flow: keep the section mounted.
   const windowOpen = canAccessAdmin({

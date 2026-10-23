@@ -1,4 +1,4 @@
-import { ERRORS } from '@ekko/shared'
+import { ERRORS, PUSH_COUPON_VALIDITY_OPTIONS } from '@ekko/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { ModalDialog } from '../components/ModalDialog'
@@ -253,8 +253,10 @@ export function PushPage() {
               <Field id={ids.couponTerms} label="Términos" error={errors.couponTerms} counter={`${form.couponTerms.length}/${PUSH_LIMITS.couponTerms}`}>
                 <textarea id={ids.couponTerms} rows={3} className={inputClass} value={form.couponTerms} aria-invalid={!!errors.couponTerms} aria-describedby={`${ids.couponTerms}-error`} onChange={(e) => edit('couponTerms', e.target.value)} />
               </Field>
-              <Field id={ids.couponHours} label="Vigencia (horas)" error={errors.couponHours}>
-                <input id={ids.couponHours} type="number" inputMode="numeric" min={PUSH_LIMITS.hours[0]} max={PUSH_LIMITS.hours[1]} className={inputClass} value={form.couponHours} aria-invalid={!!errors.couponHours} aria-describedby={`${ids.couponHours}-error`} onChange={(e) => edit('couponHours', e.target.value)} />
+              <Field id={ids.couponHours} label="Vigencia del cupón" error={errors.couponHours}>
+                <select id={ids.couponHours} className={inputClass} value={form.couponHours} aria-invalid={!!errors.couponHours} aria-describedby={`${ids.couponHours}-error`} onChange={(e) => edit('couponHours', e.target.value)}>
+                  {PUSH_COUPON_VALIDITY_OPTIONS.map((h) => <option key={h} value={h}>{h} h</option>)}
+                </select>
               </Field>
             </>
           )}

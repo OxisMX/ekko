@@ -135,9 +135,9 @@ select results_eq(
   'merchant-media: public, 300 KB limit, webp/jpeg only'
 );
 select is(
-  (select array_agg(cmd order by cmd) from pg_policies where schemaname = 'storage' and tablename = 'objects'),
-  array['DELETE', 'INSERT', 'SELECT'],
-  'storage.objects policies cover only insert, delete and select (no update)'
+  (select array_agg(distinct cmd order by cmd) from pg_policies where schemaname = 'storage' and tablename = 'objects'),
+  array['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+  'storage.objects policies: update exists only for customer-avatars (replace own avatar)'
 );
 select is_empty(
   $$ select policyname from pg_policies

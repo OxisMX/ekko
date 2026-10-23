@@ -59,6 +59,7 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
         stamps={card.stamps.map((s) => ({ grantedAt: s.granted_at, isBonus: s.is_bonus }))}
         logoUri={imageUri(merchant.logo_path, "logo")}
         merchantName={merchant.name}
+        stampImageUri={imageUri(card.stamp_image_path, "logo")}
         backgroundUri={imageUri(card.background_path, "card")}
         rewardTitle={card.reward_title}
         cycleExpiresAt={card.cycle_expires_at ?? previewExpiry(card.cycle_months)}

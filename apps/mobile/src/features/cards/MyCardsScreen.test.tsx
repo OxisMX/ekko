@@ -19,6 +19,7 @@ jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
   useLocalSearchParams: () => mockParams,
+  useIsFocused: () => true,
   useFocusEffect: (effect: () => void) => mockUseEffect(effect, [effect]),
 }));
 
@@ -26,6 +27,7 @@ const card = (over: Partial<MyCard> = {}): MyCard => ({
   merchant_id: "m1",
   merchant_name: "Café La Esquina",
   logo_path: null,
+  stamp_image_path: null,
   merchant_available: true,
   stamps_count: 3,
   stamps_required: 6,

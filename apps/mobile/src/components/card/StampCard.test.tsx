@@ -91,4 +91,22 @@ describe("StampCard", () => {
     expect(screen.getAllByTestId("stamp-bonus")).toHaveLength(1);
     expect(screen.getByLabelText(/1 sello extra/)).toBeOnTheScreen();
   });
+
+  it("draws round slots", async () => {
+    await render(<StampCard {...base} />);
+    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderRadius: 32, aspectRatio: 1 });
+  });
+
+  const imageUris = () =>
+    screen.getAllByTestId("merchant-logo-image", { includeHiddenElements: true }).map((node) => node.props.source[0].uri as string);
+
+  it("stamps with the merchant logo when there is no stamp image", async () => {
+    await render(<StampCard {...base} logoUri="https://x.test/logo.webp" />);
+    expect(new Set(imageUris())).toEqual(new Set(["https://x.test/logo.webp"]));
+  });
+
+  it("stamps with the custom stamp image when set", async () => {
+    await render(<StampCard {...base} logoUri="https://x.test/logo.webp" stampImageUri="https://x.test/stamp.webp" />);
+    expect(new Set(imageUris())).toEqual(new Set(["https://x.test/stamp.webp"]));
+  });
 });

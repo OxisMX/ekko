@@ -46,6 +46,7 @@ const router = createBrowserRouter([
           { path: 'ofertas/:offerId', element: lazyRoute(() => import('./pages/OfferFormPage.tsx'), 'OfferFormPage') },
           { path: 'notificaciones', element: lazyRoute(() => import('./pages/PushPage.tsx'), 'PushPage') },
           { path: 'metricas', element: lazyRoute(() => import('./pages/MetricsPage.tsx'), 'MetricsPage') },
+          { path: 'perfil', element: lazyRoute(() => import('./pages/ProfilePage.tsx'), 'ProfilePage') },
           { path: 'qr', element: lazyRoute(() => import('./pages/QrLogPage.tsx'), 'QrLogPage') },
         ],
       },

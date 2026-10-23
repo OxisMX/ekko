@@ -22,6 +22,13 @@ describe("SegmentedTabs", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
+  it("gives every segment the same share of the width", async () => {
+    await render(<SegmentedTabs tabs={tabs.slice(0, 2)} value="card" onChange={jest.fn()} />);
+    for (const name of ["Tarjeta", "Menú"]) {
+      expect(screen.getByRole("tab", { name })).toHaveStyle({ flex: 1, minHeight: 52 });
+    }
+  });
+
   it("exposes a stable testID per tab (RQ-3)", async () => {
     await render(<SegmentedTabs tabs={tabs} value="card" onChange={jest.fn()} testID="merchant-tabs" />);
     expect(screen.getByTestId("merchant-tabs-promos")).toBeOnTheScreen();

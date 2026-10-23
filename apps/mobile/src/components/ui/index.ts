@@ -17,3 +17,5 @@ export { VerificationBanner, type VerificationBannerProps } from "./Verification
 export { CodeField, type CodeFieldProps } from "./CodeField";
 export { SegmentedTabs, SEGMENTED_TABS_HEIGHT, type SegmentedTab, type SegmentedTabsProps } from "./SegmentedTabs";
 export { Toast, TOAST_DURATION_MS, type ToastProps } from "./Toast";
+export { FavoriteButton, type FavoriteButtonProps } from "./FavoriteButton";
+export { StatusIcon, type StatusIconVariant } from "./StatusIcon";

@@ -36,8 +36,10 @@ function makeDetail(overrides: { wheelStatus?: string; card?: Partial<MerchantDe
       maps_url: "https://maps.google.com/?q=1",
       reviews_url: "https://g.page/r/review",
       available: true,
+      is_favorite: false,
     },
     card: {
+      stamp_image_path: null,
       has_relation: true,
       stamps_required: 8,
       stamps: [

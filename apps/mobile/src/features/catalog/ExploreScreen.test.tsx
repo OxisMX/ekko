@@ -18,7 +18,7 @@ jest.mock("../../lib/supabase", () => ({
 }));
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 jest.mock("../../auth/AuthProvider", () => ({ useAuth: () => mockAuth }));
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useIsFocused: () => true }));
 jest.mock("expo-linking", () => ({ openURL: jest.fn(() => Promise.resolve()) }));
 
 const merchant = (id: string, name: string, maps_url = "https://maps.google.com/?q=1"): MerchantListItem => ({
@@ -26,6 +26,7 @@ const merchant = (id: string, name: string, maps_url = "https://maps.google.com/
   name,
   category: "cafeterias_postres",
   description: "Café de especialidad.",
+  is_favorite: false,
   logo_path: `merchants/${id}/logo/a`,
   cover_path: `merchants/${id}/cover/b`,
   maps_url,

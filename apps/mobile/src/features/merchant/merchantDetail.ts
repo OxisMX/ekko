@@ -22,6 +22,7 @@ const detailSchema = z.object({
     maps_url: z.string().nullable(),
     reviews_url: z.string().nullable(),
     available: z.boolean(),
+    is_favorite: z.boolean(),
   }),
   card: z.object({
     has_relation: z.boolean(),
@@ -34,6 +35,8 @@ const detailSchema = z.object({
     reward_description: z.string().nullable(),
     terms: z.string().nullable(),
     background_path: z.string().nullable(),
+    // null = the stamps show the merchant logo.
+    stamp_image_path: z.string().nullable(),
     pending_extra_stamps: z.number(),
     reward_coupon_id: z.string().nullable(),
     stamped_today: z.boolean(),

@@ -55,6 +55,7 @@ export function MerchantAvatar({ name, uri, size, ringWidth = 0, grayscale = fal
           // NOTE: CSS filter grayscale only renders on Android; iOS relies on the caller's veil/dim.
           style={{ width: "100%", height: "100%", filter: grayscale ? [{ grayscale: 1 }] : undefined }}
           accessible={false}
+          testID="merchant-logo-image"
         />
       ) : (
         <Text

@@ -56,14 +56,14 @@ select is(
 );
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(public.list_merchants('alpha') -> 'items' -> 0) k),
-  array['category', 'cover_path', 'description', 'id', 'logo_path', 'maps_url', 'name'],
+  array['category', 'cover_path', 'description', 'id', 'is_favorite', 'logo_path', 'maps_url', 'name'],
   'items carry exactly the documented fields'
 );
 select is(
   public.list_merchants('alpha', p_query => 'Ekko Centro') -> 'items' -> 0,
   '{"id":"20000000-0000-0000-0000-0000000000c1","name":"Café Ekko Centro","category":"cafeterias_postres",
     "description":"Café de especialidad y postres de la casa.","logo_path":"merchants/c1/logo",
-    "cover_path":"merchants/c1/cover","maps_url":"https://maps.example/c1"}'::jsonb,
+    "cover_path":"merchants/c1/cover","maps_url":"https://maps.example/c1","is_favorite":false}'::jsonb,
   'item values come from the merchant row'
 );
 

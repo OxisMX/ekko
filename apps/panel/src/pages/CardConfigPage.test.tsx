@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthState } from '../auth/AuthContext'
@@ -22,6 +22,7 @@ const config = {
   reward_description: 'Un café americano',
   terms: null,
   card_background_path: null,
+  stamp_image_path: null,
   push_coupon_validity_hours: 24,
 }
 const session: MerchantSession = {
@@ -112,6 +113,7 @@ describe('P-06 card config', () => {
       p_terms: '',
       p_card_background_path: null,
       p_push_coupon_validity_hours: 24,
+      p_stamp_image_path: null,
     })
     expect(screen.queryByRole('dialog', { name: '¿Guardar los cambios?' })).not.toBeInTheDocument()
   })
@@ -199,5 +201,52 @@ describe('P-06 card config', () => {
     rpc.mockResolvedValueOnce({ data: config, error: null })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
     await waitFor(() => expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_card_background_path: null })))
+  })
+
+  it('offers the push coupon validity as a select 48/36/24/12/6 h and saves the choice', async () => {
+    renderPage()
+    await loaded()
+    const select = screen.getByLabelText('Vigencia de cupones push')
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['48 h', '36 h', '24 h', '12 h', '6 h'])
+    expect(select).toHaveValue('24')
+    fireEvent.change(select, { target: { value: '12' } })
+    save()
+    rpc.mockResolvedValueOnce({ data: { ...config, push_coupon_validity_hours: 12 }, error: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_push_coupon_validity_hours: 12 })))
+  })
+
+  it('uploads a custom stamp image under merchants/{id}/card/, previews it and saves its path', async () => {
+    createImageVariants.mockResolvedValue([
+      { width: 128, blob: new Blob(['a'], { type: 'image/webp' }), format: 'webp' },
+      { width: 256, blob: new Blob(['b'], { type: 'image/webp' }), format: 'webp' },
+    ])
+    upload.mockResolvedValue({ error: null })
+    renderPage()
+    await loaded()
+    expect(screen.queryByRole('button', { name: 'Usar logo del negocio' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Elegir imagen del sello'), { target: { files: [new File(['x'], 's.png', { type: 'image/png' })] } })
+    await screen.findByRole('button', { name: 'Usar logo del negocio' })
+    const paths = upload.mock.calls.map(([p]) => p as string)
+    expect(paths[0]).toMatch(/^merchants\/m1\/card\/[0-9a-f-]{36}_128\.webp$/)
+    expect(screen.getByTestId('card-preview').querySelector('img')).toHaveAttribute('src', 'blob:preview')
+    save()
+    rpc.mockResolvedValueOnce({ data: config, error: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() =>
+      expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_stamp_image_path: paths[0].replace('_128.webp', '') })),
+    )
+  })
+
+  it('"Usar logo del negocio" saves a null stamp image', async () => {
+    rpc.mockReset()
+    rpc.mockResolvedValueOnce({ data: { ...config, stamp_image_path: 'merchants/m1/card/stamp' }, error: null })
+    renderPage()
+    await loaded()
+    fireEvent.click(screen.getByRole('button', { name: 'Usar logo del negocio' }))
+    save()
+    rpc.mockResolvedValueOnce({ data: config, error: null })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(rpc).toHaveBeenLastCalledWith('update_card_config', expect.objectContaining({ p_stamp_image_path: null })))
   })
 })

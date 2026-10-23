@@ -1,10 +1,10 @@
-import { parseRpcError, type ErrorCode } from '@ekko/shared'
+import { parseRpcError, PUSH_COUPON_VALIDITY_OPTIONS, type ErrorCode } from '@ekko/shared'
 import { z } from 'zod'
 import { ImageProcessingError, type ImageVariant } from './imageVariants'
 import { supabase } from './supabase'
 
 // Limits mirror backend §4.5 update_card_config (RN-23, RN-24) so the server is never the first to say no.
-export const CARD_LIMITS = { stamps: [4, 10], months: [3, 12], hours: [24, 48], title: 60, description: 200, terms: 1000 } as const
+export const CARD_LIMITS = { stamps: [4, 10], months: [3, 12], title: 60, description: 200, terms: 1000 } as const
 
 const range = ([min, max]: readonly [number, number], label: string) =>
   z.number().int().min(min, `${label}: entre ${min} y ${max}.`).max(max, `${label}: entre ${min} y ${max}.`)
@@ -18,7 +18,11 @@ export const cardFormSchema = z.object({
   reward_description: text('la descripción del premio', CARD_LIMITS.description),
   terms: z.string().trim().max(CARD_LIMITS.terms, `Máximo ${CARD_LIMITS.terms} caracteres.`),
   card_background_path: z.string().nullable(),
-  push_coupon_validity_hours: range(CARD_LIMITS.hours, 'Vigencia'),
+  // null = use the business logo (default).
+  stamp_image_path: z.string().nullable().default(null),
+  push_coupon_validity_hours: z
+    .number()
+    .refine((h) => (PUSH_COUPON_VALIDITY_OPTIONS as readonly number[]).includes(h), 'Vigencia: elige 6, 12, 24, 36 o 48 horas.'),
 })
 export type CardForm = z.infer<typeof cardFormSchema>
 export type CardField = keyof CardForm
@@ -64,7 +68,7 @@ function storageErrorAsRpc(err: { message: string; statusCode?: string }) {
 }
 
 // Immutable paths: every change gets a new uuid (backend §7), stored without the `_{width}` suffix.
-export async function uploadMerchantImage(merchantId: string, folder: 'card' | 'product' | 'offer', variants: ImageVariant[]) {
+export async function uploadMerchantImage(merchantId: string, folder: 'card' | 'product' | 'offer' | 'brand', variants: ImageVariant[]) {
   const base = `merchants/${merchantId}/${folder}/${crypto.randomUUID()}`
   for (const { width, blob, format } of variants) {
     const { error } = await supabase.storage
@@ -75,5 +79,3 @@ export async function uploadMerchantImage(merchantId: string, folder: 'card' | '
   // A JPEG fallback keeps its real extension in the stored path (backend §7).
   return { data: variants.some((v) => v.format === 'jpeg') ? `${base}.jpg` : base, error: null }
 }
-
-export const uploadCardBackground = (merchantId: string, variants: ImageVariant[]) => uploadMerchantImage(merchantId, 'card', variants)

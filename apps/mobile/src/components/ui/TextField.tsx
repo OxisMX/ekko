@@ -1,5 +1,6 @@
 import type { ComponentRef, ReactNode, Ref } from "react";
 import { Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
+import { StatusIcon } from "./StatusIcon";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
 // Shared box look for every field (TextField, PasswordField, DateField).
@@ -34,14 +35,18 @@ export function FieldError({ error }: { error?: string }) {
   if (!error) return null;
   return (
     // NOTE: must sit on `surface` (white): colors.error is 4.55:1 there but 4.03:1 on surfaceMuted.
-    <Text
-      selectable
-      accessibilityLiveRegion="polite"
-      maxFontSizeMultiplier={MAX_FONT_SCALE}
-      style={[textStyles.secondary, { color: colors.error }]}
-    >
-      {`Error: ${error}`}
-    </Text>
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.xs }}>
+      <StatusIcon variant="error" color={colors.error} size={18} />
+      <Text
+        selectable
+        accessibilityRole="alert"
+        accessibilityLiveRegion="polite"
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+        style={[textStyles.secondary, { flex: 1, color: colors.error }]}
+      >
+        {error}
+      </Text>
+    </View>
   );
 }
 

@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
+import { FavoriteButton } from "../ui/FavoriteButton";
 import { MerchantAvatar, initialsOf } from "../merchant/MerchantAvatar";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
@@ -16,12 +17,14 @@ export type MerchantCardData = {
   description: string;
   coverUri: string | null;
   logoUri: string | null;
+  isFavorite: boolean;
 };
 
 export type MerchantCardProps = {
   merchant: MerchantCardData;
   onPress: () => void;
   onOpenMap: () => void;
+  onToggleFavorite: () => void;
   testID?: string;
 };
 
@@ -54,8 +57,8 @@ function MerchantLogo({ name, uri }: { name: string; uri: string | null }) {
   );
 }
 
-export function MerchantCard({ merchant, onPress, onOpenMap, testID }: MerchantCardProps) {
-  const { name, categoryLabel, description, coverUri, logoUri } = merchant;
+export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, testID }: MerchantCardProps) {
+  const { name, categoryLabel, description, coverUri, logoUri, isFavorite } = merchant;
   const [failedCoverUri, setFailedCoverUri] = useState<string | null>(null);
 
   return (
@@ -124,6 +127,13 @@ export function MerchantCard({ merchant, onPress, onOpenMap, testID }: MerchantC
       >
         <PinIcon />
       </Pressable>
+      {/* WHY: sibling of the card Pressable, so tapping the heart never opens the merchant. */}
+      <FavoriteButton
+        isFavorite={isFavorite}
+        onToggle={onToggleFavorite}
+        testID={testID && `${testID}-favorite`}
+        style={{ position: "absolute", top: spacing.sm, right: spacing.sm + MAP_BUTTON_SIZE + spacing.sm }}
+      />
     </View>
   );
 }

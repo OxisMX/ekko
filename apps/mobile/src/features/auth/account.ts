@@ -16,6 +16,8 @@ export type MyProfile = {
   auth_provider: string;
   email_verified: boolean;
   profile_complete: boolean;
+  avatar_path: string | null;
+  push_opt_in: boolean;
 };
 
 export const MY_PROFILE_KEY = ["my-profile"] as const;

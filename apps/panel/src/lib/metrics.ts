@@ -32,3 +32,20 @@ export const QR_STATUS_LABEL: Record<QrEntry['status'], string> = { used: 'Usado
 const numberFormat = new Intl.NumberFormat('es-MX')
 export const formatCount = (n: number) => numberFormat.format(n)
 export const formatQrDate = (iso: string) => new Date(iso).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
+
+// Contract: get_metrics_series. Buckets are 'YYYY-MM-DD' (day for 30d, week start for all; customers always weekly).
+const bucket = z.string()
+const seriesSchema = z.object({
+  visits: z.array(z.object({ bucket, count: z.number() })),
+  coupons: z.array(z.object({ bucket, issued: z.number(), redeemed: z.number() })),
+  active_customers: z.array(z.object({ bucket, count: z.number() })),
+})
+export type MetricsSeries = z.infer<typeof seriesSchema>
+export const toMetricsSeries = (raw: unknown): MetricsSeries => seriesSchema.parse(raw)
+
+const bucketFormat = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' })
+// Built in local time so a calendar date never shifts a day through UTC.
+export const formatBucket = (isoDate: string) => {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return bucketFormat.format(new Date(year, month - 1, day))
+}
