@@ -1,6 +1,6 @@
 # Ekko Rewards
 
-Monorepo de Ekko Rewards (Oxis): app móvil (Expo), panel del comercio (React + Vite) y backend en Supabase. La documentación de producto y técnica vive en [`docs/`](docs/).
+Monorepo de Ekko Rewards (Oxis): app móvil (Expo), panel del comercio (React + Vite) y backend en Supabase. La documentación de producto y técnica vive en [`docs/`](docs/). Rendimiento y respaldos: [`docs/ekko_rendimiento.md`](docs/ekko_rendimiento.md); runbooks de operación: [`docs/ekko_runbooks.md`](docs/ekko_runbooks.md).
 
 | Carpeta | Contenido |
 |---|---|
