@@ -10,6 +10,7 @@ const AXIS = 'var(--color-text-secondary)'
 type Row = Record<string, string | number>
 
 // WHY aria-hidden + sr-only table: SVG charts are opaque to screen readers, the table carries the same numbers.
+// NOTE: accessibilityLayer off — recharts would make the hidden SVG focusable (axe aria-hidden-focus).
 function ChartCard({ title, rows, columns, children }: { title: string; rows: Row[]; columns: { key: string; label: string }[]; children: ReactNode }) {
   const empty = rows.every((row) => columns.slice(1).every(({ key }) => row[key] === 0))
   return (
@@ -64,7 +65,7 @@ export function MetricsCharts({ series, range }: { series: MetricsSeries; range:
     <div className="grid gap-4">
       <ChartCard title="Visitas" rows={visits} columns={[bucketColumn, { key: 'visits', label: 'Visitas' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
-          <LineChart data={visits}>
+          <LineChart data={visits} accessibilityLayer={false}>
             {axes(xLabel, 'Visitas')}
             <Line type="monotone" dataKey="visits" name="Visitas" stroke={NAVY} strokeWidth={2.5} dot={false} />
           </LineChart>
@@ -72,7 +73,7 @@ export function MetricsCharts({ series, range }: { series: MetricsSeries; range:
       </ChartCard>
       <ChartCard title="Cupones emitidos y canjeados" rows={coupons} columns={[bucketColumn, { key: 'issued', label: 'Emitidos' }, { key: 'redeemed', label: 'Canjeados' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
-          <BarChart data={coupons}>
+          <BarChart data={coupons} accessibilityLayer={false}>
             {axes(xLabel, 'Cupones')}
             <Bar dataKey="issued" name="Emitidos" fill={NAVY} />
             <Bar dataKey="redeemed" name="Canjeados" fill={SUCCESS} />
@@ -81,7 +82,7 @@ export function MetricsCharts({ series, range }: { series: MetricsSeries; range:
       </ChartCard>
       <ChartCard title="Clientes activos por semana (últimas 12 semanas)" rows={customers} columns={[{ key: 'label', label: 'Semana' }, { key: 'customers', label: 'Clientes activos' }]}>
         <ResponsiveContainer width="100%" height={HEIGHT}>
-          <BarChart data={customers}>
+          <BarChart data={customers} accessibilityLayer={false}>
             {axes('Semana', 'Clientes')}
             <Bar dataKey="customers" name="Clientes activos" fill={NAVY} />
           </BarChart>
