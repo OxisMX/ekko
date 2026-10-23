@@ -26,7 +26,8 @@ test('c1: métricas con filtro de periodo', async ({ page }) => {
 
   await page.getByRole('radio', { name: 'Histórico' }).click()
   await expect(page.getByRole('radio', { name: 'Histórico' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByText('Visitas', { exact: true })).toBeVisible()
+  // NOTE: first() = the KPI tile; the chart title, axis and data table also say "Visitas".
+  await expect(page.getByText('Visitas', { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('alert')).toBeHidden()
 })
 
