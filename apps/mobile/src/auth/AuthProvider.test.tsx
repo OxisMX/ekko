@@ -30,11 +30,14 @@ const session = (role: unknown) =>
   ({ access_token: "t", user: { email: "ana@ekko.mx", app_metadata: { role } } }) as unknown as Session;
 
 function Probe() {
-  const { status, errorCode, session, signOut, endSession } = useAuth();
+  const { status, errorCode, session, signOut, endSession, accountDeleted, finishAccountDeletion } = useAuth();
   return (
     <>
       <Text testID="auth" onPress={() => void signOut()}>
         {`${status}|${errorCode ?? "-"}|${session?.user.email ?? "-"}`}
+      </Text>
+      <Text testID="finish-deletion" onPress={() => void finishAccountDeletion()}>
+        {`deleted:${accountDeleted}`}
       </Text>
       <Text testID="end-session" onPress={() => endSession("E-19")}>
         end
@@ -133,5 +136,18 @@ describe("AuthProvider", () => {
 
     await waitFor(() => expect(authText()).toBe("signedOut|-|-"));
     expect(reportError).toHaveBeenCalled();
+  });
+
+  it("F-15: account deletion signs out locally without sign_out_device, clears the cache, flags A-02", async () => {
+    const { emit } = await renderProvider();
+    await emit("INITIAL_SESSION", session("customer"));
+    const clear = jest.spyOn(queryClient, "clear");
+    await fireEvent.press(screen.getByTestId("finish-deletion"));
+
+    await waitFor(() => expect(authText()).toBe("signedOut|-|-"));
+    expect(mockSignOutDevice).not.toHaveBeenCalled();
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(clear).toHaveBeenCalled();
+    expect(screen.getByTestId("finish-deletion")).toHaveTextContent("deleted:true");
   });
 });

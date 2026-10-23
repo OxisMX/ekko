@@ -28,7 +28,7 @@ function describeSignInError(error: unknown): FormError {
 // A-02 (brief §4.2). Google/Apple buttons arrive with F-03 in a later sprint.
 export default function LoginScreen() {
   const router = useRouter();
-  const { status, errorCode } = useAuth();
+  const { status, errorCode, accountDeleted } = useAuth();
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [formError, setFormError] = useState<FormError | null>(null);
   const { control, handleSubmit } = useForm<SignInValues>({
@@ -56,6 +56,7 @@ export default function LoginScreen() {
       subtitle="Tus sellos y recompensas, en un solo lugar."
       footer={<TextLink label="¿No tienes cuenta? Crear cuenta" onPress={() => router.push("/register")} testID="login-register" />}
     >
+      {accountDeleted ? <FormMessage variant="info" message="Tu cuenta fue eliminada." testID="login-account-deleted" /> : null}
       {errorCode ? <FormMessage variant="error" message={ERRORS[errorCode].message} testID="login-auth-error" /> : null}
       <Controller
         control={control}

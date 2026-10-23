@@ -4,8 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider.tsx'
-import { AdminLayout, AdminPlaceholderPage } from './components/AdminLayout.tsx'
-import { ADMIN_SECTIONS } from './components/adminSections.ts'
+import { AdminLayout } from './components/AdminLayout.tsx'
 import { PanelGate } from './components/PanelGate.tsx'
 import './index.css'
 import { queryClient } from './lib/queryClient.ts'
@@ -16,6 +15,8 @@ import { CardConfigPage } from './pages/CardConfigPage.tsx'
 import { MenuPage } from './pages/MenuPage.tsx'
 import { OffersPage } from './pages/OffersPage.tsx'
 import { OfferFormPage } from './pages/OfferFormPage.tsx'
+import { MetricsPage } from './pages/MetricsPage.tsx'
+import { QrLogPage } from './pages/QrLogPage.tsx'
 import { PushPage } from './pages/PushPage.tsx'
 import { ProductFormPage } from './pages/ProductFormPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
@@ -42,10 +43,8 @@ const router = createBrowserRouter([
           { path: 'ofertas/nueva', element: <OfferFormPage /> },
           { path: 'ofertas/:offerId', element: <OfferFormPage /> },
           { path: 'notificaciones', element: <PushPage /> },
-          ...ADMIN_SECTIONS.filter((section) => !['tarjeta', 'menu', 'ofertas', 'notificaciones'].includes(section.path)).map((section) => ({
-            path: section.path,
-            element: <AdminPlaceholderPage section={section} />,
-          })),
+          { path: 'metricas', element: <MetricsPage /> },
+          { path: 'qr', element: <QrLogPage /> },
         ],
       },
     ],

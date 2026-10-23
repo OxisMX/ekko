@@ -8,6 +8,8 @@ const variants = {
     container: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
     text: colors.textPrimary,
   },
+  // F-15: irreversible actions only. White on colors.error is 4.55:1 (AA).
+  destructive: { container: { backgroundColor: colors.error }, text: colors.surface },
 } as const;
 
 export type ButtonProps = {

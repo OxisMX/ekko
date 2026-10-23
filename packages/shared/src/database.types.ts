@@ -354,6 +354,9 @@ isOneToOne: false
             "add_card":
 { Args: { "p_merchant_id": string }; Returns: Json
                            },
+"anonymize_customer":
+{ Args: { "p_customer_id": string }; Returns: boolean
+                           },
 "claim_visit":
 { Args: { "p_device_id_digest": string,"p_token": string }; Returns: Json
                            },
@@ -389,6 +392,9 @@ isOneToOne: false
                            },
 "get_merchant_session":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_metrics":
+{ Args: { "p_range": string }; Returns: Json
                            },
 "get_my_profile":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -427,6 +433,9 @@ isOneToOne: false
                            },
 "list_push_campaigns":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"list_qr_log":
+{ Args: { "p_limit"?: number,"p_offset"?: number }; Returns: Json
                            },
 "lock_admin":
 { Args: Record<PropertyKey, never>; Returns: Json
