@@ -18,7 +18,6 @@ import { toAppError } from "../../lib/appError";
 import { success } from "../../lib/haptics";
 import {
   colors,
-  fontFamily,
   MAX_FONT_SCALE,
   radii,
   spacing,

@@ -88,8 +88,8 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
   const { name, categoryLabel, description, coverUri, logoUri, isFavorite, progress } = merchant;
   const [failedCoverUri, setFailedCoverUri] = useState<string | null>(null);
   const [pressed, setPressed] = useState(false);
-  // WHY: the card is split in tappable parts around the "Ver mapa" button, because nested touchables
-  // would be merged into one element by screen readers and swallow the map action.
+  // WHY: "Ver mapa" is a sibling of the open Pressable, because nested touchables would be
+  // merged into one element by screen readers and swallow the map action.
   const open = { onPress, onPressIn: () => setPressed(true), onPressOut: () => setPressed(false) };
 
   return (
@@ -124,19 +124,25 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
           <View style={{ position: "relative" }}>
             <MerchantLogo name={name} uri={logoUri} />
           </View>
-          <View style={{ paddingTop: LOGO_SIZE / 2 + spacing.sm, paddingHorizontal: spacing.lg }}>
-            <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]}>
+          {/* Category shares the name row (right end); the name keeps priority when space is short. */}
+          <View style={{ paddingTop: LOGO_SIZE / 2 + spacing.sm, paddingHorizontal: spacing.lg, flexDirection: "row", alignItems: "baseline", gap: spacing.sm }}>
+            <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { flex: 1, color: colors.textPrimary }]}>
               {name}
             </Text>
-          </View>
-        </Pressable>
-        {/* A-21: "Ver mapa" lives in the category row, so the cover only carries the heart. */}
-        <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: spacing.lg, paddingRight: spacing.sm }}>
-          <Pressable {...open} accessible={false} style={{ flex: 1 }}>
-            <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+            <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { flexShrink: 1, color: colors.textSecondary, textAlign: "right" }]}>
               {categoryLabel}
             </Text>
-          </Pressable>
+          </View>
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xs, gap: spacing.sm }}>
+            {/* NOTE: left-aligned, never justified (§4.2). */}
+            <Text numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary, textAlign: "left" }]}>
+              {description}
+            </Text>
+            {progress ? <CardProgress progress={progress} /> : null}
+          </View>
+        </Pressable>
+        {/* A-21: "Ver mapa" is an outlined button in the bottom-right corner, inset from the card border. */}
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", padding: spacing.lg }}>
           <Pressable
             onPress={onOpenMap}
             accessibilityRole="button"
@@ -146,8 +152,11 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
               flexDirection: "row",
               alignItems: "center",
               gap: spacing.xs,
-              paddingHorizontal: spacing.sm,
-              opacity: mapPressed ? 0.7 : 1,
+              paddingHorizontal: spacing.md,
+              borderWidth: 1.5,
+              borderColor: colors.navy,
+              borderRadius: radii.pill,
+              backgroundColor: mapPressed ? colors.navyTint : colors.surface,
             })}
           >
             <MapPin size={18} />
@@ -156,13 +165,6 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
             </Text>
           </Pressable>
         </View>
-        <Pressable {...open} accessible={false} style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm }}>
-          {progress ? <CardProgress progress={progress} /> : null}
-          {/* NOTE: left-aligned, never justified (§4.2). */}
-          <Text numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary, textAlign: "left" }]}>
-            {description}
-          </Text>
-        </Pressable>
       </View>
       {/* WHY: sibling of the card, so tapping the heart never opens the merchant. */}
       <FavoriteButton

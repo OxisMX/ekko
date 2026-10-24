@@ -17,12 +17,4 @@ describe("MerchantHeader", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Agregar a favoritos" }));
     expect(onToggleFavorite).toHaveBeenCalledTimes(1);
   });
-
-  it("shows the stamps chip only when given (A-25)", async () => {
-    const props = { name: "Café", categoryLabel: "Cafeterías", coverUri: null, logoUri: null, onOpenMap: jest.fn(), isFavorite: false, onToggleFavorite: jest.fn() };
-    const { rerender } = await render(<MerchantHeader {...props} />);
-    expect(screen.queryByTestId("merchant-progress-chip")).toBeNull();
-    await rerender(<MerchantHeader {...props} progressLabel="3 de 8 sellos" />);
-    expect(screen.getByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
-  });
 });

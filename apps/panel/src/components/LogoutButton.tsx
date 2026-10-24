@@ -2,15 +2,15 @@ import { useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { LogoutIcon } from './Icons'
 import { ModalDialog } from './ModalDialog'
-import { btnDanger, btnSecondary, btnSmall } from './ui'
+import { btnDanger, btnSecondary } from './ui'
 
 // P-14: signing out drops the whole till, so it always asks first (focus starts on "Cancelar").
 export function LogoutButton() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={`${btnSmall} flex items-center gap-2`}>
-        <LogoutIcon className="size-4" />
+      <button type="button" onClick={() => setOpen(true)} className={`${btnSecondary} flex items-center gap-2`}>
+        <LogoutIcon className="size-5" />
         Cerrar sesión
       </button>
       {open && <LogoutDialog onClose={() => setOpen(false)} />}

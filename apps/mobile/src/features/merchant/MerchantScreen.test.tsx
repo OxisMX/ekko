@@ -103,9 +103,10 @@ describe("A-08..A-11 Detalle de comercio", () => {
     await renderScreen();
     expect(screen.getByLabelText("Cargando comercio")).toBeOnTheScreen();
 
-    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
+    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
     expect(screen.queryByLabelText("Cargando comercio")).toBeNull();
-    expect(screen.getByLabelText("Café La Esquina, Cafeterías y Postres, 3 de 8 sellos")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Café La Esquina, Cafeterías y Postres")).toBeOnTheScreen();
+    expect(screen.getByText("Premio: Café americano gratis")).toBeOnTheScreen();
     expect(screen.getByRole("tab", { name: "Tarjeta", selected: true })).toBeOnTheScreen();
     expect(screen.queryByTestId("merchant-terms")).toBeNull();
     const toggle = screen.getByRole("button", { name: "Términos y condiciones" });
@@ -146,7 +147,7 @@ describe("A-08..A-11 Detalle de comercio", () => {
 
   it("'Gira tu ruleta' shows for available / needs_verification only and opens A-12", async () => {
     const first = await renderScreen();
-    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
+    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
     expect(screen.queryByText("Tienes un giro de bienvenida")).toBeNull();
     await first.unmount();
 
@@ -176,7 +177,7 @@ describe("A-08..A-11 Detalle de comercio", () => {
     const detail = makeDetail();
     detailResult = { data: { ...detail, merchant: { ...detail.merchant, available: false } }, error: null };
     await renderScreen();
-    expect(await screen.findByTestId("merchant-progress-chip")).toHaveTextContent("3 de 8 sellos");
+    expect(await screen.findByText("3 de 8 sellos")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Registrar visita" })).toBeNull();
   });
 

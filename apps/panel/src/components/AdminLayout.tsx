@@ -5,17 +5,19 @@ import { AdminUnlockContext } from '../lib/adminUnlockContext'
 import { canAccessAdmin } from '../lib/panelRoute'
 import { supabase } from '../lib/supabase'
 import { useMerchantSessionPatch } from '../lib/useAdminUnlock'
+import { toRedemptionError } from '../lib/useRedemption'
 import { useNow } from '../lib/useNow'
 import { ADMIN_GROUPS, ADMIN_SECTIONS, type AdminSection } from './adminSections'
-import { AlertIcon, LockIcon, UnlockIcon } from './Icons'
+import { AlertIcon, ClockIcon, LockIcon, UnlockIcon } from './Icons'
 import { LogoutButton } from './LogoutButton'
 import { MerchantAvatar } from './MerchantAvatar'
 import { useMerchantSession } from './panelOutlet'
 import { PinDialog } from './PinDialog'
-import { btnPrimary } from './ui'
+import { btnPrimary, btnSecondary } from './ui'
 
 export const ADMIN_IDLE_MS = 5 * 60_000
 const LOCK_WARNING_MS = 60_000 // P-16
+const EXTEND_MAX_REMAINING_MS = 10 * 60_000 // server caps the window at 15 min; +5 would hit the cap
 
 const formatCountdown = (ms: number) => {
   const seconds = Math.max(0, Math.ceil(ms / 1000))
@@ -31,6 +33,9 @@ export function AdminLayout() {
   const patchSession = useMerchantSessionPatch()
   const now = useNow()
   const lastActivity = useRef(now)
+  const extendedUntil = useRef(0)
+  const [extending, setExtending] = useState(false)
+  const [extendFailed, setExtendFailed] = useState(false)
   const [unlockWaiter, setUnlockWaiter] = useState<{
     resolve: () => void
     reject: (e: Error) => void
@@ -43,9 +48,10 @@ export function AdminLayout() {
     navigate('/', { replace: true })
   }, [navigate, patchSession])
 
-  // WHY two clocks: the server owns the real window (admin_unlocked_until, extended only by admin
-  // RPCs; an expired one answers E-16 → P-04 in place). Locally, 5 min without pointer/keyboard
+  // WHY two clocks: the server owns the real window (admin_unlocked_until, extended by admin RPCs or
+  // by "Extender"; an expired one answers E-16 → P-04 in place). Locally, 5 min without pointer/keyboard
   // activity also leaves, so a tablet left open on an admin screen locks even if no RPC ran.
+  // WHY extendedUntil: a deliberate extension must also postpone the idle lock, or it would be moot.
   useEffect(() => {
     const touch = () => (lastActivity.current = Date.now())
     window.addEventListener('pointerdown', touch)
@@ -56,7 +62,7 @@ export function AdminLayout() {
     }
   }, [])
   useEffect(() => {
-    if (!unlockWaiter && now - lastActivity.current >= ADMIN_IDLE_MS) leave()
+    if (!unlockWaiter && now >= Math.max(lastActivity.current + ADMIN_IDLE_MS, extendedUntil.current)) leave()
   }, [now, unlockWaiter, leave])
 
   // WHY shared: sections fire several admin RPCs at once (e.g. metrics + series); all of them must
@@ -68,6 +74,24 @@ export function AdminLayout() {
     })
     return pendingUnlock.current
   }, [])
+
+  const extend = async () => {
+    setExtending(true)
+    setExtendFailed(false)
+    try {
+      const { data, error } = await supabase.rpc('extend_admin_session')
+      if (error) throw error
+      const { expires_at } = data as { expires_at: string }
+      extendedUntil.current = Date.parse(expires_at)
+      patchSession({ admin_unlocked_until: expires_at })
+    } catch (err) {
+      // The window lapsed meanwhile: ask for the PIN in place instead of failing.
+      if (toRedemptionError(err as { code?: string }).code === 'E-16') await requestUnlock().catch(() => undefined)
+      else setExtendFailed(true)
+    } finally {
+      setExtending(false)
+    }
+  }
 
   // A lapsed window with the PIN dialog open is the E-16 flow: keep the section mounted.
   const windowOpen = canAccessAdmin({
@@ -97,6 +121,23 @@ export function AdminLayout() {
             {remainingMs < LOCK_WARNING_MS ? <AlertIcon className="size-4 shrink-0" /> : <UnlockIcon className="size-4 shrink-0" />}
             {remainingMs < LOCK_WARNING_MS ? 'Se bloqueará pronto' : 'Se bloquea en'} <span className="font-mono tabular-nums">{formatCountdown(remainingMs)}</span>
           </p>
+          <button
+            type="button"
+            onClick={() => void extend()}
+            disabled={extending || remainingMs >= EXTEND_MAX_REMAINING_MS}
+            aria-label="Extender sesión de administración 5 minutos"
+            title={remainingMs >= EXTEND_MAX_REMAINING_MS ? 'La sesión ya tiene el máximo de tiempo (15 minutos)' : undefined}
+            className={`${btnSecondary} flex items-center gap-2`}
+          >
+            <ClockIcon className="size-5" />
+            {extending ? 'Extendiendo…' : '+5 min'}
+          </button>
+          {extendFailed && (
+            <p role="alert" className="text-sm font-semibold text-danger">
+              No se pudo extender. Intenta de nuevo.
+            </p>
+          )}
+          <LogoutButton />
           <button type="button" onClick={leave} className={`${btnPrimary} flex items-center gap-2`}>
             <LockIcon className="size-5" />
             Bloquear y volver a Caja
@@ -136,11 +177,8 @@ export function AdminLayout() {
                 <Outlet context={{ merchantSession }} />
               </InsideAdminFrame>
             </main>
-            <footer className="flex flex-wrap items-center justify-between gap-3 px-6 pb-4 text-xs text-text-secondary">
-              <span>
-                Ekko Rewards · Panel del comercio · versión <span className="font-mono">{__COMMIT_HASH__}</span>
-              </span>
-              <LogoutButton />
+            <footer className="px-6 pb-4 text-xs text-text-secondary">
+              Ekko Rewards · Panel del comercio · versión <span className="font-mono">{__COMMIT_HASH__}</span>
             </footer>
           </div>
         </div>

@@ -407,6 +407,9 @@ isOneToOne: false
 "ensure_birthday_coupons":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"extend_admin_session":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "generate_visit_qr":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },

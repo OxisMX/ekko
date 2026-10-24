@@ -42,7 +42,7 @@ const CIRCLES = [
 
 function BrandPattern() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 375 240" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-x-0 top-0 h-72 w-full">
+    <svg aria-hidden="true" viewBox="0 0 375 240" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 size-full">
       {CIRCLES.map((c) => (
         <circle key={`${c.cx}-${c.cy}`} cx={c.cx} cy={c.cy} r={c.r} fill="var(--color-pattern)" fillOpacity={c.opacity} />
       ))}

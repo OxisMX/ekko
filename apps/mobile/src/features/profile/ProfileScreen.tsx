@@ -1,37 +1,25 @@
-import { completeProfileSchema, ERRORS } from "@ekko/shared";
-import { Image } from "expo-image";
+import { ERRORS } from "@ekko/shared";
 import { useRouter } from "expo-router";
-import { type ReactNode, useState } from "react";
-import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
-import { z } from "zod";
+import { useState } from "react";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { formatDate } from "../../components/format";
-import { ChevronRight, Gift, Lock } from "../../components/icons";
-import { Button, ErrorState, FormMessage, Skeleton, TextField, Toast } from "../../components/ui";
-import { toAppError } from "../../lib/appError";
+import { ChevronRight, Gift } from "../../components/icons";
+import { Button, ErrorState, Skeleton } from "../../components/ui";
 import { reportError } from "../../lib/sentry";
-import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { type MyProfile, useMyProfile } from "../auth/account";
 import { useMyCards } from "../cards/myCards";
 import { EmailVerificationBanner } from "../auth/EmailVerificationBanner";
 import { DevSimulatePush } from "./DevSimulatePush";
-import { AvatarPermissionError, avatarUrl, pickAvatar, useUpdateProfile } from "./profileEdit";
-import { usePushPermission } from "./notificationsPermission";
+import { avatarUrl } from "./profileEdit";
+import { Avatar, initialsOf, Row, Section } from "./profileParts";
 import { useMyRedemptions } from "./redemptions";
 
-const initialsOf = (first: string | null, last: string | null) =>
-  `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
-
-const LOCKED_NOTE = "No se puede cambiar";
-const AVATAR_SIZE = 72;
-const nameFieldsSchema = completeProfileSchema.pick({ first_name: true, last_name: true });
-const PERMISSION_DENIED_MESSAGE = "Para elegir una foto, permite el acceso a tus fotos en los ajustes del teléfono.";
-
-// A-20 Perfil (US-06). Name, photo and notification preference are editable; birth date and email are not (RN-04).
+// A-20 Perfil (US-06): read-only info, stats and account actions; editing lives in /edit-profile.
 export function ProfileScreen() {
   const profile = useMyProfile();
-  const [saved, setSaved] = useState(false);
   if (profile.isError) return <ErrorState onRetry={() => void profile.refetch()} title="Algo salió mal" message="No pudimos cargar tu perfil. Inténtalo de nuevo." testID="profile-error" />;
   if (!profile.data) {
     return (
@@ -44,134 +32,34 @@ export function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
-        <EditableProfile profile={profile.data} onSaved={() => setSaved(true)} />
+        <ProfileInfo profile={profile.data} />
         <EmailVerificationBanner />
         <HistoryRow />
         <SignOutButton />
         <DeleteAccountEntry />
         {__DEV__ ? <DevSimulatePush /> : null}
       </ScrollView>
-      {/* A-79: success is a transient toast, not a message that lingers in the form. */}
-      {saved ? <Toast title="Cambios guardados" message="Actualizamos tu perfil." onDismiss={() => setSaved(false)} testID="profile-saved-toast" /> : null}
     </View>
   );
 }
 
-type Notice = { variant: "error"; message: string };
-
-function EditableProfile({ profile, onSaved }: { profile: MyProfile; onSaved: () => void }) {
-  const { first_name, last_name, birth_date, email, email_verified, avatar_path, push_opt_in } = profile;
-  const [first, setFirst] = useState(first_name ?? "");
-  const [last, setLast] = useState(last_name ?? "");
-  const [optIn, setOptIn] = useState(push_opt_in);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const update = useUpdateProfile();
-
-  const parsed = nameFieldsSchema.safeParse({ first_name: first, last_name: last });
-  const errors = parsed.success ? {} : z.flattenError(parsed.error).fieldErrors;
-  const dirty = first.trim() !== (first_name ?? "") || last.trim() !== (last_name ?? "") || optIn !== push_opt_in || photoUri !== null;
-
-  const choosePhoto = () => {
-    setNotice(null);
-    pickAvatar().then(
-      (uri) => uri && setPhotoUri(uri),
-      (error: unknown) => {
-        if (error instanceof AvatarPermissionError) setNotice({ variant: "error", message: PERMISSION_DENIED_MESSAGE });
-        else setNotice({ variant: "error", message: ERRORS[toAppError(error).code].message });
-      }
-    );
-  };
-
-  const save = () => {
-    if (!parsed.success || update.isPending) return;
-    setNotice(null);
-    update.mutate(
-      { changes: { first_name: parsed.data.first_name, last_name: parsed.data.last_name, push_opt_in: optIn, avatar_path }, newPhotoUri: photoUri },
-      {
-        onSuccess: () => {
-          setPhotoUri(null);
-          onSaved();
-        },
-        onError: (error) => setNotice({ variant: "error", message: ERRORS[toAppError(error).code].message }),
-      }
-    );
-  };
-
+function ProfileInfo({ profile }: { profile: MyProfile }) {
+  const router = useRouter();
+  const { first_name, last_name, birth_date, email, avatar_path } = profile;
   return (
     <>
-      <Header name={[first_name, last_name].filter(Boolean).join(" ")} email={email} initials={initialsOf(first_name, last_name)} avatarUri={photoUri ?? avatarUrl(avatar_path)} />
-      <StatsStrip />
-      <View style={{ gap: spacing.lg }}>
-        <Button title={avatar_path || photoUri ? "Cambiar foto de perfil" : "Agregar foto de perfil"} onPress={choosePhoto} variant="secondary" fullWidth testID="profile-photo-change" />
-        <TextField label="Nombre" value={first} onChangeText={setFirst} error={errors.first_name?.[0]} autoCapitalize="words" autoComplete="given-name" testID="profile-first-name" />
-        <TextField label="Apellido" value={last} onChangeText={setLast} error={errors.last_name?.[0]} autoCapitalize="words" autoComplete="family-name" testID="profile-last-name" />
-        <NotificationsSection value={optIn} onChange={setOptIn} />
-        {notice ? <FormMessage variant={notice.variant} message={notice.message} testID="profile-notice" /> : null}
-        {dirty ? (
-          <Button
-            title={update.isPending ? "Guardando…" : "Guardar cambios"}
-            onPress={save}
-            disabled={!parsed.success || update.isPending}
-            loading={update.isPending}
-            fullWidth
-            testID="profile-save"
-          />
-        ) : null}
-      </View>
+      <Header name={[first_name, last_name].filter(Boolean).join(" ")} email={email} initials={initialsOf(first_name, last_name)} avatarUri={avatarUrl(avatar_path)} />
       <Section>
         <Row
           label="Fecha de nacimiento"
           // WHY: noon UTC keeps the calendar day stable under the business-timezone formatter.
           value={birth_date ? formatDate(`${birth_date}T12:00:00Z`) : "—"}
-          note={LOCKED_NOTE}
           testID="profile-birth-date"
         />
-        <Row label="Correo electrónico" value={`${email ?? "—"} · ${email_verified ? "Verificado" : "Sin verificar"}`} note={LOCKED_NOTE} testID="profile-email" />
       </Section>
+      <StatsStrip />
+      <Button title="Editar perfil" onPress={() => router.push("/edit-profile")} variant="secondary" fullWidth testID="profile-edit" />
     </>
-  );
-}
-
-// A-76: one section for both controls; the system row only appears when the OS permission needs attention.
-function NotificationsSection({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
-  const { state, act } = usePushPermission();
-  const systemAction = state === "blocked" ? "Abrir ajustes" : state === "askable" ? "Activar" : null;
-  return (
-    <View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 48 }}>
-        <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
-            Notificaciones
-          </Text>
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-            Recibir promociones y avisos de tus negocios
-          </Text>
-        </View>
-        <Switch
-          value={value}
-          onValueChange={onChange}
-          accessibilityLabel="Notificaciones"
-          trackColor={{ true: colors.navy, false: colors.surfaceMuted }}
-          thumbColor={colors.surface}
-          testID="profile-push-opt-in"
-        />
-      </View>
-      {systemAction ? (
-        <Pressable
-          onPress={() => void act()}
-          accessibilityRole="button"
-          accessibilityLabel={`Desactivadas en el sistema. ${systemAction}`}
-          testID="profile-notifications-action"
-          style={{ minHeight: 44, justifyContent: "center" }}
-        >
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-            Desactivadas en el sistema ·{" "}
-            <Text style={{ fontFamily: fontFamily.semibold, color: colors.navy, textDecorationLine: "underline" }}>{systemAction}</Text>
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
   );
 }
 
@@ -218,49 +106,6 @@ function Header({ name, email, initials, avatarUri }: { name: string; email: str
           </Text>
         ) : null}
       </View>
-    </View>
-  );
-}
-
-function Avatar({ uri, initials }: { uri: string | null; initials: string }) {
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  const showImage = uri && uri !== failedUri;
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center", overflow: "hidden" }}
-    >
-      {showImage ? (
-        <Image source={{ uri }} recyclingKey={uri} contentFit="cover" onError={() => setFailedUri(uri)} style={{ width: "100%", height: "100%" }} testID="profile-avatar-image" />
-      ) : (
-        <Text style={[textStyles.h2, { color: colors.surface }]}>{initials}</Text>
-      )}
-    </View>
-  );
-}
-
-function Section({ children }: { children: ReactNode }) {
-  return <View style={{ backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingHorizontal: spacing.lg }}>{children}</View>;
-}
-
-function Row({ label, value, note, testID }: { label: string; value: string; note?: string; testID?: string }) {
-  return (
-    <View accessible testID={testID} style={{ paddingVertical: spacing.md, gap: spacing.xs / 2 }}>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.label, { color: colors.textSecondary }]}>
-        {label}
-      </Text>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
-        {value}
-      </Text>
-      {note ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-          <Lock size={14} color={colors.textSecondary} />
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-            {note}
-          </Text>
-        </View>
-      ) : null}
     </View>
   );
 }

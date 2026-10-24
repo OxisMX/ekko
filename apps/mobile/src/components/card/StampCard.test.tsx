@@ -28,32 +28,26 @@ describe("StampCard", () => {
     expect(screen.getAllByTestId("stamp-empty")).toHaveLength(stampsRequired);
   });
 
-  it("shows progress, reward and expiry and summarises them for screen readers", async () => {
+  it("shows only the reward and expiry, and summarises everything for screen readers", async () => {
     await render(<StampCard {...base} />);
-    expect(screen.getByText("3 de 8 sellos")).toBeOnTheScreen();
+    expect(screen.queryByText("3 de 8 sellos")).toBeNull();
     expect(screen.getByText("Premio: Café americano")).toBeOnTheScreen();
     expect(screen.getByText("Vence el 15/01/2027")).toBeOnTheScreen();
     expect(screen.getByLabelText("Café La Esquina: 3 de 8 sellos, premio Café americano, vence el 15/01/2027. Te faltan 5 para tu premio")).toBeOnTheScreen();
     expect(screen.getAllByTestId("stamp-granted")).toHaveLength(3);
     expect(screen.getAllByTestId("stamp-empty")).toHaveLength(5);
+    expect(screen.queryByTestId("stamp-remaining")).toBeNull();
   });
 
-  it("says how many stamps are missing with a progress bar (A-27)", async () => {
-    await render(<StampCard {...base} />);
-    expect(screen.getByTestId("stamp-remaining")).toHaveTextContent("Te faltan 5 para tu premio");
-  });
-
-  it("with one stamp left says so and rings the gift slot (A-27)", async () => {
+  it("rings the gift slot with one stamp left (A-27)", async () => {
     const seven = Array.from({ length: 7 }, () => stamp("2026-10-01T18:00:00Z"));
     await render(<StampCard {...base} stamps={seven} />);
-    expect(screen.getByTestId("stamp-remaining")).toHaveTextContent("¡Solo te falta 1!");
     expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderStyle: "dashed", borderColor: "#FF7A3D" });
   });
 
-  it("draws empty slots dashed (A-30) and shows the reward description inside the card (A-31)", async () => {
-    await render(<StampCard {...base} rewardDescription="Un café de 12 oz." />);
+  it("draws empty slots dashed (A-30)", async () => {
+    await render(<StampCard {...base} />);
     expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderStyle: "dashed", borderWidth: 1 });
-    expect(screen.getByText("Un café de 12 oz.")).toBeOnTheScreen();
   });
 
   it("draws the gift icon only on the last empty slot", async () => {
@@ -80,24 +74,18 @@ describe("StampCard", () => {
     expect(screen.getAllByTestId("stamp-granted")).toHaveLength(2);
   });
 
-  it("shows the reward notice and fires onViewReward (RN-27)", async () => {
-    const onViewReward = jest.fn();
-    await render(<StampCard {...base} stamps={[]} rewardAvailable onViewReward={onViewReward} />);
-    expect(screen.getByText("Recompensa disponible")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Ver recompensa" }));
-    expect(onViewReward).toHaveBeenCalledTimes(1);
-  });
-
-  it("labels an unavailable merchant (RN-71)", async () => {
-    await render(<StampCard {...base} available={false} />);
-    expect(screen.getByText("No disponible")).toBeOnTheScreen();
-  });
-
-  it("shows the extra-stamp badge only when one is pending", async () => {
-    await render(<StampCard {...base} />);
+  it("keeps unavailable and extra-stamp state in the screen-reader label only", async () => {
+    await render(<StampCard {...base} available={false} pendingExtraStamps={1} />);
+    expect(screen.queryByText("No disponible")).toBeNull();
     expect(screen.queryByText("+1 sello extra en tu próxima visita")).toBeNull();
-    await render(<StampCard {...base} pendingExtraStamps={1} />);
-    expect(screen.getByText("+1 sello extra en tu próxima visita")).toBeOnTheScreen();
+    expect(screen.getByLabelText(/\+1 sello extra en tu próxima visita\. No disponible$/)).toBeOnTheScreen();
+  });
+
+  it("renders the wallet header strip with merchant and n/m", async () => {
+    await render(<StampCard {...base} header={{ logoUri: null, name: "Café La Esquina", badge: "Premio listo" }} />);
+    expect(screen.getAllByText("Café La Esquina")).toHaveLength(1);
+    expect(screen.getByText("3/8")).toBeOnTheScreen();
+    expect(screen.getByText("Premio listo")).toBeOnTheScreen();
   });
 
   it("marks bonus stamps with a star and names them in the label (RN-36)", async () => {
@@ -110,9 +98,13 @@ describe("StampCard", () => {
     expect(screen.getByLabelText(/1 sello extra/)).toBeOnTheScreen();
   });
 
-  it("draws round slots", async () => {
+  it("draws perfect circles, capped at 64 and shrunk to the slot when narrow", async () => {
     await render(<StampCard {...base} />);
-    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ borderRadius: 32, aspectRatio: 1 });
+    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ width: 64, height: 64, borderRadius: 32 });
+    // 4 per row in a 200-wide grid: (200 - 3 * 8) / 4 = 44.
+    await fireEvent(screen.getAllByTestId("stamp-row")[0]!.parent!, "layout", { nativeEvent: { layout: { width: 200, height: 100 } } });
+    expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
+    expect(screen.getAllByTestId("stamp-granted")[0]).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
   });
 
   const imageUris = () =>

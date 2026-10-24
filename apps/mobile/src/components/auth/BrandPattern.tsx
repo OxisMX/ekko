@@ -10,9 +10,6 @@ const CIRCLES = [
   { cx: 90, cy: 210, r: 60, opacity: 0.65 },
 ] as const;
 
-// A-10: one circle becomes a 2 pt accent ring (no fill) — a stamp, tying the brand to the reward.
-const RING = { cx: 250, cy: 190, r: 80 } as const;
-
 export function BrandPattern() {
   return (
     <View
@@ -27,7 +24,6 @@ export function BrandPattern() {
         {CIRCLES.map((c) => (
           <Circle key={`${c.cx}-${c.cy}`} cx={c.cx} cy={c.cy} r={c.r} fill={colors.pattern} fillOpacity={c.opacity} />
         ))}
-        <Circle {...RING} fill="none" stroke={colors.accent} strokeWidth={2} />
       </Svg>
     </View>
   );

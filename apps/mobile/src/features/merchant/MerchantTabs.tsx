@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
-import { StampCard } from "../../components/card";
+import { StampCard, StampCardDetails } from "../../components/card";
 import { CouponCard } from "../../components/coupon";
-import { Cake, ChevronRight, Megaphone, MapPin, Star } from "../../components/icons";
+import { Cake, Megaphone, MapPin, Star } from "../../components/icons";
 import { OfferCard, ProductCard } from "../../components/merchant";
 import { Button, Chip, EmptyState, FormMessage } from "../../components/ui";
 import { openExternalUrl } from "../../lib/openExternal";
-import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 import { wheelIsOffered } from "../wheel/wheel";
 import { imageUri, menuChips, type MerchantDetail, previewExpiry, productsFor } from "./merchantDetail";
 
@@ -63,14 +63,26 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
         stampImageUri={imageUri(card.stamp_image_path, "logo")}
         backgroundUri={imageUri(card.background_path, "card")}
         rewardTitle={card.reward_title}
-        rewardDescription={card.reward_description}
         cycleExpiresAt={card.cycle_expires_at ?? previewExpiry(card.cycle_months)}
         pendingExtraStamps={card.pending_extra_stamps}
         rewardAvailable={rewardAvailable}
         available={merchant.available}
         highlightLast={highlightLastStamp}
-        onViewReward={rewardAvailable ? onViewReward : undefined}
         testID="merchant-stamp-card"
+      />
+      <StampCardDetails
+        stampsCount={card.stamps.length}
+        stampsRequired={card.stamps_required}
+        rewardDescription={card.reward_description}
+        pendingExtraStamps={card.pending_extra_stamps}
+        rewardAvailable={rewardAvailable}
+        available={merchant.available}
+        onViewReward={rewardAvailable ? onViewReward : undefined}
+        // F-07: A-12 itself explains the unverified case (E-06).
+        wheelOffered={merchant.available && wheelIsOffered(detail.wheel.status)}
+        onSpinWheel={onSpinWheel}
+        terms={card.terms}
+        testID="merchant-stamp-details"
       />
       {card.has_relation ? null : (
         <View style={{ gap: spacing.sm }}>
@@ -87,70 +99,8 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
           {addErrorMessage ? <FormMessage variant="error" message={addErrorMessage} testID="merchant-add-card-error" /> : null}
         </View>
       )}
-      {/* F-07: A-12 itself explains the unverified case (E-06). */}
-      {merchant.available && wheelIsOffered(detail.wheel.status) ? <WheelBanner onPress={onSpinWheel} /> : null}
       {/* A-13..A-15 (F-08): hidden while the merchant is unavailable — claim_visit would answer E-05. */}
       {merchant.available ? <Button title="Registrar visita" onPress={onRegisterVisit} fullWidth testID="merchant-register-visit" /> : null}
-      {card.terms ? <TermsAccordion terms={card.terms} /> : null}
-    </View>
-  );
-}
-
-// A-31: the wheel is an invitation inside the card tab, not one more button in the stack.
-function WheelBanner({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Tienes un giro de bienvenida"
-      testID="merchant-spin-wheel"
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: spacing.md,
-        minHeight: 56,
-        paddingHorizontal: spacing.lg,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: colors.accent,
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      <Star color={colors.textPrimary} size={22} />
-      {/* WHY: dark text on the accent fill; white on accent would fail AA (§4.3). */}
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>
-        Tienes un giro de bienvenida
-      </Text>
-      <ChevronRight color={colors.textPrimary} size={20} />
-    </Pressable>
-  );
-}
-
-// A-32: terms are long and rarely read, so they collapse.
-function TermsAccordion({ terms }: { terms: string }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <View style={{ gap: spacing.xs }}>
-      <Pressable
-        onPress={() => setExpanded((open) => !open)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel="Términos y condiciones"
-        testID="merchant-terms-toggle"
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}
-      >
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>
-          Términos y condiciones
-        </Text>
-        <View style={{ transform: [{ rotate: expanded ? "90deg" : "0deg" }] }}>
-          <ChevronRight size={20} />
-        </View>
-      </Pressable>
-      {expanded ? (
-        <Paragraph muted testID="merchant-terms">
-          {terms}
-        </Paragraph>
-      ) : null}
     </View>
   );
 }

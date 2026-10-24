@@ -136,7 +136,6 @@ export default function MerchantScreen() {
           coverUri={imageUri(merchant.cover_path, "cover")}
           logoUri={imageUri(merchant.logo_path, "logo")}
           isFavorite={merchant.is_favorite}
-          progressLabel={data.card.has_relation ? `${data.card.stamps.length} de ${data.card.stamps_required} sellos` : undefined}
           onToggleFavorite={() => toggleFavorite.mutate({ merchantId, isFavorite: merchant.is_favorite })}
           onOpenMap={() => openExternalUrl(merchant.maps_url, "No pudimos abrir la ubicación de este negocio.")}
           scrollY={scrollY}

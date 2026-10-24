@@ -1,14 +1,15 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FlatList, type ListRenderItem, RefreshControl, View } from "react-native";
+import { FlatList, type ListRenderItem, Pressable, RefreshControl, View } from "react-native";
 
-import { CardRow } from "../../components/card";
+import { StampCard, STAMP_CARD_HEADER_HEIGHT, WalletCardSkeleton } from "../../components/card";
+import { formatDate } from "../../components/format";
 import { CouponCard } from "../../components/coupon";
 import { Button, EmptyState, ErrorState, SegmentedTabs, Skeleton } from "../../components/ui";
 import { toAppError } from "../../lib/appError";
 import { colors, spacing } from "../../theme";
-import { imageUri } from "../merchant/merchantDetail";
-import { wheelHref, wheelIsOffered } from "../wheel/wheel";
+import { imageUri, useMerchantDetail } from "../merchant/merchantDetail";
+import { wheelIsOffered } from "../wheel/wheel";
 import { type MyCoupon, useMyCoupons } from "../coupons/myCoupons";
 import { sortCards } from "./cardOrder";
 import { type MyCard, useMyCards } from "./myCards";
@@ -64,6 +65,59 @@ function usePullToRefresh(refetch: () => Promise<unknown>) {
   return <RefreshControl refreshing={pulling} onRefresh={onRefresh} colors={[colors.navy]} tintColor={colors.navy} />;
 }
 
+// Pill text (never colour alone) for the strip of a stacked card; not interactive, the whole card opens the merchant.
+function badgeFor(card: MyCard): string | undefined {
+  if (!card.merchant_available) return "No disponible";
+  if (card.reward_available) return "Premio listo";
+  return wheelIsOffered(card.wheel_status) ? "Gira tu ruleta" : undefined;
+}
+
+// Wallet stack: every card but the last is cut to its header strip, and the next card paints over the rest.
+function WalletCard({ card, isLast, onPress }: { card: MyCard; isLast: boolean; onPress: () => void }) {
+  // WHY: list_my_cards has no stamp dates, reward or artwork; the detail query (cached, shared with A-09) does.
+  const detail = useMerchantDetail(card.merchant_id).data;
+  const header = { logoUri: imageUri(card.logo_path, "logo"), name: card.merchant_name, badge: badgeFor(card) };
+  const expires = formatDate(card.cycle_expires_at);
+  const label = [
+    `${card.merchant_name}, ${card.stamps_count} de ${card.stamps_required} sellos`,
+    detail && `premio ${detail.card.reward_title}`,
+    `vence el ${expires}`,
+    header.badge,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <View style={isLast ? undefined : { height: STAMP_CARD_HEADER_HEIGHT }}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        testID={`my-card-${card.merchant_id}`}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+      >
+        {detail ? (
+          <StampCard
+            stampsRequired={card.stamps_required}
+            stamps={detail.card.stamps.map((s) => ({ grantedAt: s.granted_at, isBonus: s.is_bonus }))}
+            logoUri={header.logoUri}
+            stampImageUri={imageUri(detail.card.stamp_image_path ?? card.stamp_image_path, "logo")}
+            merchantName={card.merchant_name}
+            backgroundUri={imageUri(detail.card.background_path, "card")}
+            rewardTitle={detail.card.reward_title}
+            cycleExpiresAt={card.cycle_expires_at}
+            pendingExtraStamps={detail.card.pending_extra_stamps}
+            rewardAvailable={card.reward_available}
+            available={card.merchant_available}
+            header={header}
+          />
+        ) : (
+          <WalletCardSkeleton header={{ header, progress: `${card.stamps_count}/${card.stamps_required}`, dimmed: !card.merchant_available }} />
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
 function CardsList() {
   const router = useRouter();
   const cards = useMyCards();
@@ -72,23 +126,16 @@ function CardsList() {
   const refreshControl = usePullToRefresh(refetch);
   const sorted = useMemo(() => sortCards(cards.data ?? []), [cards.data]);
 
+  const lastIndex = sorted.length - 1;
   const renderItem = useCallback<ListRenderItem<MyCard>>(
-    ({ item }) => (
-      <CardRow
-        merchantName={item.merchant_name}
-        logoUri={imageUri(item.logo_path, "logo")}
-        stampsCount={item.stamps_count}
-        stampsRequired={item.stamps_required}
-        cycleExpiresAt={item.cycle_expires_at}
-        rewardAvailable={item.reward_available}
-        wheelAvailable={wheelIsOffered(item.wheel_status)}
-        onWheelPress={() => router.push(wheelHref(item.merchant_id))}
-        available={item.merchant_available}
+    ({ item, index }) => (
+      <WalletCard
+        card={item}
+        isLast={index === lastIndex}
         onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.merchant_id, name: item.merchant_name } })}
-        testID={`my-card-${item.merchant_id}`}
       />
     ),
-    [router]
+    [router, lastIndex]
   );
 
   let emptyState;
@@ -106,10 +153,12 @@ function CardsList() {
     emptyState = <CardsError key={cards.errorUpdatedAt} error={cards.error} onRetry={() => void refetch()} />;
   } else {
     emptyState = (
-      <View accessible accessibilityLabel="Cargando tarjetas" testID="cards-loading" style={{ gap: spacing.lg }}>
-        <Skeleton height={96} radius={16} />
-        <Skeleton height={96} radius={16} />
-        <Skeleton height={96} radius={16} />
+      <View accessible accessibilityLabel="Cargando tarjetas" testID="cards-loading">
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={i < 2 ? { height: STAMP_CARD_HEADER_HEIGHT } : undefined}>
+            <WalletCardSkeleton />
+          </View>
+        ))}
       </View>
     );
   }
@@ -119,7 +168,7 @@ function CardsList() {
       data={sorted}
       keyExtractor={(item) => item.merchant_id}
       renderItem={renderItem}
-      contentContainerStyle={{ flexGrow: 1, gap: spacing.md, padding: spacing.lg }}
+      contentContainerStyle={{ flexGrow: 1, padding: spacing.lg }}
       refreshControl={refreshControl}
       ListEmptyComponent={emptyState}
       testID="cards-list"
