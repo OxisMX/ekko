@@ -56,7 +56,7 @@ function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
                 type="button"
                 disabled={item.disabled}
                 aria-label={item.ariaLabel}
-                className={`flex min-h-12 w-full items-center gap-2 rounded-field px-3 text-left font-semibold hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 ${item.danger ? 'text-error' : ''}`}
+                className={`flex min-h-12 w-full items-center gap-2 rounded-field px-3 text-left font-semibold hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 ${item.danger ? 'text-danger' : ''}`}
                 // WHY focus the trigger first: the item unmounts with the menu, and a dialog opened by the action restores focus to whatever was active.
                 onClick={() => {
                   trigger.current?.focus()
@@ -264,7 +264,7 @@ export function MenuPage() {
                     <button type="button" className={btnSmall} disabled={busy || ci === 0} aria-label={`Subir categoría ${category.name}`} onClick={() => void swap(categories, ci, -1, (c, position) => saveCategory(c.id, c.name, position))}><ChevronUpIcon className="size-5" /></button>
                     <button type="button" className={btnSmall} disabled={busy || ci === categories.length - 1} aria-label={`Bajar categoría ${category.name}`} onClick={() => void swap(categories, ci, 1, (c, position) => saveCategory(c.id, c.name, position))}><ChevronDownIcon className="size-5" /></button>
                     <button type="button" className={btnSmall} aria-label={`Renombrar categoría ${category.name}`} onClick={() => setRenaming({ id: category.id, name: category.name })}>Renombrar</button>
-                    <button type="button" className={`${btnSmall} text-error`} aria-label={`Eliminar categoría ${category.name}`} onClick={() => setConfirm({ kind: 'category', id: category.id, name: category.name })}>Eliminar</button>
+                    <button type="button" className={`${btnSmall} text-danger`} aria-label={`Eliminar categoría ${category.name}`} onClick={() => setConfirm({ kind: 'category', id: category.id, name: category.name })}>Eliminar</button>
                   </div>
                 </>
               )}

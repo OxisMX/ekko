@@ -122,7 +122,7 @@ export function OffersPage() {
                         </div>
                         <div className="flex gap-1">
                           <Link to={offer.id} className={`${rowAction} flex items-center`} aria-label={`Editar ${offer.title}`}>Editar</Link>
-                          <button type="button" className={`${rowAction} text-error`} aria-label={`Eliminar ${offer.title}`} onClick={() => setConfirm({ offer })}>Eliminar</button>
+                          <button type="button" className={`${rowAction} text-danger`} aria-label={`Eliminar ${offer.title}`} onClick={() => setConfirm({ offer })}>Eliminar</button>
                         </div>
                       </li>
                     ))}

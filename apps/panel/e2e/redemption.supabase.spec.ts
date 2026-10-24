@@ -56,7 +56,7 @@ test('validates a real code, shows P-03 and confirms the redemption', async ({ p
   await page.getByRole('textbox', { name: 'Código' }).fill(code.toLowerCase())
   await page.getByRole('button', { name: 'Validar código' }).click()
   await expect(page.getByText(title, { exact: true })).toBeVisible()
-  await expect(page.getByText('Premio de tarjeta')).toBeVisible()
+  await expect(page.getByText('Premio', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Confirmar canje' }).click()
   await expect(page.getByText('Canje registrado')).toBeVisible()
