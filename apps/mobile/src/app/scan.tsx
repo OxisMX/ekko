@@ -6,8 +6,11 @@ import { AppState, Pressable, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PermissionExplainer, ScannerOverlay, VisitResult } from "../components/visit";
+import { light } from "../lib/haptics";
 import { isVisitToken, parseVisitToken } from "../features/visit/visitToken";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../theme";
+
+const DETECTED_FEEDBACK_MS = 150;
 
 // A-13 / A-14: camera permission and QR scanner (F-08, US-11).
 export default function ScanScreen() {
@@ -15,6 +18,10 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [notEkko, setNotEkko] = useState(false);
+  const [detected, setDetected] = useState(false);
+  const [torch, setTorch] = useState(false);
+  const navigateTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(navigateTimer.current), []);
   // WHY: a ref, not state — the camera fires several events before a re-render could stop it.
   const locked = useRef(false);
 
@@ -37,7 +44,10 @@ export default function ScanScreen() {
       setNotEkko(true);
       return;
     }
-    router.replace({ pathname: "/visit-result", params: { token } });
+    // A-58: let the accent corners and the tick register before leaving the scanner.
+    setDetected(true);
+    light();
+    navigateTimer.current = setTimeout(() => router.replace({ pathname: "/visit-result", params: { token } }), DETECTED_FEEDBACK_MS);
   };
 
   const keepScanning = () => {
@@ -74,11 +84,12 @@ export default function ScanScreen() {
       <CameraView
         style={{ flex: 1 }}
         facing="back"
+        enableTorch={torch}
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={({ data }: BarcodeScanningResult) => handleCode(data)}
         testID="scan-camera"
       />
-      <ScannerOverlay onClose={close} testID="scan-overlay" />
+      <ScannerOverlay onClose={close} detected={detected} torch={torch} onToggleTorch={() => setTorch((on) => !on)} testID="scan-overlay" />
       {__DEV__ ? <DevTokenPaste onSubmit={(value) => handleCode(value, true)} bottom={insets.bottom + spacing.lg} /> : null}
     </View>
   );

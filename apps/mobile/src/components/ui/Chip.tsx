@@ -27,8 +27,9 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
         paddingHorizontal: spacing.lg,
         borderRadius: VISUAL_HEIGHT / 2,
         borderWidth: 1.5,
-        borderColor: selected ? colors.navy : colors.textSecondary,
-        backgroundColor: selected ? colors.navy : colors.surface,
+        // WHY: the 1.2:1 border (surfaceCard on white) is decorative; the fill (surfaceMuted) and the textPrimary label carry the chip, and `selected` is told apart by navy fill (§9).
+        borderColor: selected ? colors.navy : colors.surfaceCard,
+        backgroundColor: selected ? colors.navy : colors.surfaceMuted,
         opacity: pressed ? 0.8 : 1,
       })}
     >

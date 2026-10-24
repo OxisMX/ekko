@@ -1,6 +1,7 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { Bell } from "../icons";
 import { Button } from "../ui/Button";
 
 export type PermissionExplainerProps = {
@@ -26,21 +27,13 @@ const copy = {
   },
   notifications: {
     title: "Entérate de tus sellos",
-    body: "Te avisamos cuando ganes sellos, cupones y ofertas de tus comercios.",
+    body: "Te avisamos cuando un cupón esté por vencer, cuando te falte poco para tu premio y cuando tus negocios tengan ofertas. Nada de spam.",
     primary: "Activar notificaciones",
     secondary: "Ahora no",
   },
 } as const;
 
 const iconStroke = { stroke: colors.navy, strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
-
-function BellIcon() {
-  return (
-    <Svg width={44} height={44} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
-      <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15zM10 20.5a2 2 0 0 0 4 0" {...iconStroke} />
-    </Svg>
-  );
-}
 
 function CameraIcon() {
   const stroke = iconStroke;
@@ -57,7 +50,7 @@ export function PermissionExplainer({ variant, onPrimary, onSecondary, testID }:
   return (
     <View testID={testID} style={{ alignItems: "center", gap: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing["2xl"] }}>
       <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
-        {variant === "notifications" ? <BellIcon /> : <CameraIcon />}
+        {variant === "notifications" ? <Bell size={44} /> : <CameraIcon />}
       </View>
       <View style={{ alignItems: "center", gap: spacing.sm }}>
         <Text maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header" style={[textStyles.h1, { color: colors.textPrimary, textAlign: "center" }]}>
@@ -69,7 +62,18 @@ export function PermissionExplainer({ variant, onPrimary, onSecondary, testID }:
       </View>
       <View style={{ alignSelf: "stretch", gap: spacing.md, marginTop: spacing.sm }}>
         <Button title={primary} onPress={onPrimary} fullWidth testID={testID && `${testID}-primary`} />
-        <Button title={secondary} onPress={onSecondary} variant="secondary" fullWidth testID={testID && `${testID}-secondary`} />
+        {/* A-17: declining is a quiet text link; the primary action is the only button. */}
+        <Pressable
+          onPress={onSecondary}
+          accessibilityRole="button"
+          accessibilityLabel={secondary}
+          testID={testID && `${testID}-secondary`}
+          style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
+        >
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textSecondary, textDecorationLine: "underline" }]}>
+            {secondary}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );

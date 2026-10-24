@@ -95,8 +95,9 @@ describe('RedemptionValidator', () => {
     expect(screen.getByText('Galleta gratis')).toBeInTheDocument()
     expect(screen.getByText('Una galleta de la vitrina.')).toBeInTheDocument()
     expect(screen.getByText('No acumulable.')).toBeInTheDocument()
-    expect(screen.getByText('Ruleta de bienvenida')).toBeInTheDocument()
+    expect(screen.getByText('Bienvenida')).toBeInTheDocument()
     expect(screen.getByText(/Vence el/)).toBeInTheDocument()
+    expect(screen.queryByText('Vence hoy')).not.toBeInTheDocument()
 
     let resolve!: (value: unknown) => void
     rpc.mockReturnValueOnce(new Promise((r) => (resolve = r)))
@@ -116,6 +117,13 @@ describe('RedemptionValidator', () => {
     expect(screen.queryByText('Canje registrado')).not.toBeInTheDocument()
     expect(input()).toHaveValue('')
     expect(input()).toHaveFocus()
+  })
+
+  it('marks "Vence hoy" with text when the coupon expires in under 24 h (P-22)', async () => {
+    renderValidator()
+    rpc.mockResolvedValueOnce({ data: { ...coupon, expires_at: '2026-10-21T18:00:00Z' }, error: null })
+    await submit()
+    expect(screen.getByText('Vence hoy')).toBeInTheDocument()
   })
 
   it('"Cancelar" returns to an empty field without confirming', async () => {

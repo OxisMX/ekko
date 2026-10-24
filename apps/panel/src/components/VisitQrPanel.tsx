@@ -7,10 +7,11 @@ import { ZodError } from 'zod'
 import { useAuth } from '../auth/AuthContext'
 import { toPanelErrorCode } from '../lib/panelRoute'
 import { PUBLIC_APP_URL, visitQrUrl } from '../lib/publicAppUrl'
-import { parseVisitQr, qrAnnouncement, qrReducer, type QrState, type TerminalQrStatus } from '../lib/qrState'
+import { parseVisitQr, progressText, qrAnnouncement, qrReducer, type QrProgress, type QrState, type TerminalQrStatus } from '../lib/qrState'
 import { useQrStatusSync } from '../lib/useQrStatusSync'
 import { supabase } from '../lib/supabase'
 import { AlertIcon, CheckCircleIcon, QrIcon } from './Icons'
+import { btnPrimary, btnSecondary } from './ui'
 
 // QR modules drawn as JSX (no innerHTML). The white quiet zone is the stage padding around it.
 export function QrSvg({ value, label, qrId }: { value: string; label: string; qrId?: string }) {
@@ -27,7 +28,7 @@ export function QrSvg({ value, label, qrId }: { value: string; label: string; qr
       data-qr-id={qrId}
       viewBox={`0 0 ${size} ${size}`}
       shapeRendering="crispEdges"
-      className="size-[280px]"
+      className="size-[280px] max-w-none"
     >
       <path d={d} fill="#000" />
     </svg>
@@ -71,7 +72,8 @@ function useVisitQr() {
     (qrId: string, status: TerminalQrStatus) => dispatch({ type: 'resolved', qrId, status }),
     [],
   )
-  useQrStatusSync(state.status === 'active' ? state.qr.id : null, onResolved)
+  const onProgress = useCallback((progress: QrProgress) => dispatch({ type: 'progress', progress }), [])
+  useQrStatusSync(state.status === 'active' ? state.qr.id : null, onResolved, onProgress)
 
   // P-02: "Visita registrada" stays 3 s, then the panel is ready for the next customer.
   const isUsed = state.status === 'used'
@@ -106,10 +108,10 @@ export function VisitQrPanel() {
   const secondary = state.status === 'active'
 
   return (
-    <section aria-labelledby="qr-title" className="flex flex-col rounded-2xl bg-surface p-6">
+    <section aria-labelledby="qr-title" className="flex flex-col rounded-card bg-surface p-5">
       <div className="flex items-center gap-3">
         <QrIcon className="size-7 text-navy" />
-        <h2 id="qr-title" className="text-xl font-semibold">
+        <h2 id="qr-title" className="text-h2 font-semibold">
           Registrar visita
         </h2>
       </div>
@@ -117,9 +119,9 @@ export function VisitQrPanel() {
         Después de cobrar, genera un QR para que tu cliente lo escanee con la app Ekko.
       </p>
 
-      <div className="my-6 flex flex-1 flex-col items-center justify-center gap-4">
-        {/* Fixed-size stage: 280 px code + 36 px white quiet zone, identical in every state (no layout jump). */}
-        <div className="grid size-[352px] max-w-full shrink-0 place-items-center rounded-2xl bg-white">
+      <div className="my-4 flex flex-1 flex-col items-center justify-center gap-3">
+        {/* P-19: stage min(352px, 46dvh) so Modo Caja fits 1024×768; never below 316 px so the 280 px code keeps a quiet zone. Identical in every state (no layout jump). */}
+        <div className="grid size-[min(352px,max(46dvh,316px))] max-w-full shrink-0 place-items-center rounded-card bg-white">
           <QrStage state={state} />
         </div>
         <Countdown state={state} />
@@ -133,9 +135,7 @@ export function VisitQrPanel() {
         type="button"
         onClick={generate}
         disabled={state.status === 'pending'}
-        className={`h-14 w-full rounded-xl text-lg font-semibold transition-colors disabled:cursor-wait disabled:opacity-70 ${
-          secondary ? 'border-2 border-navy text-navy hover:bg-surface-muted' : 'bg-navy text-white hover:bg-brand'
-        }`}
+        className={`h-14 w-full text-lg disabled:cursor-wait disabled:opacity-70 ${secondary ? btnSecondary : btnPrimary}`}
       >
         {BUTTON_LABEL[state.status]}
       </button>
@@ -176,11 +176,12 @@ function QrStage({ state }: { state: QrState }) {
       )
     case 'used':
       return (
-        <div className="grid size-full place-items-center rounded-2xl bg-success p-8 text-center text-white">
+        <div className="grid size-full place-items-center rounded-card bg-success p-6 text-center text-white">
           <div>
-            <CheckCircleIcon className="mx-auto size-20" />
-            <p className="mt-4 text-3xl font-semibold">Visita registrada</p>
+            <CheckCircleIcon className="mx-auto size-16" />
+            <p className="mt-3 text-3xl font-semibold">Visita registrada</p>
             <p className="mt-1">El cliente ya tiene su sello.</p>
+            {state.progress && <p className="mt-3 rounded-field bg-black/20 px-3 py-2 font-semibold">{progressText(state.progress)}</p>}
           </div>
         </div>
       )
@@ -215,7 +216,7 @@ function QrStage({ state }: { state: QrState }) {
 function Placeholder({ dashed = false, children }: { dashed?: boolean; children: React.ReactNode }) {
   return (
     <div
-      className={`grid size-full place-items-center rounded-2xl p-8 text-center text-text-secondary ${
+      className={`grid size-full place-items-center rounded-card p-8 text-center text-text-secondary ${
         dashed ? 'border-2 border-dashed border-black/20' : 'bg-surface-muted'
       }`}
     >
@@ -232,12 +233,12 @@ function Countdown({ state }: { state: QrState }) {
   const fraction = active ? remaining / state.qr.ttlSeconds : 0
 
   return (
-    <div className={`w-[352px] max-w-full ${active ? '' : 'invisible'}`} aria-hidden={!active}>
+    <div className={`w-[min(352px,max(46dvh,316px))] max-w-full ${active ? '' : 'invisible'}`} aria-hidden={!active}>
       <div className="flex items-baseline justify-between">
-        <span className="text-sm font-semibold tracking-[1.5px] text-text-secondary uppercase">
+        <span className="field-label text-text-secondary">
           {urgent ? 'Vence pronto' : 'Vence en'}
         </span>
-        <span className={`text-5xl font-bold tabular-nums ${urgent ? 'text-error' : 'text-navy'}`}>{remaining} s</span>
+        <span className={`text-4xl font-bold tabular-nums ${urgent ? 'text-error' : 'text-navy'}`}>{remaining} s</span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/10">
         <div

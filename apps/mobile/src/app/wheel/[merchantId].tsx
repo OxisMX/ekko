@@ -4,15 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CouponCard } from "../../components/coupon";
+import { Burst, Entrance } from "../../components/motion";
 import { useReduceMotion } from "../../components/useReduceMotion";
 import { Button, EmptyState, ErrorState, FormMessage, Skeleton } from "../../components/ui";
 import { WheelDisc } from "../../components/wheel";
 import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { type SpinResult, useSpinWheel, useWheel } from "../../features/wheel/wheel";
 import { toAppError } from "../../lib/appError";
+import { success } from "../../lib/haptics";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 
 const MAX_DISC = 320;
+// RN-35: wheel coupons last 48 h; spin_wheel doesn't return the expiry, so the prize card derives it.
+const WHEEL_COUPON_TTL_MS = 48 * 3_600_000;
 
 function prizeAnnouncement(result: SpinResult): string {
   return result.prize_type === "coupon" ? `¡Ganaste ${result.label}!` : "¡Sello extra! Se suma en tu próxima visita";
@@ -96,6 +101,7 @@ export default function WheelScreen() {
         <WheelDisc
           labels={segments.map((s) => s.label)}
           size={Math.min(width - spacing.lg * 2, MAX_DISC)}
+          spinning={spin.isPending}
           targetIndex={result ? segments.findIndex((s) => s.index === result.segment_index) : null}
           reduceMotion={reduceMotion === true}
           onSettled={() => setSettled(true)}
@@ -121,12 +127,24 @@ export default function WheelScreen() {
 
 function PrizeView({ result, onClose, onViewCoupon }: { result: SpinResult; onClose: () => void; onViewCoupon: () => void }) {
   const isCoupon = result.prize_type === "coupon" && result.coupon_id !== null;
+  const [expiresAt] = useState(() => new Date(Date.now() + WHEEL_COUPON_TTL_MS).toISOString());
+  // Reward moment: one success haptic when the prize is revealed.
+  useEffect(() => success(), []);
   return (
     <View accessible accessibilityLiveRegion="polite" accessibilityLabel={prizeAnnouncement(result)} testID="wheel-result" style={{ alignItems: "center", gap: spacing.lg }}>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.display, { color: colors.textPrimary, textAlign: "center" }]}>
-        {isCoupon ? `¡Ganaste ${result.label}!` : "¡Sello extra!"}
-      </Text>
-      {isCoupon ? null : (
+      <View style={{ alignSelf: "stretch", alignItems: "center", justifyContent: "center" }}>
+        <Burst size={220} />
+        <Entrance from={0.85} spring>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.display, { color: colors.textPrimary, textAlign: "center" }]}>
+            {isCoupon ? `¡Ganaste ${result.label}!` : "¡Sello extra!"}
+          </Text>
+        </Entrance>
+      </View>
+      {isCoupon ? (
+        <View style={{ alignSelf: "stretch" }} testID="wheel-prize-coupon">
+          <CouponCard title={result.label} source="wheel" expiresAt={expiresAt} />
+        </View>
+      ) : (
         <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textSecondary, textAlign: "center" }]}>
           Se suma en tu próxima visita
         </Text>

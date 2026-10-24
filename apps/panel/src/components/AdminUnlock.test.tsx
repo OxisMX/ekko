@@ -95,7 +95,7 @@ describe('P-04 PIN unlock', () => {
     await typePin('4')
     expect(rpc).toHaveBeenCalledWith('unlock_admin', { p_pin: '1234' })
     expect(router.state.location.pathname).toBe('/admin')
-    expect(screen.getByText('Sección administrativa desbloqueada')).toBeInTheDocument()
+    expect(screen.getByText(/Se bloquea en/)).toBeInTheDocument()
   })
 
   it('the physical keyboard and "Borrar" work too', async () => {
@@ -181,12 +181,12 @@ describe('admin session lifecycle', () => {
     expect(router.state.location.pathname).toBe('/')
   })
 
-  it('"Salir" calls lock_admin and goes back to Modo Caja', async () => {
+  it('"Bloquear y volver a Caja" calls lock_admin and goes back to Modo Caja', async () => {
     const router = adminOpen()
     router.navigate('/admin/menu')
     await flush()
     rpc.mockResolvedValue({ data: { ok: true }, error: null })
-    fireEvent.click(screen.getByRole('button', { name: 'Salir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bloquear y volver a Caja' }))
     expect(rpc).toHaveBeenCalledWith('lock_admin')
     expect(router.state.location.pathname).toBe('/')
   })

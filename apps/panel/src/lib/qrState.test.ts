@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   nextSyncMode,
+  parseQrProgress,
   parseQrStatus,
+  progressText,
   parseVisitQr,
   qrAnnouncement,
   qrReducer,
@@ -174,5 +176,25 @@ describe('parseVisitQr (backend §4.4 generate_visit_qr)', () => {
     ['null', null],
   ])('rejects %s', (_name, value) => {
     expect(() => parseVisitQr(value)).toThrow()
+  })
+})
+
+describe('P-20 card progress', () => {
+  const used = { status: 'used', stamps: 4, stamps_required: 8, reward_available: false }
+
+  it('parses the used payload and ignores payloads without it', () => {
+    expect(parseQrProgress(used)).toEqual({ stamps: 4, stampsRequired: 8, rewardAvailable: false })
+    expect(parseQrProgress({ status: 'pending' })).toBeNull()
+  })
+
+  it('writes the cashier line and reaches the reducer and the announcement', () => {
+    const progress = { stamps: 4, stampsRequired: 8, rewardAvailable: false }
+    expect(progressText(progress)).toBe('Lleva 4 de 8 · faltan 4 para su premio')
+    expect(progressText({ ...progress, stamps: 7 })).toBe('Lleva 7 de 8 · falta 1 sello para su premio')
+    expect(progressText({ stamps: 8, stampsRequired: 8, rewardAvailable: true })).toBe('Lleva 8 de 8 · ¡ya tiene su premio!')
+    const state = qrReducer({ status: 'used' }, { type: 'progress', progress })
+    expect(state).toEqual({ status: 'used', progress })
+    expect(qrAnnouncement(state)).toBe('Visita registrada. Lleva 4 de 8 · faltan 4 para su premio')
+    expect(qrReducer(idle, { type: 'progress', progress })).toBe(idle)
   })
 })

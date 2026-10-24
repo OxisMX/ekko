@@ -249,7 +249,7 @@ select is((select count(*) from public.stamps where cycle_id = (pg_temp.cycle('u
 set local role authenticated;
 select pg_temp.login('10000000-0000-0000-0000-0000000000c1', '20000000-0000-0000-0000-0000000000c1');
 select is(public.get_qr_status(pg_temp.qr('tok-pend')), '{"status":"pending"}'::jsonb, 'get_qr_status: pending');
-select is(public.get_qr_status(pg_temp.qr('tok-42a')), '{"status":"used"}'::jsonb, 'get_qr_status: used');
+select is(public.get_qr_status(pg_temp.qr('tok-42a')), '{"status":"used","stamps":0,"stamps_required":6,"reward_available":true}'::jsonb, 'get_qr_status: used');
 select is(public.get_qr_status(pg_temp.qr('tok-46')), '{"status":"expired"}'::jsonb, 'get_qr_status: expired');
 select is(public.get_qr_status(pg_temp.qr('tok-inv')), '{"status":"invalidated"}'::jsonb, 'get_qr_status: invalidated');
 select throws_ok($$ select public.get_qr_status(pg_temp.qr('tok-49')) $$, 'P0001', 'E-19', 'get_qr_status of another merchant QR raises E-19');

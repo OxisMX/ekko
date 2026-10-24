@@ -7,7 +7,6 @@ const CIRCLES = [
   { cx: 40, cy: 30, r: 90, opacity: 0.9 },
   { cx: 150, cy: -20, r: 70, opacity: 0.55 },
   { cx: 330, cy: 60, r: 110, opacity: 0.8 },
-  { cx: 250, cy: 190, r: 80, opacity: 0.5 },
   { cx: 90, cy: 210, r: 60, opacity: 0.65 },
 ] as const;
 

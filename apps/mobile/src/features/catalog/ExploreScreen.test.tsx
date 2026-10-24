@@ -27,6 +27,7 @@ const merchant = (id: string, name: string, maps_url = "https://maps.google.com/
   category: "cafeterias_postres",
   description: "Café de especialidad.",
   is_favorite: false,
+  progress: null,
   logo_path: `merchants/${id}/logo/a`,
   cover_path: `merchants/${id}/cover/b`,
   maps_url,
@@ -58,6 +59,9 @@ beforeEach(() => {
 
 describe("A-07 Explorar", () => {
   it("shows one loading placeholder, then the merchants and the end of the list", async () => {
+    // WHY: shared skeleton awaits the reduce-motion setting, which lets a render flush resolve instant mocks; delay data so the loading state is observable.
+    const instant = mockSupabase.rpc.getMockImplementation() as (...args: unknown[]) => unknown;
+    mockSupabase.rpc.mockImplementation((...args: unknown[]) => new Promise((resolve) => setTimeout(() => resolve(instant(...args)), 50)));
     await renderExplore();
     expect(screen.getByLabelText("Cargando comercios")).toBeOnTheScreen();
 

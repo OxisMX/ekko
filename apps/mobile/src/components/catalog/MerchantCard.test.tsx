@@ -9,6 +9,7 @@ const merchant = {
   coverUri: "https://example.com/cover_540.webp",
   logoUri: null,
   isFavorite: false,
+  progress: null,
 };
 
 describe("MerchantCard", () => {
@@ -53,6 +54,17 @@ describe("MerchantCard", () => {
   it("falls back to initials when there is no logo", async () => {
     await render(<MerchantCard merchant={merchant} onPress={jest.fn()} onOpenMap={jest.fn()} onToggleFavorite={jest.fn()} />);
     expect(screen.getByTestId("merchant-logo-initials")).toHaveTextContent("CL");
+  });
+
+  it("shows the progress toward the reward when the user has a card (A-19)", async () => {
+    const progress = { stamps: 3, required: 8, rewardTitle: "Café gratis" };
+    await render(<MerchantCard merchant={{ ...merchant, progress }} onPress={jest.fn()} onOpenMap={jest.fn()} onToggleFavorite={jest.fn()} />);
+    expect(screen.getByText("3/8 · Café gratis")).toBeOnTheScreen();
+  });
+
+  it("shows no progress without a card", async () => {
+    await render(<MerchantCard merchant={merchant} onPress={jest.fn()} onOpenMap={jest.fn()} onToggleFavorite={jest.fn()} />);
+    expect(screen.queryByTestId("merchant-card-progress")).toBeNull();
   });
 
   it("computes initials from up to two words", () => {

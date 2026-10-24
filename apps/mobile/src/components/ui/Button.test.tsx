@@ -1,5 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { selection } from "../../lib/haptics";
 import { Button } from "./Button";
+
+jest.mock("../../lib/haptics", () => ({ selection: jest.fn() }));
+
+afterEach(() => jest.clearAllMocks());
 
 describe("Button", () => {
   it("calls onPress", async () => {
@@ -26,5 +31,26 @@ describe("Button", () => {
     expect(onPress).not.toHaveBeenCalled();
     expect(button).toBeBusy();
     expect(screen.queryByText("Entrar")).toBeNull();
+  });
+
+  it("fires the selection haptic only when asked", async () => {
+    await render(
+      <>
+        <Button title="Uno" onPress={jest.fn()} haptic="selection" />
+        <Button title="Dos" onPress={jest.fn()} />
+      </>,
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Dos" }));
+    expect(selection).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Uno" }));
+    expect(selection).toHaveBeenCalledTimes(1);
+  });
+
+  it("scales down on press in and back on press out", async () => {
+    await render(<Button title="Entrar" onPress={jest.fn()} />);
+    const button = screen.getByRole("button", { name: "Entrar" });
+    await fireEvent(button, "pressIn");
+    await fireEvent(button, "pressOut");
+    expect(button).toBeOnTheScreen();
   });
 });

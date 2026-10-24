@@ -1,12 +1,11 @@
 import { TIMEZONE } from "@ekko/shared";
 import { useRouter } from "expo-router";
 import { FlatList, Text, View } from "react-native";
-
-import { couponSourceLabel } from "../../components/coupon/CouponCard";
 import { formatDate } from "../../components/format";
+import { Check } from "../../components/icons";
 import { Button, EmptyState, ErrorState, Skeleton } from "../../components/ui";
 import { toAppError } from "../../lib/appError";
-import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { type Redemption, useMyRedemptions } from "./redemptions";
 
 const formatTime = (iso: string) =>
@@ -63,21 +62,29 @@ function LoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) 
   );
 }
 
+// A-68: a past redemption reads as an achievement, with less visual weight than an active coupon.
 function RedemptionRow({ item }: { item: Redemption }) {
+  const when = `${formatDate(item.redeemed_at)} · ${formatTime(item.redeemed_at)}`;
   return (
-    <View accessible style={{ backgroundColor: colors.surfaceMuted, borderRadius: radii.card, padding: spacing.lg, gap: spacing.xs }}>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.label, { color: colors.textSecondary }]}>
-        {couponSourceLabel[item.source]}
-      </Text>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]}>
-        {item.title}
-      </Text>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary }]}>
-        {item.merchant_name}
-      </Text>
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-        {`${formatDate(item.redeemed_at)} · ${formatTime(item.redeemed_at)}`}
-      </Text>
+    <View
+      accessible
+      accessibilityLabel={`${item.title}. ${item.merchant_name}. Canjeado ${when}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.surfaceMuted, borderRadius: radii.card, padding: spacing.md }}
+    >
+      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.navyTint, alignItems: "center", justifyContent: "center" }}>
+        <Check size={20} color={colors.navy} />
+      </View>
+      <View style={{ flex: 1, gap: spacing.xs / 2 }}>
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>
+          {item.title}
+        </Text>
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textPrimary }]}>
+          {item.merchant_name}
+        </Text>
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+          {`Canjeado · ${when}`}
+        </Text>
+      </View>
     </View>
   );
 }

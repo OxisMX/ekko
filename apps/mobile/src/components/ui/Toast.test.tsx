@@ -28,3 +28,11 @@ it("dismisses itself after 5 s without navigating", async () => {
   expect(onDismiss).toHaveBeenCalledTimes(1);
   expect(onAction).not.toHaveBeenCalled();
 });
+
+it("works without an action: tap only dismisses and no action label is shown", async () => {
+  const onDismiss = jest.fn();
+  await render(<Toast title="Listo" message="Guardado" onDismiss={onDismiss} />);
+  expect(screen.getByRole("button").props.accessibilityHint).toBeUndefined();
+  await fireEvent.press(screen.getByRole("button"));
+  expect(onDismiss).toHaveBeenCalledTimes(1);
+});

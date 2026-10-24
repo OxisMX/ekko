@@ -4,9 +4,10 @@ import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { type ComponentRef, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Switch, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 import { AuthLayout, SocialButtons } from "../../components/auth";
+import { Check } from "../../components/icons";
 import { Button, DateField, FormMessage, PasswordField, TextField } from "../../components/ui";
 import { FieldError } from "../../components/ui/TextField";
 import { useRegister } from "../../features/auth/account";
@@ -14,7 +15,7 @@ import { TextLink } from "../../features/auth/TextLink";
 import { toAppError } from "../../lib/appError";
 import { fromIsoDate, toIsoDate } from "../../lib/calendarDate";
 import { reportError } from "../../lib/sentry";
-import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
 // TODO(legal, PRD 12.1): confirm the final privacy notice URL before release.
 const PRIVACY_URL = "https://ekko.oxis.mx/privacidad";
@@ -116,10 +117,9 @@ export default function RegisterScreen() {
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
-            // The rule stays visible as a hint until it turns into an error.
+            // A-12: the rule stays visible under the field until it turns into an error.
             error={fieldState.error?.message}
-            accessibilityHint="Mínimo 8 caracteres"
-            placeholder="Mínimo 8 caracteres"
+            helper="Mínimo 8 caracteres"
             textContentType="newPassword"
             autoComplete="new-password"
             returnKeyType="done"
@@ -127,37 +127,53 @@ export default function RegisterScreen() {
           />
         )}
       />
-      <Controller
-        control={control}
-        name="birth_date"
-        render={({ field, fieldState }) => (
-          <DateField
-            label="Fecha de nacimiento"
-            value={fromIsoDate(field.value)}
-            onChange={(date) => field.onChange(toIsoDate(date))}
-            maximumDate={maximumDate}
-            error={fieldState.error?.message}
-            testID="register-birth-date"
-          />
-        )}
-      />
-      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
-        Solo para mayores de 18 años.
-      </Text>
+      <View style={{ gap: spacing.xs }}>
+        <Controller
+          control={control}
+          name="birth_date"
+          render={({ field, fieldState }) => (
+            <DateField
+              label="Fecha de nacimiento"
+              value={fromIsoDate(field.value)}
+              onChange={(date) => field.onChange(toIsoDate(date))}
+              maximumDate={maximumDate}
+              error={fieldState.error?.message}
+              testID="register-birth-date"
+            />
+          )}
+        />
+        {/* A-13: DateField has no helper prop, so the age rule sits right under it. */}
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary }]}>
+          Solo para mayores de 18 años.
+        </Text>
+      </View>
       <Controller
         control={control}
         name="privacy_accepted"
         render={({ field, fieldState }) => (
           <View style={{ gap: spacing.xs }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 44 }}>
-              <Switch
-                value={field.value}
-                onValueChange={field.onChange}
+              <Pressable
+                onPress={() => field.onChange(!field.value)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: field.value }}
                 accessibilityLabel="Acepto el aviso de privacidad"
                 accessibilityHint={fieldState.error?.message}
-                trackColor={{ true: colors.primary }}
+                hitSlop={10}
                 testID="register-privacy"
-              />
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: radii.field,
+                  borderWidth: 1.5,
+                  borderColor: field.value ? colors.navy : colors.textSecondary,
+                  backgroundColor: field.value ? colors.navy : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {field.value ? <Check color={colors.surface} size={16} /> : null}
+              </Pressable>
               <Text
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 importantForAccessibility="no"

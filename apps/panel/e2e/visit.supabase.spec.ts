@@ -63,7 +63,7 @@ async function claimAs(email: string, token: string) {
 async function expectConfirmedThenReady(page: Page, withinMs: number) {
   const confirmation = page.getByText('Visita registrada', { exact: true }).and(page.locator(':not([aria-live])'))
   await expect(confirmation).toBeVisible({ timeout: withinMs })
-  await expect(page.locator('[aria-live="polite"]')).toHaveText('Visita registrada')
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(/^Visita registrada/)
   await expect(page.getByRole('img', { name: /^Código QR de visita/ })).toHaveCount(0)
   // P-02: the confirmation lasts 3 s, then the panel is ready for the next customer.
   await expect(page.getByRole('button', { name: 'Generar QR' })).toBeVisible({ timeout: 5_000 })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Animated, Pressable, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useReduceMotion } from "../useReduceMotion";
@@ -10,8 +10,9 @@ export const TOAST_DURATION_MS = 5000;
 export type ToastProps = {
   title: string;
   message: string;
-  actionLabel: string;
-  onAction: () => void;
+  /** Optional: without it the toast is informational and tapping only dismisses it. */
+  actionLabel?: string;
+  onAction?: () => void;
   onDismiss: () => void;
   durationMs?: number;
   testID?: string;
@@ -34,7 +35,7 @@ export function Toast({ title, message, actionLabel, onAction, onDismiss, durati
   }, [opacity, onDismiss, durationMs, reduceMotion]);
 
   const open = () => {
-    onAction();
+    onAction?.();
     onDismiss();
   };
 
@@ -57,11 +58,9 @@ export function Toast({ title, message, actionLabel, onAction, onDismiss, durati
           minHeight: 56,
           borderRadius: radii.card,
           backgroundColor: colors.navy,
-          elevation: 6,
-          shadowColor: "#000",
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
+          // WHY: a hairline replaces the heavy drop shadow; the navy fill already separates it from the page.
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.pattern,
         }}
       >
         <View style={{ flex: 1 }}>
@@ -72,9 +71,11 @@ export function Toast({ title, message, actionLabel, onAction, onDismiss, durati
             {message}
           </Text>
         </View>
-        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.bold, color: colors.surface, textDecorationLine: "underline" }]}>
-          {actionLabel}
-        </Text>
+        {actionLabel ? (
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.bold, color: colors.surface, textDecorationLine: "underline" }]}>
+            {actionLabel}
+          </Text>
+        ) : null}
       </Pressable>
     </Animated.View>
   );

@@ -83,9 +83,10 @@ describe('P-05 métricas', () => {
     serve(metrics())
     renderPage()
     await screen.findByText('1,234')
-    fireEvent.click(screen.getByRole('radio', { name: 'Histórico' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }))
     await vi.waitFor(() => expect(rpc).toHaveBeenCalledWith('get_metrics', { p_range: 'all' }))
-    expect(screen.getByRole('radio', { name: 'Histórico' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('button', { name: 'Histórico' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Últimos 30 días' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('shows a skeleton while loading', async () => {
@@ -94,10 +95,29 @@ describe('P-05 métricas', () => {
     expect(await screen.findByRole('status', { name: 'Cargando las métricas' })).toBeInTheDocument()
   })
 
-  it('shows friendly copy for a merchant without activity', async () => {
+  it('shows friendly copy and a way to Modo Caja for a merchant without activity (P-26)', async () => {
     serve(metrics({ visits: 0, redemptions: 0, active_customers: 0 }))
     renderPage()
     expect(await screen.findByText(/Aún no hay actividad/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ir a Modo Caja' })).toHaveAttribute('href', '/')
+  })
+
+  it('shows the redemption rate from the series and the value copy (P-23)', async () => {
+    serve(metrics({ redemptions: 56 }), series({ coupons: [{ bucket: '2026-10-20', issued: 3, redeemed: 1 }, { bucket: '2026-10-21', issued: 5, redeemed: 4 }] }))
+    renderPage()
+    expect(await screen.findByText('63 %')).toBeInTheDocument() // 5 of 8
+    expect(screen.getByText('premios entregados a tus clientes')).toBeInTheDocument()
+  })
+
+  it('states the change against the previous period with words and an arrow, and omits it for Histórico (P-23)', async () => {
+    serve(metrics({ visits: 1234, redemptions: 56, previous: { visits: 1000, redemptions: 60 } }))
+    renderPage()
+    expect(await screen.findByText('234 más que los 30 días anteriores')).toBeInTheDocument()
+    expect(screen.getByText('4 menos que los 30 días anteriores')).toBeInTheDocument()
+
+    serve(metrics({ previous: null }))
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }))
+    await vi.waitFor(() => expect(screen.queryByText(/anteriores/)).not.toBeInTheDocument())
   })
 
   it('shows the error and retries', async () => {
@@ -124,7 +144,7 @@ describe('P-05 métricas', () => {
     serve(metrics())
     renderPage()
     await screen.findByText('Cupones emitidos y canjeados')
-    fireEvent.click(screen.getByRole('radio', { name: 'Histórico' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }))
     await vi.waitFor(() => expect(rpc).toHaveBeenCalledWith('get_metrics_series', { p_range: 'all' }))
   })
 

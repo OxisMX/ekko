@@ -46,9 +46,39 @@ function renderCards() {
   );
 }
 
+const detail = {
+  merchant: { id: "m1", name: "Café La Esquina", category: "cafeterias_postres", description: null, address: null, logo_path: null, cover_path: null, maps_url: null, reviews_url: null, available: true, is_favorite: false },
+  card: {
+    stamp_image_path: null,
+    has_relation: true,
+    stamps_required: 6,
+    stamps: ["01", "08", "15"].map((day) => ({ granted_at: `2026-10-${day}T17:00:00Z`, is_bonus: false })),
+    cycle_expires_at: "2027-04-12T12:00:00Z",
+    reward_title: "Café americano",
+    reward_description: null,
+    terms: null,
+    background_path: null,
+    pending_extra_stamps: 0,
+    reward_coupon_id: null,
+    stamped_today: false,
+  },
+  wheel: { status: "no_wheel" },
+  menu: { categories: [], products: [] },
+  offers: [],
+  coupons: [],
+};
+
+// list_my_cards answers `cardsResult`; get_merchant_detail (one per stacked card) answers `detail`.
+let cardsResult: { data: unknown; error: unknown };
+const answerRpc = (name: string) => {
+  if (name === "list_my_cards") return Promise.resolve(cardsResult);
+  return Promise.resolve({ data: name === "get_merchant_detail" ? detail : [], error: null });
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSupabase.rpc.mockResolvedValue({ data: [card()], error: null });
+  cardsResult = { data: [card()], error: null };
+  mockSupabase.rpc.mockImplementation(answerRpc);
 });
 
 describe("A-12 Mis Tarjetas", () => {
@@ -58,72 +88,69 @@ describe("A-12 Mis Tarjetas", () => {
 
   it("opens on the coupons tab when asked to (F-12)", async () => {
     mockParams = { tab: "coupons" };
-    mockSupabase.rpc.mockResolvedValue({ data: [], error: null });
+    cardsResult = { data: [], error: null };
     await renderCards();
     expect(await screen.findByTestId("coupons-empty")).toBeOnTheScreen();
   });
 
-  it("shows a loading placeholder, then the card with progress and expiry", async () => {
+  it("shows a loading placeholder, then the stacked card with its real stamp card", async () => {
+    // WHY: shared skeleton awaits the reduce-motion setting, which lets a render flush resolve instant mocks; delay data so the loading state is observable.
+    mockSupabase.rpc.mockImplementation((name: string) => new Promise((resolve) => setTimeout(() => resolve(answerRpc(name)), 50)));
     await renderCards();
     expect(screen.getByLabelText("Cargando tarjetas")).toBeOnTheScreen();
-    expect(await screen.findByText("Café La Esquina")).toBeOnTheScreen();
-    expect(screen.getByText(/3 de 6 sellos · Vence el 12 abr/)).toBeOnTheScreen();
-    expect(screen.queryByText("Recompensa disponible")).toBeNull();
-    expect(screen.queryByText("Gira tu ruleta")).toBeNull();
+    expect(await screen.findByText("Premio: Café americano")).toBeOnTheScreen();
+    expect(screen.getByText("Café La Esquina")).toBeOnTheScreen();
+    expect(screen.getByText("3/6")).toBeOnTheScreen();
+    expect(screen.getByText("Vence el 12/04/2027")).toBeOnTheScreen();
+    expect(screen.queryByText("Premio listo")).toBeNull();
     expect(mockSupabase.rpc).toHaveBeenCalledWith("list_my_cards");
   });
 
-  it("shows the reward and wheel badges and a full accessibility label", async () => {
-    mockSupabase.rpc.mockResolvedValue({ data: [card({ reward_available: true, wheel_status: "available" })], error: null });
+  it("shows the reward and wheel states in the strip and a full accessibility label", async () => {
+    cardsResult = { data: [card({ reward_available: true, wheel_status: "available" })], error: null };
     await renderCards();
-    expect(await screen.findByText("Recompensa disponible")).toBeOnTheScreen();
-    expect(screen.getByText("Gira tu ruleta")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Café La Esquina. 3 de 6 sellos. Vence el 12 abr. Recompensa disponible. Gira tu ruleta")).toBeOnTheScreen();
+    expect(await screen.findByText("Premio listo")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Café La Esquina, 3 de 6 sellos, premio Café americano, vence el 12/04/2027, Premio listo")).toBeOnTheScreen();
   });
 
-  it("the wheel badge opens A-12, also while the email is unverified", async () => {
-    mockSupabase.rpc.mockResolvedValue({ data: [card({ wheel_status: "needs_verification" })], error: null });
+  it("opens the merchant detail when any card in the stack is pressed", async () => {
+    cardsResult = { data: [card(), card({ merchant_id: "m2", merchant_name: "Panadería Sol" })], error: null };
     await renderCards();
-    await fireEvent.press(await screen.findByText("Gira tu ruleta"));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/wheel/[merchantId]", params: { merchantId: "m1" } });
-    expect(mockRouter.push).not.toHaveBeenCalledWith(expect.objectContaining({ pathname: "/merchant/[id]" }));
+    await fireEvent.press(await screen.findByTestId("my-card-m1"));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/merchant/[id]", params: { id: "m1", name: "Café La Esquina" } });
+    await fireEvent.press(screen.getByTestId("my-card-m2"));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/merchant/[id]", params: { id: "m2", name: "Panadería Sol" } });
   });
 
-  it("opens the merchant detail when a card is pressed", async () => {
+  it("keeps an unavailable merchant visible, labelled, and still opens its detail (RN-71)", async () => {
+    cardsResult = { data: [card({ merchant_available: false, reward_available: true })], error: null };
     await renderCards();
-    fireEvent.press(await screen.findByTestId("my-card-m1"));
+    expect(await screen.findByText("No disponible")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId("my-card-m1"));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/merchant/[id]", params: { id: "m1", name: "Café La Esquina" } });
   });
 
-  it("dims an unavailable merchant and offers no action (RN-71)", async () => {
-    mockSupabase.rpc.mockResolvedValue({ data: [card({ merchant_available: false, reward_available: true })], error: null });
-    await renderCards();
-    expect(await screen.findByText("No disponible")).toBeOnTheScreen();
-    expect(screen.queryByText("Recompensa disponible")).toBeNull();
-    fireEvent.press(screen.getByTestId("my-card-m1"));
-    expect(mockRouter.push).not.toHaveBeenCalled();
-  });
-
   it("guides the first use to Explorar", async () => {
-    mockSupabase.rpc.mockResolvedValue({ data: [], error: null });
+    cardsResult = { data: [], error: null };
     await renderCards();
     expect(await screen.findByText("Aún no tienes tarjetas")).toBeOnTheScreen();
-    fireEvent.press(screen.getByText("Explorar comercios"));
+    await fireEvent.press(screen.getByText("Explorar comercios"));
     expect(mockRouter.navigate).toHaveBeenCalledWith("/");
   });
 
   it("shows the error state and retries", async () => {
-    mockSupabase.rpc.mockResolvedValueOnce({ data: null, error: { message: "Network request failed" } });
+    cardsResult = { data: null, error: { message: "Network request failed" } };
     await renderCards();
     expect(await screen.findByTestId("cards-error")).toBeOnTheScreen();
-    fireEvent.press(screen.getByText("Reintentar"));
+    cardsResult = { data: [card()], error: null };
+    await fireEvent.press(screen.getByText("Reintentar"));
     expect(await screen.findByText("Café La Esquina")).toBeOnTheScreen();
   });
 
   it("opens the scanner from Registrar visita", async () => {
     await renderCards();
     await screen.findByText("Café La Esquina");
-    fireEvent.press(screen.getByText("Registrar visita"));
+    await fireEvent.press(screen.getByText("Registrar visita"));
     expect(mockRouter.push).toHaveBeenCalledWith("/scan");
   });
 });

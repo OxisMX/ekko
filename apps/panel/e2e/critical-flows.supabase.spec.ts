@@ -99,6 +99,7 @@ test('E2E-07: a product marked sold out in the panel is sold out in get_merchant
   )
   expect(detail.menu.products.find((p) => p.name === name)?.is_sold_out).toBe(true)
 
+  await page.getByRole('button', { name: `Más acciones de ${name}` }).click()
   await page.getByRole('button', { name: `Eliminar ${name}` }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Eliminar' }).click()
   await expect(soldOut).toHaveCount(0)

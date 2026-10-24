@@ -5,10 +5,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { type ComponentRef, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Text, TextInput } from "react-native";
+import { Text, TextInput } from "react-native";
 
 import { useAuth } from "../auth/AuthProvider";
-import { AuthLayout } from "../components/auth";
+import { AuthLayout, FormSkeleton } from "../components/auth";
 import { Button, FormMessage, PasswordField } from "../components/ui";
 import { parseRecoveryParams } from "../features/auth/recoveryLink";
 import { toAppError } from "../lib/appError";
@@ -54,7 +54,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <AuthLayout testID="reset-password-screen" title={state === "expired" ? "Este enlace venció" : "Nueva contraseña"}>
-      {state === "checking" ? <ActivityIndicator color={colors.primary} accessibilityLabel="Revisando el enlace" /> : null}
+      {state === "checking" ? <FormSkeleton fields={2} label="Revisando el enlace" /> : null}
       {state === "expired" ? (
         <>
           <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { color: colors.textPrimary }]}>
@@ -115,8 +115,7 @@ function NewPasswordForm({ onDone }: { onDone: () => void }) {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={fieldState.error?.message}
-            placeholder="Mínimo 8 caracteres"
-            accessibilityHint="Mínimo 8 caracteres"
+            helper="Mínimo 8 caracteres"
             textContentType="newPassword"
             autoComplete="new-password"
             returnKeyType="next"

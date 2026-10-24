@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import * as Haptics from "expo-haptics";
 import WheelScreen from "../../app/wheel/[merchantId]";
 
 const mockSupabase = { rpc: jest.fn() };
@@ -64,6 +65,8 @@ describe("A-12 WheelScreen", () => {
     await renderScreen();
     await fireEvent.press(await screen.findByTestId("wheel-spin"));
     expect(await screen.findByText("¡Ganaste 10% de descuento!")).toBeOnTheScreen();
+    expect(screen.getByTestId("wheel-prize-coupon")).toHaveTextContent(/10% de descuento/);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
     expect(rpcCalls("spin_wheel")).toEqual([["spin_wheel", { p_merchant_id: "m1", p_device_id_digest: "digest" }]]);
     await fireEvent.press(screen.getByText("Ver mi cupón"));
     expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/coupon/[id]", params: { id: "c9", merchantId: "m1" } });

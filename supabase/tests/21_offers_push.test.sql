@@ -142,7 +142,7 @@ select is((select count(*) from public.weekly_offers where merchant_id = '200000
 
 -- push status
 select is(public.get_push_status(),
-  '{"remaining_this_month":5,"limit":5,"resets_on":"2027-06-01","recipients_count":3,"push_coupon_validity_hours":48}'::jsonb,
+  '{"remaining_this_month":5,"limit":5,"resets_on":"2027-06-01","recipients_count":3,"eligible_recipients":1,"push_coupon_validity_hours":48}'::jsonb,
   'push status: 5 left, 3 recipients, resets next month');
 select is(public.list_push_campaigns(), '[]'::jsonb, 'no campaigns yet');
 

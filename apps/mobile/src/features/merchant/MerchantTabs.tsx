@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { StampCard } from "../../components/card";
+import { StampCard, StampCardDetails } from "../../components/card";
 import { CouponCard } from "../../components/coupon";
+import { Cake, Megaphone, MapPin, Star } from "../../components/icons";
 import { OfferCard, ProductCard } from "../../components/merchant";
 import { Button, Chip, EmptyState, FormMessage } from "../../components/ui";
 import { openExternalUrl } from "../../lib/openExternal";
-import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 import { wheelIsOffered } from "../wheel/wheel";
 import { imageUri, menuChips, type MerchantDetail, previewExpiry, productsFor } from "./merchantDetail";
 
@@ -67,8 +68,21 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
         rewardAvailable={rewardAvailable}
         available={merchant.available}
         highlightLast={highlightLastStamp}
-        onViewReward={rewardAvailable ? onViewReward : undefined}
         testID="merchant-stamp-card"
+      />
+      <StampCardDetails
+        stampsCount={card.stamps.length}
+        stampsRequired={card.stamps_required}
+        rewardDescription={card.reward_description}
+        pendingExtraStamps={card.pending_extra_stamps}
+        rewardAvailable={rewardAvailable}
+        available={merchant.available}
+        onViewReward={rewardAvailable ? onViewReward : undefined}
+        // F-07: A-12 itself explains the unverified case (E-06).
+        wheelOffered={merchant.available && wheelIsOffered(detail.wheel.status)}
+        onSpinWheel={onSpinWheel}
+        terms={card.terms}
+        testID="merchant-stamp-details"
       />
       {card.has_relation ? null : (
         <View style={{ gap: spacing.sm }}>
@@ -87,17 +101,6 @@ export function CardTab({ detail, adding, addErrorMessage, onAddCard, onViewRewa
       )}
       {/* A-13..A-15 (F-08): hidden while the merchant is unavailable — claim_visit would answer E-05. */}
       {merchant.available ? <Button title="Registrar visita" onPress={onRegisterVisit} fullWidth testID="merchant-register-visit" /> : null}
-      {/* F-07: A-12 itself explains the unverified case (E-06). */}
-      {merchant.available && wheelIsOffered(detail.wheel.status) ? <Button title="Gira tu ruleta" onPress={onSpinWheel} variant="secondary" fullWidth testID="merchant-spin-wheel" /> : null}
-      {card.reward_description ? <Paragraph>{card.reward_description}</Paragraph> : null}
-      {card.terms ? (
-        <View style={{ gap: spacing.xs }}>
-          <SectionTitle>Términos y condiciones</SectionTitle>
-          <Paragraph muted testID="merchant-terms">
-            {card.terms}
-          </Paragraph>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -109,8 +112,9 @@ export function MenuTab({ menu, onShowCard }: { menu: MerchantDetail["menu"]; on
   if (menu.products.length === 0) {
     return (
       <EmptyState
-        title="Menú"
-        message="Este negocio aún no publica su menú"
+        icon={<Cake size={48} />}
+        title="Menú próximamente"
+        message="Este negocio aún no publica su menú."
         actionLabel="Ver tarjeta"
         onAction={onShowCard}
         testID="merchant-menu-empty"
@@ -158,6 +162,7 @@ export function PromosTab({
   if (offers.length === 0 && coupons.length === 0) {
     return (
       <EmptyState
+        icon={<Megaphone size={48} />}
         title="Sin promociones por ahora"
         message="Este negocio aún no tiene promociones ni cupones para ti."
         actionLabel="Ver menú"
@@ -185,16 +190,15 @@ export function PromosTab({
       {coupons.map((coupon) => {
         const highlighted = coupon.id === highlightCouponId;
         return (
-          <View
-            key={coupon.id}
-            testID={highlighted ? "coupon-highlighted" : undefined}
-            style={highlighted ? { borderRadius: radii.card, borderWidth: 3, borderColor: colors.accent } : undefined}
-          >
+          // A-33/A-34: only the highlighted coupon has the primary button, and a word (not just a border) says why.
+          <View key={coupon.id} testID={highlighted ? "coupon-highlighted" : undefined}>
             <CouponCard
               title={coupon.title}
               source={coupon.source}
               expiresAt={coupon.expires_at}
               terms={coupon.terms ?? undefined}
+              highlighted={highlighted}
+              badge={coupon.source === "card_reward" ? "Tu premio" : "Nuevo"}
               onShowCode={() => onShowCode(coupon.id)}
               testID={`coupon-${coupon.id}`}
             />
@@ -208,7 +212,18 @@ export function PromosTab({
 // Reseña (SA-02): the review lives on Google Maps.
 export function ReviewTab({ reviewsUrl }: { reviewsUrl: string | null }) {
   return (
-    <View style={{ gap: spacing.lg }}>
+    <View style={{ gap: spacing.lg, alignItems: "center" }}>
+      {/* A-36: decorative context (Maps pin + five stars); the text and the button carry the meaning. */}
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ alignItems: "center", gap: spacing.sm }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
+          <MapPin size={36} />
+        </View>
+        <View style={{ flexDirection: "row", gap: spacing.xs }}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <Star key={i} size={20} color={colors.accent} />
+          ))}
+        </View>
+      </View>
       <Paragraph>¿Ya visitaste este negocio? Tu reseña ayuda a otros clientes y al negocio a mejorar.</Paragraph>
       <Button
         title="Dejar una reseña en Google Maps"

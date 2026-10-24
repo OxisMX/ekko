@@ -407,11 +407,17 @@ isOneToOne: false
 "ensure_birthday_coupons":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"extend_admin_session":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "generate_visit_qr":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "get_card_config":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_coupon_status":
+{ Args: { "p_coupon_id": string }; Returns: Json
                            },
 "get_merchant_detail":
 { Args: { "p_merchant_id": string }; Returns: Json

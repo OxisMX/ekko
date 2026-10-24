@@ -93,7 +93,7 @@ export function DateField({
       {process.env.EXPO_OS !== "android" ? (
         <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
           <Pressable
-            style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+            style={{ flex: 1, backgroundColor: colors.overlay }}
             onPress={() => setOpen(false)}
             accessibilityLabel="Cerrar selector de fecha"
             accessibilityRole="button"

@@ -62,15 +62,19 @@ describe('P-11 registro de QR', () => {
     rpc.mockResolvedValue(ok([entry(0, 'pending'), entry(1, 'used', '2026-10-20T11:59:30Z'), entry(2, 'invalidated'), entry(3, 'expired')]))
     renderPage()
     expect(await screen.findByText('Vigente')).toBeInTheDocument()
-    for (const label of ['Usado', 'Reemplazado', 'Expirado']) expect(screen.getByText(label)).toBeInTheDocument()
-    expect(screen.getAllByText('Usado a las')).toHaveLength(1)
+    for (const label of ['Reemplazado', 'Expirado']) expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.getAllByText('Usado')).toHaveLength(2) // column header + status
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Generado', 'Usado', 'Estado'])
+    expect(screen.getAllByRole('row')).toHaveLength(5)
+    expect(screen.getAllByText('—')).toHaveLength(3)
     expect(rpc).toHaveBeenCalledWith('list_qr_log', { p_offset: 0, p_limit: 20 })
   })
 
   it('shows the empty state', async () => {
     rpc.mockResolvedValue(ok([]))
     renderPage()
-    expect(await screen.findByText('Aún no generas códigos QR. Genera uno desde Modo Caja.')).toBeInTheDocument()
+    expect(await screen.findByText('Aún no generas códigos QR')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ir a Modo Caja' })).toHaveAttribute('href', '/')
   })
 
   it('loads more while pages are full and stops on a short page', async () => {

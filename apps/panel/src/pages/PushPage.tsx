@@ -1,9 +1,10 @@
 import { ERRORS, PUSH_COUPON_VALIDITY_OPTIONS } from '@ekko/shared'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { ModalDialog } from '../components/ModalDialog'
 import { AlertIcon, BellIcon, CheckCircleIcon } from '../components/Icons'
 import { useAdminRpc } from '../lib/adminUnlockContext'
+import { toCardForm, updateCardConfig } from '../lib/cardConfig'
 import { describeMenuError, useMenuFailure } from '../lib/menu'
 import {
   formatCampaignDate,
@@ -24,31 +25,24 @@ import {
   type SendResult,
 } from '../lib/push'
 import { supabase } from '../lib/supabase'
-import { Field } from './ProductFormPage'
+import { Field } from '../components/FormField'
+import { btnPrimary, btnSecondary, input, Switch } from '../components/ui'
 
-const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base disabled:opacity-50'
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 const STATUS_LABEL: Record<PushCampaign['status'], string> = { sending: 'Enviando', sent: 'Enviada', failed: 'Fallida' }
 const UNKNOWN_STATE = 'No sabemos si se envió. Revisa el historial antes de reintentar.'
 
 type Outcome = { kind: 'success'; result: SendResult } | { kind: 'unknown' } | { kind: 'error'; message: string }
 
-function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-navy' : 'bg-black/30'}`}
-    >
-      <span className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : ''}`} />
-    </button>
-  )
+// Same wording as the app's coupon card (relativeExpiry): hours under a day, whole days after.
+function expiryText(hours: number, now = new Date()) {
+  const days = Math.floor(hours / 24)
+  const relative = days < 1 ? `Vence en ${hours} h` : `Vence en ${days} ${days === 1 ? 'día' : 'días'}`
+  const date = new Date(now.getTime() + hours * 3_600_000).toLocaleDateString('es-MX', { dateStyle: 'medium' })
+  return `${relative} · ${date}`
 }
 
 function Preview({ form }: { form: PushForm }) {
+  const hours = Number(form.couponHours)
   return (
     <div aria-label="Vista previa" role="group" className="flex flex-col gap-3">
       <p className="font-semibold">Así lo verá tu cliente</p>
@@ -61,12 +55,23 @@ function Preview({ form }: { form: PushForm }) {
         </div>
       </div>
       {form.withCoupon && (
-        <div className="rounded-2xl border-2 border-dashed border-accent bg-surface p-4" data-testid="coupon-preview">
-          <p className="text-xs font-semibold tracking-wide text-navy uppercase">Cupón</p>
-          <p className="mt-1 text-lg font-bold break-words">{form.couponTitle || 'Beneficio del cupón'}</p>
-          {form.couponDescription && <p className="text-sm break-words">{form.couponDescription}</p>}
-          {form.couponTerms && <p className="mt-2 text-xs break-words text-text-secondary">{form.couponTerms}</p>}
-          <p className="mt-2 text-sm font-medium">Válido por {form.couponHours || '—'} horas</p>
+        // Ticket shape like the app's CouponCard: two side notches on a dashed divider (P-38).
+        <div className="rounded-card bg-surface-muted" data-testid="coupon-preview">
+          <div className="flex flex-col gap-1 p-4">
+            <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Promoción</p>
+            <p className="text-lg font-bold break-words">{form.couponTitle || 'Beneficio del cupón'}</p>
+            {form.couponDescription && <p className="text-sm break-words">{form.couponDescription}</p>}
+            <p className="text-sm">{hours > 0 ? expiryText(hours) : 'Vigencia pendiente'}</p>
+            {form.couponTerms && <p className="text-xs break-words text-text-secondary">{form.couponTerms}</p>}
+          </div>
+          <div aria-hidden="true" className="relative border-t-2 border-dashed border-text-secondary/40">
+            <span className="absolute top-0 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-surface" />
+            <span className="absolute top-0 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-surface" />
+          </div>
+          <div className="p-4">
+            {/* Inert on purpose: only shows how the action looks in the app. */}
+            <span aria-hidden="true" className="grid min-h-12 place-items-center rounded-button border border-black/15 font-semibold">Mostrar código</span>
+          </div>
         </div>
       )}
     </div>
@@ -101,7 +106,7 @@ export function PushPage() {
   const queryClient = useQueryClient()
   const adminRpc = useAdminRpc()
   const failure = useMenuFailure()
-  const ids = { title: useId(), body: useId(), couponTitle: useId(), couponDescription: useId(), couponTerms: useId(), couponHours: useId() }
+  const ids = { title: useId(), body: useId(), couponTitle: useId(), couponDescription: useId(), couponTerms: useId(), couponHours: useId(), defaultHours: useId() }
   // WHY: the key survives retries of the SAME content so the server returns the stored result instead of sending twice.
   const attempt = useRef<{ key: string; signature: string } | null>(null)
 
@@ -111,6 +116,7 @@ export function PushPage() {
   const [pendingBody, setPendingBody] = useState<PushBody | null>(null)
   const [sending, setSending] = useState(false)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [defaultHours, setDefaultHours] = useState<string | null>(null)
 
   const status = useQuery({
     queryKey: PUSH_STATUS_KEY,
@@ -120,12 +126,23 @@ export function PushPage() {
     queryKey: PUSH_CAMPAIGNS_KEY,
     queryFn: async () => toCampaigns(await adminRpc(() => supabase.rpc('list_push_campaigns'))),
   })
+  // P-31: the default validity lives in the card config, so it is saved with the current values of that config.
+  const saveDefault = useMutation({
+    mutationFn: async (hours: number) => {
+      const current = toCardForm(await adminRpc(() => supabase.rpc('get_card_config')))
+      return adminRpc(() => updateCardConfig({ ...current, push_coupon_validity_hours: hours }))
+    },
+    onSuccess: async () => {
+      setDefaultHours(null)
+      await Promise.all([queryClient.invalidateQueries({ queryKey: PUSH_STATUS_KEY }), queryClient.invalidateQueries({ queryKey: ['card-config'] })])
+    },
+  })
   const refreshAll = () => Promise.all([queryClient.invalidateQueries({ queryKey: PUSH_STATUS_KEY }), queryClient.invalidateQueries({ queryKey: PUSH_CAMPAIGNS_KEY })])
 
   if (status.isPending)
     return (
       <section aria-labelledby="push-title" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <h1 id="push-title" className="text-2xl font-bold">Notificaciones push</h1>
+        <h1 id="push-title" className="text-h1 font-bold">Notificaciones push</h1>
         <div role="status" aria-label="Cargando las notificaciones" className="h-40 animate-pulse rounded-2xl bg-surface" />
       </section>
     )
@@ -133,11 +150,11 @@ export function PushPage() {
     return (
       <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
         <p className="font-semibold">{failure(status.error).message}</p>
-        <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void status.refetch()}>Reintentar</button>
+        <button type="button" className={btnPrimary} onClick={() => void status.refetch()}>Reintentar</button>
       </div>
     )
 
-  const { remaining_this_month: remaining, limit, resets_on, recipients_count } = status.data
+  const { remaining_this_month: remaining, limit, resets_on, recipients_count, eligible_recipients: eligible } = status.data
   const exhausted = remaining <= 0
   const form: PushForm = {
     title: '',
@@ -190,15 +207,40 @@ export function PushPage() {
 
   return (
     <section aria-labelledby="push-title" className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <h1 id="push-title" className="text-2xl font-bold">Notificaciones push</h1>
+      <h1 id="push-title" className="text-h1 font-bold">Notificaciones push</h1>
 
       <div className="flex items-center gap-4 rounded-2xl bg-surface p-5">
         <BellIcon className="size-8 shrink-0 text-navy" />
         <div>
           <p className="text-lg font-semibold">Te quedan {remaining} de {limit} envíos este mes</p>
           <p className="text-text-secondary">Se reinicia el {formatResetDate(resets_on)}</p>
+          <p className="text-text-secondary">Llegará a {eligible} {eligible === 1 ? 'cliente' : 'clientes'}</p>
         </div>
       </div>
+
+      <form
+        className="flex flex-wrap items-end gap-3 rounded-2xl bg-surface p-5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (defaultHours !== null) saveDefault.mutate(Number(defaultHours))
+        }}
+      >
+        <Field id={ids.defaultHours} label="Vigencia predeterminada">
+          <select id={ids.defaultHours} className={input} value={defaultHours ?? String(status.data.push_coupon_validity_hours)} onChange={(e) => setDefaultHours(e.target.value === String(status.data.push_coupon_validity_hours) ? null : e.target.value)}>
+            {PUSH_COUPON_VALIDITY_OPTIONS.map((h) => <option key={h} value={h}>{h} h</option>)}
+          </select>
+        </Field>
+        <button type="submit" disabled={defaultHours === null || saveDefault.isPending} className={btnSecondary}>
+          {saveDefault.isPending ? 'Guardando…' : 'Guardar'}
+        </button>
+        <p className="basis-full text-sm text-text-secondary">Se propone en cada cupón nuevo; puedes cambiarla al enviar.</p>
+        {saveDefault.isError && (
+          <p role="alert" className="flex basis-full items-center gap-2 font-medium text-error">
+            <AlertIcon className="size-5 shrink-0" />
+            {failure(saveDefault.error).message}
+          </p>
+        )}
+      </form>
 
       <div aria-live="polite" className="empty:hidden">
         {outcome?.kind === 'success' && (
@@ -232,29 +274,27 @@ export function PushPage() {
         <fieldset disabled={exhausted} className="flex flex-col gap-5">
           <legend className="sr-only">Redactar notificación</legend>
           <Field id={ids.title} label="Título" error={errors.title} counter={`${form.title.length}/${PUSH_LIMITS.title}`}>
-            <input id={ids.title} className={inputClass} value={form.title} aria-invalid={!!errors.title} aria-describedby={`${ids.title}-error`} onChange={(e) => edit('title', e.target.value)} />
+            <p id={`${ids.title}-hint`} className="text-sm text-text-secondary">Incluye el nombre de tu negocio</p>
+            <input id={ids.title} className={input} value={form.title} aria-invalid={!!errors.title} aria-describedby={`${ids.title}-hint ${ids.title}-error`} onChange={(e) => edit('title', e.target.value)} />
           </Field>
           <Field id={ids.body} label="Mensaje" error={errors.body} counter={`${form.body.length}/${PUSH_LIMITS.body}`}>
-            <textarea id={ids.body} rows={3} className={inputClass} value={form.body} aria-invalid={!!errors.body} aria-describedby={`${ids.body}-error`} onChange={(e) => edit('body', e.target.value)} />
+            <textarea id={ids.body} rows={3} className={input} value={form.body} aria-invalid={!!errors.body} aria-describedby={`${ids.body}-error`} onChange={(e) => edit('body', e.target.value)} />
           </Field>
 
-          <div className="flex items-center gap-3">
-            <Switch label="Adjuntar cupón" checked={form.withCoupon} onChange={(v) => edit('withCoupon', v)} />
-            <span aria-hidden="true" className="font-semibold">Adjuntar cupón</span>
-          </div>
+          <Switch label="Adjuntar cupón" text="Adjuntar cupón" checked={form.withCoupon} onChange={(v) => edit('withCoupon', v)} />
           {form.withCoupon && (
             <>
               <Field id={ids.couponTitle} label="Beneficio" error={errors.couponTitle} counter={`${form.couponTitle.length}/${PUSH_LIMITS.couponTitle}`}>
-                <input id={ids.couponTitle} className={inputClass} value={form.couponTitle} placeholder="Ej. 2x1 en cafés" aria-invalid={!!errors.couponTitle} aria-describedby={`${ids.couponTitle}-error`} onChange={(e) => edit('couponTitle', e.target.value)} />
+                <input id={ids.couponTitle} className={input} value={form.couponTitle} placeholder="Ej. 2x1 en cafés" aria-invalid={!!errors.couponTitle} aria-describedby={`${ids.couponTitle}-error`} onChange={(e) => edit('couponTitle', e.target.value)} />
               </Field>
               <Field id={ids.couponDescription} label="Restricciones" error={errors.couponDescription} counter={`${form.couponDescription.length}/${PUSH_LIMITS.couponDescription}`}>
-                <textarea id={ids.couponDescription} rows={2} className={inputClass} value={form.couponDescription} aria-invalid={!!errors.couponDescription} aria-describedby={`${ids.couponDescription}-error`} onChange={(e) => edit('couponDescription', e.target.value)} />
+                <textarea id={ids.couponDescription} rows={2} className={input} value={form.couponDescription} aria-invalid={!!errors.couponDescription} aria-describedby={`${ids.couponDescription}-error`} onChange={(e) => edit('couponDescription', e.target.value)} />
               </Field>
               <Field id={ids.couponTerms} label="Términos" error={errors.couponTerms} counter={`${form.couponTerms.length}/${PUSH_LIMITS.couponTerms}`}>
-                <textarea id={ids.couponTerms} rows={3} className={inputClass} value={form.couponTerms} aria-invalid={!!errors.couponTerms} aria-describedby={`${ids.couponTerms}-error`} onChange={(e) => edit('couponTerms', e.target.value)} />
+                <textarea id={ids.couponTerms} rows={3} className={input} value={form.couponTerms} aria-invalid={!!errors.couponTerms} aria-describedby={`${ids.couponTerms}-error`} onChange={(e) => edit('couponTerms', e.target.value)} />
               </Field>
               <Field id={ids.couponHours} label="Vigencia del cupón" error={errors.couponHours}>
-                <select id={ids.couponHours} className={inputClass} value={form.couponHours} aria-invalid={!!errors.couponHours} aria-describedby={`${ids.couponHours}-error`} onChange={(e) => edit('couponHours', e.target.value)}>
+                <select id={ids.couponHours} className={input} value={form.couponHours} aria-invalid={!!errors.couponHours} aria-describedby={`${ids.couponHours}-error`} onChange={(e) => edit('couponHours', e.target.value)}>
                   {PUSH_COUPON_VALIDITY_OPTIONS.map((h) => <option key={h} value={h}>{h} h</option>)}
                 </select>
               </Field>
@@ -265,7 +305,7 @@ export function PushPage() {
         <Preview form={form} />
 
         <div className="md:col-span-2">
-          <button type="submit" disabled={exhausted || sending} className={`${buttonClass} h-14 bg-navy text-white hover:bg-brand`}>
+          <button type="submit" disabled={exhausted || sending} className={`${btnPrimary} h-14`}>
             {sending ? 'Enviando…' : 'Enviar notificación'}
           </button>
         </div>
@@ -277,7 +317,7 @@ export function PushPage() {
         {campaigns.isError && (
           <div role="alert" className="flex flex-col items-start gap-2">
             <p className="font-medium text-error">{failure(campaigns.error).message}</p>
-            <button type="button" className={`${buttonClass} border border-black/15`} onClick={() => void campaigns.refetch()}>Reintentar</button>
+            <button type="button" className={btnSecondary} onClick={() => void campaigns.refetch()}>Reintentar</button>
           </div>
         )}
         {campaigns.data && <History campaigns={campaigns.data} />}
@@ -285,12 +325,12 @@ export function PushPage() {
 
       {pendingBody && (
         <ModalDialog labelledBy="confirm-push-title" onClose={() => !sending && setPendingBody(null)}>
-          <h2 id="confirm-push-title" className="text-xl font-semibold">¿Enviar esta notificación?</h2>
+          <h2 id="confirm-push-title" className="text-h2 font-semibold">¿Enviar esta notificación?</h2>
           <p>Se enviará a {recipients_count} clientes. Te quedarán {remaining - 1} de {limit}.</p>
           {pendingBody.coupon && <p>Cada cliente recibirá el cupón aunque tenga las notificaciones desactivadas.</p>}
           <div className="flex flex-wrap justify-end gap-3">
-            <button type="button" disabled={sending} className={`${buttonClass} border border-black/15 hover:bg-surface-muted`} onClick={() => setPendingBody(null)}>Cancelar</button>
-            <button type="button" disabled={sending} className={`${buttonClass} bg-navy text-white hover:bg-brand`} onClick={() => void send(pendingBody)}>{sending ? 'Enviando…' : 'Enviar ahora'}</button>
+            <button type="button" disabled={sending} className={btnSecondary} onClick={() => setPendingBody(null)}>Cancelar</button>
+            <button type="button" disabled={sending} className={btnPrimary} onClick={() => void send(pendingBody)}>{sending ? 'Enviando…' : 'Enviar ahora'}</button>
           </div>
         </ModalDialog>
       )}

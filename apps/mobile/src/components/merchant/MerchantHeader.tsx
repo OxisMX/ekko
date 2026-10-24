@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { useState, type ReactNode } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
+import { colors, fontFamily, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 import { FavoriteButton } from "../ui/FavoriteButton";
 import { PinIcon } from "../catalog/MerchantCard";
 import { MerchantAvatar } from "./MerchantAvatar";
@@ -118,7 +118,7 @@ export function MerchantHeader({ name, categoryLabel, coverUri, logoUri, onOpenM
           }}
         >
           <MerchantAvatar name={name} uri={logoUri} size={COMPACT_LOGO_SIZE} />
-          <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary }]}>
+          <Text numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.semibold }]}>
             {name}
           </Text>
         </Animated.View>

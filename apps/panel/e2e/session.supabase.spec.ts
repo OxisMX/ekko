@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { unlockAdmin } from './supabase-api'
 
 // Session lifecycle against the local Supabase with supabase/seed.sql (E-18, RR-3, F-20).
 test.skip(!process.env.E2E_SUPABASE_ANON_KEY, 'requires the local Supabase (E2E_SUPABASE_ANON_KEY)')
@@ -31,7 +32,9 @@ test('cerrar sesión en una pestaña manda a /login a las demás, sin aviso; vol
   await tabB.goto('/')
   await expect(tabB.getByRole('heading', { name: 'Café Ekko Centro' })).toBeVisible()
 
+  await unlockAdmin(tabA)
   await tabA.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await tabA.getByRole('dialog').getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(tabA).toHaveURL(/\/login$/)
   await expect(tabB).toHaveURL(/\/login$/)
   await expect(tabB.getByRole('alert')).toHaveCount(0)

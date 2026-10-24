@@ -31,6 +31,8 @@ export function GatedStack({ route, afterSignUp = false }: GatedStackProps) {
         <Stack.Screen name="verify-email" />
         {/* A-21: redemption history pushed from Perfil. */}
         <Stack.Screen name="redemptions" options={{ headerShown: true, title: "Historial de canjes" }} />
+        {/* A-20: edit profile, pushed from Perfil. */}
+        <Stack.Screen name="edit-profile" options={{ headerShown: true, title: "Editar perfil" }} />
         {/* A-22: delete account, pushed from Perfil. */}
         <Stack.Screen name="delete-account" options={{ headerShown: true, title: "Eliminar cuenta" }} />
         {/* A-14 / A-15: full screen over the tabs, no tab bar (F-08). */}

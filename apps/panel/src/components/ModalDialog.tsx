@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -10,10 +10,12 @@ type Props = {
   onKeyDown?: (event: KeyboardEvent) => void
   // Re-takes focus when it turns true (a disabled control drops focus while a request runs).
   refocusWhen?: boolean
+  // Element that takes focus instead of the dialog itself (e.g. "Cancelar" in destructive confirmations).
+  initialFocusRef?: RefObject<HTMLElement | null>
 }
 
 // WCAG 2.1.2 / 2.4.3: focus starts inside, Tab cycles inside, Escape closes and focus returns to the opener.
-export function ModalDialog({ labelledBy, onClose, children, className = 'max-w-md gap-4 p-6', onKeyDown, refocusWhen = true }: Props) {
+export function ModalDialog({ labelledBy, onClose, children, className = 'max-w-md gap-4 p-6', onKeyDown, refocusWhen = true, initialFocusRef }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,8 +26,8 @@ export function ModalDialog({ labelledBy, onClose, children, className = 'max-w-
   }, [])
 
   useEffect(() => {
-    if (refocusWhen) dialogRef.current?.focus()
-  }, [refocusWhen])
+    if (refocusWhen) (initialFocusRef?.current ?? dialogRef.current)?.focus()
+  }, [refocusWhen, initialFocusRef])
 
   function handleKeyDown(event: KeyboardEvent) {
     onKeyDown?.(event)

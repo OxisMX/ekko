@@ -35,12 +35,35 @@ export const toCardForm = (raw: unknown): CardForm => {
   return { ...config, terms: config.terms ?? '' }
 }
 
+// Single place that maps the form to update_card_config, shared by the card page and the push default validity (P-31).
+export function updateCardConfig(form: CardForm) {
+  const parsed = cardFormSchema.parse(form)
+  return supabase.rpc('update_card_config', {
+    p_stamps_required: parsed.stamps_required,
+    p_cycle_months: parsed.cycle_months,
+    p_reward_title: parsed.reward_title,
+    p_reward_description: parsed.reward_description,
+    p_terms: parsed.terms,
+    // WHY: generated types omit `null` for this arg (no DEFAULT), but the RPC accepts it to clear the image.
+    p_card_background_path: parsed.card_background_path as string,
+    p_push_coupon_validity_hours: parsed.push_coupon_validity_hours,
+    p_stamp_image_path: parsed.stamp_image_path as string,
+  })
+}
+
 export function fieldErrors(form: CardForm): Partial<Record<CardField, string>> {
   const result = cardFormSchema.safeParse(form)
   if (result.success) return {}
   const errors: Partial<Record<CardField, string>> = {}
   for (const issue of result.error.issues) errors[issue.path[0] as CardField] ??= issue.message
   return errors
+}
+
+// WHY today + cycle_months: that is when a card created right now would expire (RN-24).
+export function cycleExpiryLabel(months: number, now = new Date()) {
+  const date = new Date(now)
+  date.setMonth(date.getMonth() + months)
+  return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function describeError(err: unknown): { code: ErrorCode; field: CardField | null } {

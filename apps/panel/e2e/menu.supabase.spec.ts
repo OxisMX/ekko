@@ -62,6 +62,7 @@ test('c1: crear categoría y producto con imagen, agotar, editar y eliminar', as
   await expect(page.getByRole('dialog')).toContainText('Mueve o elimina sus productos primero.')
   await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click()
 
+  await section.getByRole('button', { name: `Más acciones de ${name}` }).click()
   await section.getByRole('button', { name: `Eliminar ${name}` }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Eliminar' }).click()
   await expect(section.getByText(name)).toBeHidden()

@@ -4,17 +4,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { Field } from '../components/FormField'
-import { AlertIcon, CheckCircleIcon } from '../components/Icons'
+import { AlertIcon, CheckCircleIcon, ImageIcon, StoreIcon } from '../components/Icons'
+import { PageState } from '../components/PageState'
+import { UnsavedBar, UnsavedChangesDialog } from '../components/UnsavedChanges'
 import { ImagePicker } from '../components/ImagePicker'
 import { useMerchantSession } from '../components/panelOutlet'
 import { useAdminRpc } from '../lib/adminUnlockContext'
 import { describeError } from '../lib/cardConfig'
 import { PROFILE_KEY, PROFILE_LIMITS, type ProfileField, type ProfileForm, profileErrors, profileFormSchema, toProfileForm } from '../lib/merchantProfile'
 import { supabase } from '../lib/supabase'
+import { useUnsavedChanges } from '../lib/useUnsavedChanges'
 import { useMerchantImageUpload } from '../lib/useMerchantImageUpload'
+import { btnPrimary, input } from '../components/ui'
 
-const inputClass = 'w-full rounded-xl border border-black/20 bg-surface px-4 py-3 text-base'
-const buttonClass = 'min-h-12 rounded-xl px-5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+
+// Expected shape of each image shown while it is missing, so the merchant knows what to upload (P-42).
+function ImagePlaceholder({ icon, hint, className }: { icon: React.ReactNode; hint: string; className: string }) {
+  return (
+    <div className={`grid place-items-center rounded-2xl bg-surface-muted text-text-secondary ${className}`}>
+      <div className="flex flex-col items-center gap-1 text-sm font-medium">
+        {icon}
+        {hint}
+      </div>
+    </div>
+  )
+}
 
 // Edit-only: accounts are created by Oxis, so there is no create/delete flow here.
 export function ProfilePage() {
@@ -72,21 +86,11 @@ export function ProfilePage() {
     },
   })
 
-  if (profile.isPending)
-    return (
-      <p role="status" className="p-6 text-text-secondary">
-        Cargando el perfil de tu negocio…
-      </p>
-    )
+  const { blocker: unsaved } = useUnsavedChanges(Object.keys(draft).length > 0)
+
+  if (profile.isPending) return <PageState title="Perfil del negocio" loadingLabel="Cargando el perfil de tu negocio…" />
   if (profile.isError)
-    return (
-      <div role="alert" className="mx-auto flex max-w-xl flex-col items-start gap-3 rounded-2xl bg-surface p-6">
-        <p className="font-semibold">{ERRORS[describeError(profile.error).code].message}</p>
-        <button type="button" className={`${buttonClass} bg-navy text-white`} onClick={() => void profile.refetch()}>
-          Reintentar
-        </button>
-      </div>
-    )
+    return <PageState title="Perfil del negocio" loadingLabel="" error={ERRORS[describeError(profile.error).code].message} onRetry={() => void profile.refetch()} />
 
   const form: ProfileForm = { ...profile.data, ...draft }
   const errors = profileErrors(form)
@@ -119,7 +123,7 @@ export function ProfilePage() {
 
   const bind = (field: ProfileField, id: string) => ({
     id,
-    className: inputClass,
+    className: input,
     value: form[field],
     'aria-invalid': !!errors[field],
     'aria-describedby': `${id}-error`,
@@ -127,7 +131,7 @@ export function ProfilePage() {
 
   return (
     <section aria-labelledby="profile-title" className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <h1 id="profile-title" className="text-2xl font-bold">
+      <h1 id="profile-title" className="text-h1 font-bold">
         Perfil del negocio
       </h1>
 
@@ -139,15 +143,31 @@ export function ProfilePage() {
           if (canSave) save.mutate(form)
         }}
       >
+        <section aria-labelledby="profile-preview" className="flex flex-col gap-3">
+          <h2 id="profile-preview" className="font-semibold">Así te ven tus clientes</h2>
+          <div className="w-full max-w-sm overflow-hidden rounded-card bg-surface shadow-sm ring-1 ring-black/10">
+            <div className="grid aspect-video place-items-center bg-surface-muted text-text-secondary">
+              {coverUrl ? <img src={coverUrl} alt="" className="size-full object-cover" /> : <ImageIcon className="size-8" />}
+            </div>
+            <div className="px-4 pb-4">
+              <div className="-mt-8 grid size-16 place-items-center overflow-hidden rounded-2xl border-4 border-surface bg-surface-muted text-text-secondary">
+                {logoUrl ? <img src={logoUrl} alt="" className="size-full object-cover" /> : <StoreIcon className="size-6" />}
+              </div>
+              <p className="mt-2 text-lg font-bold break-words">{form.name || 'Nombre de tu negocio'}</p>
+              <p className="text-sm text-text-secondary">{merchantCategoryLabel[form.category]}</p>
+            </div>
+          </div>
+        </section>
+
         <div className="grid gap-6 md:grid-cols-[10rem_1fr]">
           <div className="flex flex-col gap-3">
             <p className="font-semibold">Logo</p>
-            {logoUrl ? <img src={logoUrl} alt="Logo del negocio" className="size-32 rounded-2xl bg-surface-muted object-cover" /> : <div className="size-32 rounded-2xl bg-surface-muted" />}
+            {logoUrl ? <img src={logoUrl} alt="Logo del negocio" className="size-32 rounded-2xl bg-surface-muted object-cover" /> : <ImagePlaceholder icon={<StoreIcon className="size-6" />} hint="Cuadrado 1:1" className="size-32" />}
             <ImagePicker inputLabel="Elegir logo" hasImage={!!form.logo_path} uploading={logoUpload.uploading} error={logoUpload.error ?? errors.logo_path ?? null} onPick={(f) => void pickLogo(f)} />
           </div>
           <div className="flex flex-col gap-3">
             <p className="font-semibold">Portada</p>
-            {coverUrl ? <img src={coverUrl} alt="Portada del negocio" className="aspect-video w-full max-w-md rounded-2xl bg-surface-muted object-cover" /> : <div className="aspect-video w-full max-w-md rounded-2xl bg-surface-muted" />}
+            {coverUrl ? <img src={coverUrl} alt="Portada del negocio" className="aspect-video w-full max-w-md rounded-2xl bg-surface-muted object-cover" /> : <ImagePlaceholder icon={<ImageIcon className="size-6" />} hint="Horizontal 16:9" className="aspect-video w-full max-w-md" />}
             <ImagePicker inputLabel="Elegir portada" hasImage={!!form.cover_path} uploading={coverUpload.uploading} error={coverUpload.error ?? errors.cover_path ?? null} onPick={(f) => void pickCover(f)} />
           </div>
         </div>
@@ -186,10 +206,12 @@ export function ProfilePage() {
             Perfil guardado. Tus clientes ya ven los cambios.
           </p>
         )}
-        <button type="submit" disabled={!canSave} className={`${buttonClass} h-14 bg-navy text-white hover:bg-brand sm:self-start`}>
+        <button type="submit" disabled={!canSave} className={`${btnPrimary} h-14 sm:self-start`}>
           {save.isPending ? 'Guardando…' : 'Guardar cambios'}
         </button>
       </form>
+      <UnsavedBar show={dirty} />
+      <UnsavedChangesDialog blocker={unsaved} />
     </section>
   )
 }

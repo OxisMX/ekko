@@ -11,7 +11,7 @@ async function openCardConfig(page: Page) {
   await page.getByRole('button', { name: 'Entrar' }).click()
   await page.getByRole('button', { name: 'Administrar' }).click()
   for (const digit of '1234') await page.getByRole('dialog').getByRole('button', { name: digit, exact: true }).click()
-  await page.getByRole('link', { name: 'Configuración de tarjeta' }).click()
+  await page.getByRole('link', { name: 'Tarjeta', exact: true }).click()
   await expect(page.getByLabel('Título del premio')).toBeVisible()
 }
 

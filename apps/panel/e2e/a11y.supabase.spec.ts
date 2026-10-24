@@ -73,7 +73,7 @@ test('admin sections, product and offer forms', async ({ page }) => {
   await expectNoSeriousViolations(page, 'admin/metricas')
 
   for (const [link, heading] of [
-    ['Configuración de tarjeta', 'Configuración de tarjeta'],
+    ['Tarjeta', 'Configuración de tarjeta'],
     ['Menú', 'Menú'],
     ['Ofertas', 'Ofertas semanales'],
     ['Notificaciones', 'Notificaciones push'],

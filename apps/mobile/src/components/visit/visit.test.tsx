@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
 import { PermissionExplainer, ScannerOverlay, VisitResult, type VisitResultKind } from ".";
 
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
+
+beforeEach(() => jest.clearAllMocks());
 
 describe("VisitResult", () => {
   it("shows stamp progress, extra stamps and fires both actions", async () => {
@@ -21,6 +24,23 @@ describe("VisitResult", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     expect(onPrimary).toHaveBeenCalledTimes(1);
     expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the progress dots with the latest filled, and fires one success haptic (A-60)", async () => {
+    await render(<VisitResult kind="stamped" stampsCount={3} stampsRequired={8} onPrimary={jest.fn()} />);
+    expect(screen.getByTestId("visit-result-dots", { includeHiddenElements: true }).children).toHaveLength(8);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("fills every dot when the card is completed (A-61)", async () => {
+    await render(<VisitResult kind="completed" stampsCount={8} stampsRequired={8} onPrimary={jest.fn()} />);
+    expect(screen.getByTestId("visit-result-dots", { includeHiddenElements: true }).children).toHaveLength(8);
+  });
+
+  it("gives no haptic or dots for errors", async () => {
+    await render(<VisitResult kind="offline" onPrimary={jest.fn()} />);
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("visit-result-dots", { includeHiddenElements: true })).toBeNull();
   });
 
   it("gives both actions stable testIDs (RQ-3)", async () => {
@@ -59,6 +79,14 @@ describe("VisitResult", () => {
 });
 
 describe("PermissionExplainer", () => {
+  it("notifications variant lists concrete benefits and declines with a text link (A-82, A-17)", async () => {
+    const onSecondary = jest.fn();
+    await render(<PermissionExplainer variant="notifications" onPrimary={jest.fn()} onSecondary={onSecondary} />);
+    expect(screen.getByText(/cupón esté por vencer/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Ahora no" }));
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
   it("camera variant asks for permission", async () => {
     const onPrimary = jest.fn();
     const onSecondary = jest.fn();
@@ -79,6 +107,13 @@ describe("PermissionExplainer", () => {
 });
 
 describe("ScannerOverlay", () => {
+  it("turns the corners accent when a code is detected and offers the torch (A-58, A-59)", async () => {
+    const onToggleTorch = jest.fn();
+    await render(<ScannerOverlay onClose={jest.fn()} detected onToggleTorch={onToggleTorch} />);
+    await fireEvent.press(screen.getByRole("button", { name: "Encender linterna" }));
+    expect(onToggleTorch).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the hint and closes", async () => {
     const onClose = jest.fn();
     await render(<ScannerOverlay onClose={onClose} />);

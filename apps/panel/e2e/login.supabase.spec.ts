@@ -18,7 +18,9 @@ test('comercio activo entra a Modo Caja y puede cerrar sesión', async ({ page }
   await expect(page).toHaveURL(/\/$/)
   await expect(page.getByRole('heading', { name: 'Café Ekko Centro' })).toBeVisible()
 
+  // P-14: sign-out is in the Modo Caja header and asks first.
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar sesión' }).click()
   await expect(page).toHaveURL(/\/login$/)
 })
 

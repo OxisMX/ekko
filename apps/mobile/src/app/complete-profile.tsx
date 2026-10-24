@@ -2,10 +2,10 @@ import { completeProfileSchema, type CompleteProfileInput, type CompleteProfileV
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type ComponentRef, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput } from "react-native";
+import { TextInput } from "react-native";
 
 import { useAuth } from "../auth/AuthProvider";
-import { AuthLayout } from "../components/auth";
+import { AuthLayout, FormSkeleton } from "../components/auth";
 import { Button, DateField, FormMessage, TextField } from "../components/ui";
 import { formatCalendarDate } from "../components/ui/DateField";
 import { type MyProfile, useCompleteProfile, useMyProfile, useRegisterDraft } from "../features/auth/account";
@@ -14,7 +14,6 @@ import { TextLink } from "../features/auth/TextLink";
 import { toAppError } from "../lib/appError";
 import { fromIsoDate, toIsoDate } from "../lib/calendarDate";
 import { reportError } from "../lib/sentry";
-import { colors } from "../theme";
 
 const FIELDS = ["first_name", "last_name", "birth_date"] as const;
 
@@ -34,7 +33,7 @@ export default function CompleteProfileScreen() {
       ) : profile.isError ? (
         <ProfileLoadError key={profile.errorUpdatedAt} error={profile.error} onRetry={() => void profile.refetch()} />
       ) : (
-        <ActivityIndicator color={colors.primary} accessibilityLabel="Cargando tu perfil" />
+        <FormSkeleton fields={3} label="Cargando tu perfil" />
       )}
     </AuthLayout>
   );

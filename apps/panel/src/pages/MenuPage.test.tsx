@@ -152,11 +152,41 @@ describe('P-07 menu list', () => {
 
   it('deleting a product asks for confirmation then calls delete_product', async () => {
     renderAt('/admin/menu')
-    fireEvent.click(await screen.findByRole('button', { name: 'Eliminar Latte' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Más acciones de Latte' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar Latte' }))
     expect(callsTo('delete_product')).toHaveLength(0)
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar' }))
     await waitFor(() => expect(callsTo('delete_product')).toEqual([{ p_id: 'p1' }]))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+})
+
+describe('P-32..P-34 product rows', () => {
+  it('shows an "Agotado" text badge only for sold-out products', async () => {
+    mockRpc({ list_menu_admin: ok({ categories: [{ ...menu.categories[0], products: [{ ...product, is_sold_out: true }] }] }) })
+    renderAt('/admin/menu')
+    expect(await screen.findByText('Agotado')).toBeInTheDocument()
+  })
+
+  it('"Más" is a disclosure menu: expanded state, Escape closes and returns focus', async () => {
+    renderAt('/admin/menu')
+    const more = await screen.findByRole('button', { name: 'Más acciones de Latte' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'Subir Latte' })).not.toBeInTheDocument()
+    fireEvent.click(more)
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    for (const name of ['Subir Latte', 'Bajar Latte', 'Eliminar Latte']) expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Bajar Latte' }), { key: 'Escape' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    expect(more).toHaveFocus()
+  })
+
+  it('per-category "Agregar producto" preselects that category in the form', async () => {
+    renderAt('/admin/menu')
+    const link = await screen.findByRole('link', { name: 'Agregar producto en Postres' })
+    expect(link).toHaveAttribute('href', '/admin/menu/nuevo?categoria=c2')
+    fireEvent.click(link)
+    expect(await screen.findByLabelText('Categoría')).toHaveValue('c2')
   })
 })
 

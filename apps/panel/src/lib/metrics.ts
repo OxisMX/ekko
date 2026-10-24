@@ -14,9 +14,18 @@ const metricsSchema = z.object({
   redemptions: z.number(),
   active_customers: z.number(),
   push_remaining_this_month: z.number(),
+  // Same-length period right before the selected one; null for the all-time range.
+  previous: z.object({ visits: z.number(), redemptions: z.number() }).nullish(),
 })
 export type Metrics = z.infer<typeof metricsSchema>
 export const toMetrics = (raw: unknown): Metrics => metricsSchema.parse(raw)
+
+// P-23: share of issued coupons that were redeemed, from the series already loaded. Null when nothing was issued.
+export function redemptionRate(coupons: { issued: number; redeemed: number }[]): number | null {
+  const issued = coupons.reduce((sum, row) => sum + row.issued, 0)
+  if (issued === 0) return null
+  return Math.round((coupons.reduce((sum, row) => sum + row.redeemed, 0) / issued) * 100)
+}
 
 const qrEntrySchema = z.object({
   created_at: z.string(),

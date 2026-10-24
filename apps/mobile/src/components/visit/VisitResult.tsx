@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Text, View } from "react-native";
+import { useEffect } from "react";
+import { AccessibilityInfo, Platform, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { colors, fontFamily, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
-import { GiftIcon } from "../card/StampCard";
+import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { success } from "../../lib/haptics";
+import { Gift as GiftIcon } from "../icons";
 import { Button } from "../ui/Button";
-import { useReduceMotion } from "../useReduceMotion";
+import { Burst, Entrance } from "../motion";
 
 export type VisitResultKind = "stamped" | "completed" | "already_today" | "expired_or_used" | "unavailable" | "offline" | "not_ekko";
 
@@ -34,8 +35,6 @@ const copy: Record<VisitResultKind, { title: string; message?: string; primaryLa
 };
 
 const ICON_SIZE = 96;
-// expo-animation: strong ease-out for entrances.
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 function isSuccess(kind: VisitResultKind) {
   return kind === "stamped" || kind === "completed";
@@ -59,22 +58,29 @@ function NoticeIcon() {
   );
 }
 
-// PX-6: ≤ 600 ms, never blocks (buttons are live from the first frame); §9: skipped with reduce motion.
-function CelebrationEntrance({ children }: { children: React.ReactNode }) {
-  const reduce = useReduceMotion();
-  const [progress] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    if (reduce === null) return;
-    if (reduce) {
-      progress.setValue(1);
-      return;
-    }
-    const anim = Animated.timing(progress, { toValue: 1, duration: 450, easing: EASE_OUT, useNativeDriver: true });
-    anim.start();
-    return () => anim.stop();
-  }, [reduce, progress]);
-  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
-  return <Animated.View style={{ opacity: progress, transform: [{ scale }] }}>{children}</Animated.View>;
+const PROGRESS_DOT = 12;
+
+// A-60/A-61: the stamp row; the newly earned dots pop in one after another. Reduce motion shows the final state (Entrance).
+function ProgressDots({ count, required, added }: { count: number; required: number; added: number }) {
+  const firstNew = count - Math.max(added, 1);
+  return (
+    <View testID="visit-result-dots" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.sm }}>
+      {Array.from({ length: required }, (_, i) => {
+        const dot = (
+          <View
+            style={{ width: PROGRESS_DOT, height: PROGRESS_DOT, borderRadius: PROGRESS_DOT / 2, borderWidth: 1.5, borderColor: colors.navy, backgroundColor: i < count ? colors.navy : "transparent" }}
+          />
+        );
+        return i >= firstNew && i < count ? (
+          <Entrance key={i} from={0.3} spring delay={300 + (i - firstNew) * 120}>
+            {dot}
+          </Entrance>
+        ) : (
+          <View key={i}>{dot}</View>
+        );
+      })}
+    </View>
+  );
 }
 
 function ResultIcon({ kind }: { kind: VisitResultKind }) {
@@ -87,12 +93,16 @@ function ResultIcon({ kind }: { kind: VisitResultKind }) {
     );
   }
   // Accent only here: reward moment (OD-3), as a non-text ring.
+  // PX-6: ≤ 600 ms, never blocks (buttons are live from the first frame).
   return (
-    <CelebrationEntrance>
-      <View testID="visit-result-celebration" style={[circle, { backgroundColor: colors.surface, borderWidth: 4, borderColor: colors.accent }]}>
-        {kind === "completed" ? <GiftIcon size={44} /> : <CheckIcon />}
-      </View>
-    </CelebrationEntrance>
+    <View style={[circle, { overflow: "visible" }]}>
+      {kind === "completed" ? <Burst size={176} /> : null}
+      <Entrance from={0.8} duration={450}>
+        <View testID="visit-result-celebration" style={[circle, { backgroundColor: colors.surface, borderWidth: 4, borderColor: colors.accent }]}>
+          {kind === "completed" ? <GiftIcon size={44} /> : <CheckIcon />}
+        </View>
+      </Entrance>
+    </View>
   );
 }
 
@@ -115,13 +125,22 @@ export function VisitResult({
   const extra = isSuccess(kind) && stampsAdded != null && stampsAdded > 1 ? `+${stampsAdded} sellos` : null;
 
   // iOS ignores accessibilityLiveRegion, so the result is announced explicitly once.
+  // WHY: Android already reads the live region; announcing too would read the result twice (A-62).
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility([title, message].filter(Boolean).join(" "));
+    if (Platform.OS === "ios") AccessibilityInfo.announceForAccessibility([title, message].filter(Boolean).join(" "));
   }, [title, message]);
+  // Reward moment: one success haptic when the stamp (or the whole card) lands.
+  const succeeded = isSuccess(kind);
+  useEffect(() => {
+    if (succeeded) success();
+  }, [succeeded]);
 
   return (
-    <View testID={testID} accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing["2xl"] }}>
+    <View testID={testID} accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined} style={{ alignItems: "center", gap: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing["2xl"] }}>
       <ResultIcon kind={kind} />
+      {succeeded && stampsRequired != null && stampsCount != null ? (
+        <ProgressDots count={kind === "completed" ? stampsRequired : Math.min(stampsCount, stampsRequired)} required={stampsRequired} added={stampsAdded ?? 1} />
+      ) : null}
       <View style={{ alignItems: "center", gap: spacing.sm }}>
         {merchantName ? (
           <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary, textAlign: "center" }]}>
@@ -142,7 +161,7 @@ export function VisitResult({
         ) : null}
         {extra ? (
           // Accent as badge background with dark text, like StampCard (§4.3).
-          <View testID="visit-result-extra" style={{ marginTop: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 999, backgroundColor: colors.accent }}>
+          <View testID="visit-result-extra" style={{ marginTop: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radii.pill, backgroundColor: colors.accent }}>
             <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { fontFamily: fontFamily.semibold, color: colors.textPrimary }]}>
               {extra}
             </Text>

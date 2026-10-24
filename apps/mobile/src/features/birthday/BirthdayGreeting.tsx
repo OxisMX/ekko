@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { Cake, Close } from "../../components/icons";
 import { Button } from "../../components/ui";
 import { useAuth } from "../../auth/AuthProvider";
-import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
+import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 import { useMyProfile } from "../auth/account";
 import { useBirthdayGreeting } from "./birthdayCoupons";
 
@@ -25,12 +26,14 @@ export function BirthdayGreeting() {
         gap: spacing.md,
         borderRadius: radii.card,
         borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        borderLeftWidth: 6,
-        borderLeftColor: colors.accent,
+        backgroundColor: colors.surfaceCard,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
+        {/* Accent only as the circle behind the icon: a reward moment, never text (OD-3). */}
+        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" }}>
+          <Cake size={26} color={colors.navy} />
+        </View>
         <View style={{ flex: 1, gap: spacing.xs }}>
           <Text accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.h2, { color: colors.textPrimary }]}>
             {name ? `¡Feliz cumpleaños, ${name}!` : "¡Feliz cumpleaños!"}
@@ -47,9 +50,7 @@ export function BirthdayGreeting() {
           style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginTop: -spacing.sm, marginRight: -spacing.sm }}
           testID="birthday-dismiss"
         >
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ fontFamily: fontFamily.semibold, fontSize: 20, color: colors.textPrimary }}>
-            ✕
-          </Text>
+          <Close size={20} color={colors.textPrimary} />
         </Pressable>
       </View>
       <Button

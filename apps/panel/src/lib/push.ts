@@ -13,6 +13,8 @@ export const pushStatusSchema = z.object({
   limit: z.number(),
   resets_on: z.string(),
   recipients_count: z.number(),
+  // Customers with push on and a live device (P-40); a coupon still reaches the rest through the app.
+  eligible_recipients: z.number(),
   push_coupon_validity_hours: z.number(),
 })
 export type PushStatus = z.infer<typeof pushStatusSchema>

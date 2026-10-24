@@ -15,6 +15,26 @@
   --color-success: #1b8749;
   --color-error: #d93a3a;
   --color-warning: #e0a100;
+  /* WHY: darker than --color-error so white text on destructive buttons keeps AA contrast (>=4.5:1). */
+  --color-danger: #b42f2f;
+  --radius-field: 8px;
+  --radius-button: 12px;
+  --radius-card: 16px;
+  --radius-sheet: 32px;
+  --text-display: 32px;
+  --text-display--line-height: 36px;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+}
+
+/* WHY: uppercase label only for Login and the redemption validator; long admin forms use sentence-case labels (Field). */
+@utility field-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
 body {

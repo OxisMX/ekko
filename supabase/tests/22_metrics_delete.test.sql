@@ -90,12 +90,12 @@ select is(pg_temp.field_of($$ select public.list_qr_log(0, null) $$), 'limit', '
 
 -- Metrics math
 select is(public.get_metrics('30d'),
-  '{"visits":4,"redemptions":1,"active_customers":3,"push_remaining_this_month":5}'::jsonb,
+  '{"visits":4,"previous":{"visits":2,"redemptions":1},"redemptions":1,"active_customers":3,"push_remaining_this_month":5}'::jsonb,
   '30d: 4 visits, 1 redemption, active = U1 + U2 + U3');
 select is(public.get_metrics('all'),
-  '{"visits":6,"redemptions":2,"active_customers":3,"push_remaining_this_month":5}'::jsonb,
+  '{"visits":6,"previous":null,"redemptions":2,"active_customers":3,"push_remaining_this_month":5}'::jsonb,
   'all: visits and redemptions are historic, active_customers keeps the 30-day window (RN-67)');
-select is(pg_temp.keys(public.get_metrics('all')), array['active_customers', 'push_remaining_this_month', 'redemptions', 'visits'], 'only aggregates (RN-66)');
+select is(pg_temp.keys(public.get_metrics('all')), array['active_customers', 'previous', 'push_remaining_this_month', 'redemptions', 'visits'], 'only aggregates (RN-66)');
 select pg_temp.exec($$ select set_config('app.fake_now', '2027-05-10 12:00:00-06', true) $$);
 
 -- QR log
@@ -177,7 +177,7 @@ reset role;
 set local role authenticated;
 select pg_temp.as_c2();
 select ok((public.unlock_admin('1234') ->> 'ok')::boolean, 'unlock C2 again');
-select is(public.get_metrics('30d'), '{"visits":4,"redemptions":2,"active_customers":2,"push_remaining_this_month":5}'::jsonb,
+select is(public.get_metrics('30d'), '{"visits":4,"previous":{"visits":2,"redemptions":1},"redemptions":2,"active_customers":2,"push_remaining_this_month":5}'::jsonb,
   'after deleting U2: visits stay, active_customers drops');
 reset role;
 

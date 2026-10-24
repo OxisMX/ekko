@@ -1,16 +1,23 @@
 import * as Sentry from '@sentry/react'
 import { useEffect, useRef } from 'react'
-import { nextSyncMode, parseQrStatus, statusFromRow, type SyncEvent, type SyncMode, type TerminalQrStatus } from './qrState'
+import { nextSyncMode, parseQrProgress, parseQrStatus, statusFromRow, type QrProgress, type SyncEvent, type SyncMode, type TerminalQrStatus } from './qrState'
 import { supabase } from './supabase'
 
 const SYNC_MS = 3000 // F-21: Realtime must subscribe within 3 s; fallback polls every 3 s.
 
 // Watches the QR on screen (F-21, backend §8): Realtime UPDATE on its row, get_qr_status polling
 // while the channel is down. Calls onResolved once per terminal status; pass null to stop.
-export function useQrStatusSync(qrId: string | null, onResolved: (qrId: string, status: TerminalQrStatus) => void) {
+// P-20: when the QR was used, onProgress follows with the card progress (get_qr_status; Realtime only has the row).
+export function useQrStatusSync(
+  qrId: string | null,
+  onResolved: (qrId: string, status: TerminalQrStatus) => void,
+  onProgress?: (progress: QrProgress) => void,
+) {
   const callback = useRef(onResolved)
+  const progressCallback = useRef(onProgress)
   useEffect(() => {
     callback.current = onResolved
+    progressCallback.current = onProgress
   })
 
   useEffect(() => {
@@ -19,11 +26,24 @@ export function useQrStatusSync(qrId: string | null, onResolved: (qrId: string, 
     let mode: SyncMode = 'connecting'
     let pollTimer: ReturnType<typeof setInterval> | undefined
 
-    const resolve = (status: TerminalQrStatus | null) => {
+    // Best effort: without progress the cashier still sees "Visita registrada".
+    const fetchProgress = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_qr_status', { p_qr_id: qrId })
+        const progress = error ? null : parseQrProgress(data)
+        if (progress) progressCallback.current?.(progress)
+      } catch (e) {
+        Sentry.captureException(e)
+      }
+    }
+    const resolve = (status: TerminalQrStatus | null, progress: QrProgress | null = null) => {
       if (stopped || !status) return
       stopped = true
       clearInterval(pollTimer)
       callback.current(qrId, status)
+      if (status !== 'used') return
+      if (progress) progressCallback.current?.(progress)
+      else void fetchProgress()
     }
     const poll = async () => {
       if (stopped) return
@@ -31,7 +51,7 @@ export function useQrStatusSync(qrId: string | null, onResolved: (qrId: string, 
       // WHY: a failed poll (offline tablet) is retried by the next tick; the countdown still runs.
       if (error) return
       const status = parseQrStatus(data)
-      resolve(status === 'pending' ? null : status)
+      resolve(status === 'pending' ? null : status, parseQrProgress(data))
     }
     // A malformed get_qr_status payload is a backend bug: report it, keep the countdown running.
     const pollSafely = () => void poll().catch((e: unknown) => Sentry.captureException(e))

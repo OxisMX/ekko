@@ -8,7 +8,7 @@ async function enterPin(page: Page, pin: string) {
   for (const digit of pin) await page.getByRole('dialog').getByRole('button', { name: digit, exact: true }).click()
 }
 
-test('c1: PIN incorrecto muestra intentos, el correcto entra a Administración y Salir vuelve a Modo Caja', async ({ page }) => {
+test('c1: PIN incorrecto muestra intentos, el correcto entra a Administración y Bloquear y volver a Caja regresa a Modo Caja', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('Correo electrónico').fill('c1@ekko.test')
   await page.getByLabel('Contraseña').fill('ekko-local-123')
@@ -21,10 +21,10 @@ test('c1: PIN incorrecto muestra intentos, el correcto entra a Administración y
 
   await enterPin(page, '1234')
   await expect(page).toHaveURL(/\/admin\/metricas$/)
-  await expect(page.getByText('Sección administrativa desbloqueada')).toBeVisible()
+  await expect(page.getByText(/Se bloquea en/)).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Secciones administrativas' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Salir' }).click()
+  await page.getByRole('button', { name: 'Bloquear y volver a Caja' }).click()
   await expect(page).toHaveURL(/\/$/)
   await page.goto('/admin/menu')
   await expect(page).toHaveURL(/\/$/)
