@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import * as Linking from "expo-linking";
 import * as Haptics from "expo-haptics";
 import WheelScreen from "../../app/wheel/[merchantId]";
 
@@ -29,6 +30,7 @@ jest.mock("../../components/wheel", () => ({
     return null;
   },
 }));
+jest.mock("expo-linking", () => ({ openURL: jest.fn(() => Promise.resolve()) }));
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useLocalSearchParams: () => mockParams }));
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
 
@@ -61,6 +63,13 @@ beforeEach(() => {
 });
 
 describe("A-12 WheelScreen", () => {
+  it("shows the Apple disclaimer and opens the promotion rules (Apple 5.3)", async () => {
+    await renderScreen();
+    expect(await screen.findByText("Apple no patrocina ni participa en esta promoción.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId("wheel-rules"));
+    expect(Linking.openURL).toHaveBeenCalledWith("https://ekko.oxis.mx/terminos#ruleta");
+  });
+
   it("spins with the device digest, shows the coupon and opens it", async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByTestId("wheel-spin"));

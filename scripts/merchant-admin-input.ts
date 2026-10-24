@@ -92,3 +92,11 @@ export function parseRevokeSessionsArgs(argv: string[]): Parsed<{ merchantRef: s
   const parsed = parse(revokeSessionsArgs, argv, { merchant: { type: 'string' } });
   return parsed.ok ? { ok: true, data: { merchantRef: parsed.data.merchant } } : parsed;
 }
+
+const reviewDemoArgs = z.strictObject({ merchant: merchantRef, customer: z.email() });
+
+// prepare-review-demo.ts (App Review account): the customer is always addressed by its auth email.
+export function parseReviewDemoArgs(argv: string[]): Parsed<{ merchantRef: string; customerEmail: string }> {
+  const parsed = parse(reviewDemoArgs, argv, { merchant: { type: 'string' }, customer: { type: 'string' } });
+  return parsed.ok ? { ok: true, data: { merchantRef: parsed.data.merchant, customerEmail: parsed.data.customer } } : parsed;
+}

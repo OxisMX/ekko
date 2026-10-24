@@ -75,6 +75,8 @@ update public.customers c
 set first_name = p.first_name,
     last_name = p.last_name,
     birth_date = p.birth_date,
+    -- WHY explicit: the column default is false (Apple 4.5.4); demo customers stand for opted-in users.
+    push_opt_in = true,
     email_verified_at = p.verified_at
 from (values
   ('10000000-0000-0000-0000-0000000000a1'::uuid, 'Ana', 'Uno', '1995-03-14'::date, app.now()),

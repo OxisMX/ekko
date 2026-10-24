@@ -1,4 +1,5 @@
-import { ERRORS } from "@ekko/shared";
+import { ERRORS, WHEEL_RULES_URL } from "@ekko/shared";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, ScrollView, Text, useWindowDimensions, View } from "react-native";
@@ -11,8 +12,10 @@ import { Button, EmptyState, ErrorState, FormMessage, Skeleton } from "../../com
 import { WheelDisc } from "../../components/wheel";
 import { maybeShowPushExplainer } from "../../features/notifications/pushExplainer";
 import { type SpinResult, useSpinWheel, useWheel } from "../../features/wheel/wheel";
+import { TextLink } from "../../features/auth/TextLink";
 import { toAppError } from "../../lib/appError";
 import { success } from "../../lib/haptics";
+import { reportError } from "../../lib/sentry";
 import { colors, MAX_FONT_SCALE, spacing, textStyles } from "../../theme";
 
 const MAX_DISC = 320;
@@ -114,6 +117,13 @@ export default function WheelScreen() {
           fullWidth
           testID="wheel-spin"
         />
+        {/* Apple 5.3: promotion rules reachable and Apple disclaimer next to the spin. */}
+        <View style={{ alignItems: "center" }}>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.secondary, { color: colors.textSecondary, textAlign: "center" }]}>
+            Apple no patrocina ni participa en esta promoción.
+          </Text>
+          <TextLink label="Ver bases" accessibilityRole="link" onPress={() => void Linking.openURL(WHEEL_RULES_URL).catch(reportError)} testID="wheel-rules" />
+        </View>
       </View>
     );
   }

@@ -8,7 +8,8 @@ export type PermissionExplainerProps = {
   /** camera: pre-prompt (PX-3); denied: the OS will not ask again, so send the user to Settings; notifications: A-16 pre-prompt. */
   variant: "camera" | "denied" | "notifications";
   onPrimary: () => void;
-  onSecondary: () => void;
+  /** Only the denied variant has one: camera/notifications must always lead to the system prompt (Apple 5.1.1(iv)). */
+  onSecondary?: () => void;
   testID?: string;
 };
 
@@ -16,8 +17,7 @@ const copy = {
   camera: {
     title: "Registra tu visita",
     body: "Usamos la cámara solo para leer el código QR que te muestra el cajero. No guardamos fotos ni video.",
-    primary: "Permitir cámara",
-    secondary: "Ahora no",
+    primary: "Continuar",
   },
   denied: {
     title: "La cámara está desactivada",
@@ -28,8 +28,7 @@ const copy = {
   notifications: {
     title: "Entérate de tus sellos",
     body: "Te avisamos cuando un cupón esté por vencer, cuando te falte poco para tu premio y cuando tus negocios tengan ofertas. Nada de spam.",
-    primary: "Activar notificaciones",
-    secondary: "Ahora no",
+    primary: "Continuar",
   },
 } as const;
 
@@ -46,7 +45,8 @@ function CameraIcon() {
 }
 
 export function PermissionExplainer({ variant, onPrimary, onSecondary, testID }: PermissionExplainerProps) {
-  const { title, body, primary, secondary } = copy[variant];
+  const { title, body, primary } = copy[variant];
+  const secondary = variant === "denied" ? copy.denied.secondary : null;
   return (
     <View testID={testID} style={{ alignItems: "center", gap: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing["2xl"] }}>
       <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
@@ -63,17 +63,19 @@ export function PermissionExplainer({ variant, onPrimary, onSecondary, testID }:
       <View style={{ alignSelf: "stretch", gap: spacing.md, marginTop: spacing.sm }}>
         <Button title={primary} onPress={onPrimary} fullWidth testID={testID && `${testID}-primary`} />
         {/* A-17: declining is a quiet text link; the primary action is the only button. */}
-        <Pressable
-          onPress={onSecondary}
-          accessibilityRole="button"
-          accessibilityLabel={secondary}
-          testID={testID && `${testID}-secondary`}
-          style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
-        >
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textSecondary, textDecorationLine: "underline" }]}>
-            {secondary}
-          </Text>
-        </Pressable>
+        {secondary && onSecondary ? (
+          <Pressable
+            onPress={onSecondary}
+            accessibilityRole="button"
+            accessibilityLabel={secondary}
+            testID={testID && `${testID}-secondary`}
+            style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { fontFamily: fontFamily.semibold, color: colors.textSecondary, textDecorationLine: "underline" }]}>
+              {secondary}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

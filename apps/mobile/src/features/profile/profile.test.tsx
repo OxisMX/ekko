@@ -1,6 +1,7 @@
 import { ERRORS } from "@ekko/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import * as ExpoLinking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { Alert, Linking } from "react-native";
@@ -26,6 +27,7 @@ jest.mock("../../lib/supabase", () => ({
 }));
 jest.mock("../../lib/sentry", () => ({ reportError: jest.fn() }));
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+jest.mock("expo-linking", () => ({ openURL: jest.fn(() => Promise.resolve()) }));
 jest.mock("expo-notifications", () => ({ getPermissionsAsync: jest.fn() }));
 jest.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({ status: "signedIn", session: { user: { id: "u1", email: "ana@ekko.mx" } }, signOut: mockSignOut }),
@@ -122,6 +124,16 @@ describe("A-20 Perfil", () => {
     await renderWith(<ProfileScreen />);
     await fireEvent.press(await screen.findByTestId("profile-history"));
     expect(mockRouter.push).toHaveBeenCalledWith("/redemptions");
+  });
+
+  it("opens support, privacy and terms (Apple 5.1.1(i), 1.5)", async () => {
+    await renderWith(<ProfileScreen />);
+    await fireEvent.press(await screen.findByTestId("profile-support"));
+    await fireEvent.press(screen.getByTestId("profile-privacy"));
+    await fireEvent.press(screen.getByTestId("profile-terms"));
+    expect(ExpoLinking.openURL).toHaveBeenNthCalledWith(1, "mailto:soporte@oxis.mx");
+    expect(ExpoLinking.openURL).toHaveBeenNthCalledWith(2, "https://ekko.oxis.mx/privacidad");
+    expect(ExpoLinking.openURL).toHaveBeenNthCalledWith(3, "https://ekko.oxis.mx/terminos");
   });
 
   it("signs out only after confirming, and blocks a second tap", async () => {
