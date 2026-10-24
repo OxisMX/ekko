@@ -112,6 +112,19 @@ jobs:
           VITE_PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
           VITE_SENTRY_DSN: ${{ vars.SENTRY_DSN_PANEL }}
         run: pnpm --filter @ekko/panel build
+      # WHY: the committed CSP allows any *.supabase.co so local/dev builds work; deploys pin the exact project host.
+      - name: Fijar el host de Supabase en la CSP
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+        run: |
+          host="${SUPABASE_URL#*://}"
+          host="${host%%/*}"
+          if [ -z "$host" ]; then
+            echo "::error::No se pudo extraer el host de SUPABASE_URL"
+            exit 1
+          fi
+          sed -i "s/\*\.supabase\.co/$host/g" apps/panel/dist/_headers
+          grep -q "https://$host" apps/panel/dist/_headers
       - name: Publicar en Cloudflare Pages
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:

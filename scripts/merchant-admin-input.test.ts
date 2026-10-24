@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { generatePin, parseResetPinArgs, parseStatusArgs } from './merchant-admin-input.ts';
+import { generatePin, parseResetPinArgs, parseRevokeSessionsArgs, parseStatusArgs } from './merchant-admin-input.ts';
 
 const TODAY = '2026-10-21';
 const ID = '11111111-2222-4333-8444-555555555555';
@@ -59,4 +59,12 @@ test('reset-pin rejects malformed PINs without echoing them', () => {
     assert.ok(!text.includes(pin));
   }
   assert.ok(!parseResetPinArgs(['--pin', '1234']).ok);
+});
+
+test('revoke-sessions takes exactly one merchant reference', () => {
+  assert.deepEqual(ok(parseRevokeSessionsArgs(['--merchant', 'a@b.co'])), { merchantRef: 'a@b.co' });
+  assert.deepEqual(ok(parseRevokeSessionsArgs(['--merchant', ID])), { merchantRef: ID });
+  assert.ok(!parseRevokeSessionsArgs([]).ok);
+  assert.ok(!parseRevokeSessionsArgs(['--merchant', 'nope']).ok);
+  assert.ok(!parseRevokeSessionsArgs(['--merchant', ID, '--all']).ok);
 });

@@ -77,9 +77,3 @@ export const CloudOff = makeIcon((s) => (
     <Path d="M3.5 3.500l17 17" {...s} />
   </>
 ));
-export const Trophy = makeIcon((s) => (
-  <>
-    <Path d="M8 4h8v5a4 4 0 0 1-8 0V4z" {...s} />
-    <Path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M9.5 17h5v3h-5z" {...s} />
-  </>
-));

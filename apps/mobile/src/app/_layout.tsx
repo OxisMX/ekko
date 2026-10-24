@@ -32,6 +32,8 @@ function RootNavigator() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   // NOTE: a font error falls back to the system font instead of blocking the app.
   const fontsReady = fontsLoaded || fontError !== null;
+  // NOTE (A-R4, not applied): embedding fonts with the expo-font plugin would drop this wait, but Expo Go
+  // (used for local testing) cannot load embedded fonts; the bundled TTFs load in milliseconds anyway.
   const ready = route !== "loading" && fontsReady;
 
   useRegisterDeviceOnce(route === "tabs" ? (session?.user.id ?? null) : null);
@@ -74,8 +76,11 @@ function RootNavigator() {
 
 function RootLayout() {
   useEffect(() => {
-    // Fire-and-forget: enforceImageCacheLimit never throws and must not block first render.
-    void enforceImageCacheLimit();
+    // WHY: measuring the cache walks the disk; wait until the JS thread is idle (RN 0.88 dropped
+    // InteractionManager). The timeout keeps the 20 MB cap enforced on a busy start. Its iOS
+    // configureCache call moves with it, so the native cap only lags by that long.
+    const task = requestIdleCallback(() => void enforceImageCacheLimit(), { timeout: 5000 });
+    return () => cancelIdleCallback(task);
   }, []);
 
   return (

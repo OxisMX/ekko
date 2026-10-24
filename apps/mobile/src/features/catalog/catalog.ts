@@ -57,11 +57,17 @@ export function useMerchants(filters: Filters) {
   });
 }
 
+// WHY: one mapped object per list item, so the memoized MerchantCard keeps equal props across renders.
+const cardCache = new WeakMap<MerchantListItem, MerchantCardData>();
+
 export function toMerchantCard(item: MerchantListItem): MerchantCardData {
+  const cached = cardCache.get(item);
+  if (cached) return cached;
   const density = PixelRatio.get();
-  return {
+  const card: MerchantCardData = {
     id: item.id,
     isFavorite: item.is_favorite,
+    mapsUrl: item.maps_url,
     progress: item.progress && {
       stamps: item.progress.stamps,
       required: item.progress.stamps_required,
@@ -73,4 +79,6 @@ export function toMerchantCard(item: MerchantListItem): MerchantCardData {
     logoUri: item.logo_path ? merchantImageUrl(supabaseUrl, item.logo_path, "logo", density) : null,
     coverUri: item.cover_path ? merchantImageUrl(supabaseUrl, item.cover_path, "cover", density) : null,
   };
+  cardCache.set(item, card);
+  return card;
 }

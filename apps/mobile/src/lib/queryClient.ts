@@ -4,7 +4,7 @@ import { AppState, Platform } from "react-native";
 // NOTE: memory-only cache by design (TRD §8.2: JSON data is never persisted to disk).
 export const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1 },
+    queries: { retry: 1, staleTime: 30_000 },
     mutations: { retry: false },
   },
 });

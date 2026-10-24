@@ -1,6 +1,4 @@
-import { useContext } from 'react'
 import { useLocation } from 'react-router'
-import { InsideAdminFrame } from '../lib/insideAdminFrame'
 
 const block = 'rounded-field bg-black/[0.07] motion-safe:animate-pulse'
 
@@ -62,13 +60,12 @@ function AdminFrameSkeleton() {
 }
 
 // Shared by PanelGate (session load) and the lazy route fallbacks in main.tsx (P-18): the shape matches
-// where the user is going. Inside AdminLayout only the section content loads.
-export function PanelSkeleton() {
+// where the user is going. variant="section" (inside AdminLayout) shows only the section content.
+export function PanelSkeleton({ variant }: { variant?: 'section' }) {
   const { pathname } = useLocation()
-  const insideAdmin = useContext(InsideAdminFrame)
   const admin = pathname === '/admin' || pathname.startsWith('/admin/')
 
-  if (insideAdmin && admin) return <SectionSkeleton />
+  if (variant === 'section') return <SectionSkeleton />
   return (
     <div aria-busy="true" data-skeleton={admin ? 'admin' : 'cashier'} className="flex min-h-dvh flex-col">
       <span className="sr-only" role="status">

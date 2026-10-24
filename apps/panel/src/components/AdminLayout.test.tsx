@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthState } from '../auth/AuthContext'
 import type { MerchantSession } from '../lib/panelRoute'
 import { supabase } from '../lib/supabase'
-import { AdminLayout, AdminPlaceholderPage } from './AdminLayout'
+import { AdminLayout } from './AdminLayout'
 import { ADMIN_SECTIONS } from './adminSections'
 import { PanelShell } from './PanelShell'
 
@@ -13,13 +13,14 @@ vi.mock('../lib/supabase', () => ({ supabase: { rpc: vi.fn().mockResolvedValue({
 
 const signOut = vi.fn<AuthState['signOut']>()
 
-function renderAdmin(path: string, adminUnlockedUntil: string | null) {
+function renderAdmin(path: string, adminUnlockedUntil: string | null, failedPinAttempts?: number) {
   const initialSession: MerchantSession = {
     merchant: { id: 'm1', name: 'Café Ekko Centro', logo_path: null },
     is_active: true,
     admin_unlocked_until: adminUnlockedUntil,
     pin_locked_until: null,
     validator_locked_until: null,
+    failed_pin_attempts: failedPinAttempts,
   }
   const queryClient = new QueryClient()
   queryClient.setQueryData(['merchant-session', 'u1'], initialSession)
@@ -37,7 +38,7 @@ function renderAdmin(path: string, adminUnlockedUntil: string | null) {
           {
             path: '/admin',
             element: <AdminLayout />,
-            children: ADMIN_SECTIONS.map((section) => ({ path: section.path, element: <AdminPlaceholderPage section={section} /> })),
+            children: ADMIN_SECTIONS.map((section) => ({ path: section.path, element: <h1>{section.label}</h1> })),
           },
         ],
       },
@@ -71,7 +72,6 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('link', { name: 'Menú' })).toHaveAttribute('aria-current', 'page')
     expect(links.filter((a) => a.hasAttribute('aria-current'))).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1, name: 'Menú' })).toBeInTheDocument()
-    expect(screen.getByText('Disponible próximamente')).toBeInTheDocument()
   })
 
   it('shows a neutral countdown pill and one exit, "Bloquear y volver a Caja" (RT-12, P-15)', () => {
@@ -114,6 +114,18 @@ describe('AdminLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Extender sesión de administración 5 minutos' }))
     await waitFor(() => expect(screen.getByText(/Se bloquea en/)).toHaveTextContent(/[89]:\d\d/))
     expect(rpc).toHaveBeenCalledWith('extend_admin_session')
+  })
+
+  it('P-S1: warns about failed PIN attempts once, with a dismiss button', async () => {
+    renderAdmin('/admin/metricas', inFiveMinutes(), 2)
+    expect(screen.getByRole('status')).toHaveTextContent('Hubo 2 intentos fallidos de PIN desde la última vez que entraste')
+    fireEvent.click(screen.getByRole('button', { name: 'Entendido' }))
+    await waitFor(() => expect(screen.queryByText(/intentos fallidos de PIN/)).not.toBeInTheDocument())
+  })
+
+  it('shows no notice when there were no failed attempts', () => {
+    renderAdmin('/admin/metricas', inFiveMinutes(), 0)
+    expect(screen.queryByText(/intentos? fallidos? de PIN/)).not.toBeInTheDocument()
   })
 
   it('disables the extension once 10 minutes or more remain (server caps at 15)', () => {

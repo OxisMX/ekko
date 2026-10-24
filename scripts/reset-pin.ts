@@ -18,7 +18,8 @@ try {
     const updated = await tx`
       update private.merchant_security
       set pin_hash = extensions.crypt(${pin}, extensions.gen_salt('bf')),
-          pin_failed_count = 0, pin_locked_until = null, updated_at = app.now()
+          pin_failed_count = 0, pin_locked_until = null, pin_lockouts = 0, pin_failed_since_success = 0,
+          updated_at = app.now()
       where merchant_id = ${found.id}`;
     if (updated.count === 0) throw new Error('the merchant has no security row');
     await tx`delete from private.merchant_admin_sessions where merchant_id = ${found.id}`;

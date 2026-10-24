@@ -22,6 +22,7 @@ test('c1: PIN incorrecto muestra intentos, el correcto entra a Administración y
   await enterPin(page, '1234')
   await expect(page).toHaveURL(/\/admin\/metricas$/)
   await expect(page.getByText(/Se bloquea en/)).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: /intentos? fallidos? de PIN/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Secciones administrativas' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Bloquear y volver a Caja' }).click()

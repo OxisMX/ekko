@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
+import { render, screen } from "@testing-library/react-native";
 import { StampCard, type StampCardProps } from "./StampCard";
 
 const stamp = (grantedAt: string) => ({ grantedAt, isBonus: false });
@@ -99,12 +100,17 @@ describe("StampCard", () => {
   });
 
   it("draws perfect circles, capped at 64 and shrunk to the slot when narrow", async () => {
+    const dimensions = jest.spyOn(Dimensions, "get");
+    dimensions.mockReturnValue({ width: 400, height: 800, scale: 1, fontScale: 1 });
     await render(<StampCard {...base} />);
     expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ width: 64, height: 64, borderRadius: 32 });
-    // 4 per row in a 200-wide grid: (200 - 3 * 8) / 4 = 44.
-    await fireEvent(screen.getAllByTestId("stamp-row")[0]!.parent!, "layout", { nativeEvent: { layout: { width: 200, height: 100 } } });
+    await screen.unmount();
+    // 4 per row on a 264-wide screen: (264 - 4 * 16 - 3 * 8) / 4 = 44.
+    dimensions.mockReturnValue({ width: 264, height: 800, scale: 1, fontScale: 1 });
+    await render(<StampCard {...base} />);
     expect(screen.getAllByTestId("stamp-empty")[0]).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
     expect(screen.getAllByTestId("stamp-granted")[0]).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
+    dimensions.mockRestore();
   });
 
   const imageUris = () =>

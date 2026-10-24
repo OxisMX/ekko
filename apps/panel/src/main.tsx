@@ -16,10 +16,10 @@ import { LoginPage } from './pages/LoginPage.tsx'
 initSentry()
 
 // WHY: NF-05 — login and Modo Caja must not download admin-only code (forms, image processing).
-function lazyRoute(load: () => Promise<Record<string, unknown>>, name: string) {
+function lazyRoute(load: () => Promise<Record<string, unknown>>, name: string, variant?: 'section') {
   const Page = lazy(async () => ({ default: (await load())[name] as ComponentType }))
   return (
-    <Suspense fallback={<PanelSkeleton />}>
+    <Suspense fallback={<PanelSkeleton variant={variant} />}>
       <Page />
     </Suspense>
   )
@@ -37,17 +37,17 @@ const router = createBrowserRouter([
         element: lazyRoute(() => import('./components/AdminLayout.tsx'), 'AdminLayout'),
         children: [
           { index: true, element: <Navigate to="metricas" replace /> },
-          { path: 'tarjeta', element: lazyRoute(() => import('./pages/CardConfigPage.tsx'), 'CardConfigPage') },
-          { path: 'menu', element: lazyRoute(() => import('./pages/MenuPage.tsx'), 'MenuPage') },
-          { path: 'menu/nuevo', element: lazyRoute(() => import('./pages/ProductFormPage.tsx'), 'ProductFormPage') },
-          { path: 'menu/:productId', element: lazyRoute(() => import('./pages/ProductFormPage.tsx'), 'ProductFormPage') },
-          { path: 'ofertas', element: lazyRoute(() => import('./pages/OffersPage.tsx'), 'OffersPage') },
-          { path: 'ofertas/nueva', element: lazyRoute(() => import('./pages/OfferFormPage.tsx'), 'OfferFormPage') },
-          { path: 'ofertas/:offerId', element: lazyRoute(() => import('./pages/OfferFormPage.tsx'), 'OfferFormPage') },
-          { path: 'notificaciones', element: lazyRoute(() => import('./pages/PushPage.tsx'), 'PushPage') },
-          { path: 'metricas', element: lazyRoute(() => import('./pages/MetricsPage.tsx'), 'MetricsPage') },
-          { path: 'perfil', element: lazyRoute(() => import('./pages/ProfilePage.tsx'), 'ProfilePage') },
-          { path: 'qr', element: lazyRoute(() => import('./pages/QrLogPage.tsx'), 'QrLogPage') },
+          { path: 'tarjeta', element: lazyRoute(() => import('./pages/CardConfigPage.tsx'), 'CardConfigPage', 'section') },
+          { path: 'menu', element: lazyRoute(() => import('./pages/MenuPage.tsx'), 'MenuPage', 'section') },
+          { path: 'menu/nuevo', element: lazyRoute(() => import('./pages/ProductFormPage.tsx'), 'ProductFormPage', 'section') },
+          { path: 'menu/:productId', element: lazyRoute(() => import('./pages/ProductFormPage.tsx'), 'ProductFormPage', 'section') },
+          { path: 'ofertas', element: lazyRoute(() => import('./pages/OffersPage.tsx'), 'OffersPage', 'section') },
+          { path: 'ofertas/nueva', element: lazyRoute(() => import('./pages/OfferFormPage.tsx'), 'OfferFormPage', 'section') },
+          { path: 'ofertas/:offerId', element: lazyRoute(() => import('./pages/OfferFormPage.tsx'), 'OfferFormPage', 'section') },
+          { path: 'notificaciones', element: lazyRoute(() => import('./pages/PushPage.tsx'), 'PushPage', 'section') },
+          { path: 'metricas', element: lazyRoute(() => import('./pages/MetricsPage.tsx'), 'MetricsPage', 'section') },
+          { path: 'perfil', element: lazyRoute(() => import('./pages/ProfilePage.tsx'), 'ProfilePage', 'section') },
+          { path: 'qr', element: lazyRoute(() => import('./pages/QrLogPage.tsx'), 'QrLogPage', 'section') },
         ],
       },
     ],

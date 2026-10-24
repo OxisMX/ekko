@@ -8,7 +8,7 @@ import { CouponCard } from "../../components/coupon";
 import { Button, EmptyState, ErrorState, SegmentedTabs, Skeleton } from "../../components/ui";
 import { toAppError } from "../../lib/appError";
 import { colors, spacing } from "../../theme";
-import { imageUri, useMerchantDetail } from "../merchant/merchantDetail";
+import { imageUri } from "../merchant/merchantDetail";
 import { wheelIsOffered } from "../wheel/wheel";
 import { type MyCoupon, useMyCoupons } from "../coupons/myCoupons";
 import { sortCards } from "./cardOrder";
@@ -74,13 +74,11 @@ function badgeFor(card: MyCard): string | undefined {
 
 // Wallet stack: every card but the last is cut to its header strip, and the next card paints over the rest.
 function WalletCard({ card, isLast, onPress }: { card: MyCard; isLast: boolean; onPress: () => void }) {
-  // WHY: list_my_cards has no stamp dates, reward or artwork; the detail query (cached, shared with A-09) does.
-  const detail = useMerchantDetail(card.merchant_id).data;
   const header = { logoUri: imageUri(card.logo_path, "logo"), name: card.merchant_name, badge: badgeFor(card) };
   const expires = formatDate(card.cycle_expires_at);
   const label = [
     `${card.merchant_name}, ${card.stamps_count} de ${card.stamps_required} sellos`,
-    detail && `premio ${detail.card.reward_title}`,
+    `premio ${card.reward_title}`,
     `vence el ${expires}`,
     header.badge,
   ]
@@ -95,24 +93,20 @@ function WalletCard({ card, isLast, onPress }: { card: MyCard; isLast: boolean; 
         testID={`my-card-${card.merchant_id}`}
         style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
-        {detail ? (
-          <StampCard
-            stampsRequired={card.stamps_required}
-            stamps={detail.card.stamps.map((s) => ({ grantedAt: s.granted_at, isBonus: s.is_bonus }))}
-            logoUri={header.logoUri}
-            stampImageUri={imageUri(detail.card.stamp_image_path ?? card.stamp_image_path, "logo")}
-            merchantName={card.merchant_name}
-            backgroundUri={imageUri(detail.card.background_path, "card")}
-            rewardTitle={detail.card.reward_title}
-            cycleExpiresAt={card.cycle_expires_at}
-            pendingExtraStamps={detail.card.pending_extra_stamps}
-            rewardAvailable={card.reward_available}
-            available={card.merchant_available}
-            header={header}
-          />
-        ) : (
-          <WalletCardSkeleton header={{ header, progress: `${card.stamps_count}/${card.stamps_required}`, dimmed: !card.merchant_available }} />
-        )}
+        <StampCard
+          stampsRequired={card.stamps_required}
+          stamps={card.stamps.map((s) => ({ grantedAt: s.granted_at, isBonus: s.is_bonus }))}
+          logoUri={header.logoUri}
+          stampImageUri={imageUri(card.stamp_image_path, "logo")}
+          merchantName={card.merchant_name}
+          backgroundUri={imageUri(card.background_path, "card")}
+          rewardTitle={card.reward_title}
+          cycleExpiresAt={card.cycle_expires_at}
+          pendingExtraStamps={card.pending_extra_stamps}
+          rewardAvailable={card.reward_available}
+          available={card.merchant_available}
+          header={header}
+        />
       </Pressable>
     </View>
   );

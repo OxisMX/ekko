@@ -53,17 +53,16 @@ function ExploreScreen() {
     if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
 
+  // WHY: stable callbacks (mutate is stable, the mutation object is not) keep the memoized cards from re-rendering.
+  const { mutate: mutateFavorite } = toggleFavorite;
+  const openMerchant = useCallback((id: string, name: string) => router.push({ pathname: "/merchant/[id]", params: { id, name } }), [router]);
+  const openMap = useCallback((url: string) => openExternalUrl(url, "No pudimos abrir la ubicación de este negocio."), []);
+  const toggle = useCallback((merchantId: string, isFavorite: boolean) => mutateFavorite({ merchantId, isFavorite }), [mutateFavorite]);
   const renderItem = useCallback<ListRenderItem<MerchantListItem>>(
     ({ item }) => (
-      <MerchantCard
-        merchant={toMerchantCard(item)}
-        onPress={() => router.push({ pathname: "/merchant/[id]", params: { id: item.id, name: item.name } })}
-        onOpenMap={() => openExternalUrl(item.maps_url, "No pudimos abrir la ubicación de este negocio.")}
-        onToggleFavorite={() => toggleFavorite.mutate({ merchantId: item.id, isFavorite: item.is_favorite })}
-        testID={`merchant-card-${item.id}`}
-      />
+      <MerchantCard merchant={toMerchantCard(item)} onPress={openMerchant} onOpenMap={openMap} onToggleFavorite={toggle} testID={`merchant-card-${item.id}`} />
     ),
-    [router, toggleFavorite]
+    [openMerchant, openMap, toggle]
   );
 
   let emptyState;

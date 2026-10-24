@@ -12,7 +12,8 @@ import { useNow } from './useNow'
 // Contract: backend §4.5 unlock_admin. A wrong PIN returns ok:false (does not throw) so the
 // attempt counter persists; E-15 comes back the same way on the attempt that locks.
 const unlockSchema = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), admin_unlocked_until: z.string() }),
+  // failed_attempts: wrong PINs since the last correct one (P-S1); default 0 tolerates an older backend.
+  z.object({ ok: z.literal(true), admin_unlocked_until: z.string(), failed_attempts: z.number().default(0) }),
   z.object({
     ok: z.literal(false),
     error: z.enum(['E-14', 'E-15']),
@@ -21,11 +22,11 @@ const unlockSchema = z.discriminatedUnion('ok', [
   }),
 ])
 
-export type UnlockOutcome = { kind: 'unlocked'; until: string } | { kind: 'wrong'; remaining: number } | { kind: 'locked'; until: number }
+export type UnlockOutcome = { kind: 'unlocked'; until: string; failedAttempts: number } | { kind: 'wrong'; remaining: number } | { kind: 'locked'; until: number }
 
 export function parseUnlock(data: unknown): UnlockOutcome {
   const parsed = unlockSchema.parse(data)
-  if (parsed.ok) return { kind: 'unlocked', until: parsed.admin_unlocked_until }
+  if (parsed.ok) return { kind: 'unlocked', until: parsed.admin_unlocked_until, failedAttempts: parsed.failed_attempts }
   if (parsed.error === 'E-14' && parsed.remaining !== undefined) return { kind: 'wrong', remaining: parsed.remaining }
   if (parsed.error === 'E-15' && parsed.locked_until !== undefined) return { kind: 'locked', until: Date.parse(parsed.locked_until) }
   throw new z.ZodError([{ code: 'custom', path: [], message: `${parsed.error} without its detail` }])
@@ -70,6 +71,7 @@ export function useAdminUnlock(initialLockedUntil: string | null, onUnlocked: ()
         patchSession({
           admin_unlocked_until: outcome.until,
           pin_locked_until: null,
+          failed_pin_attempts: outcome.failedAttempts,
         })
         onUnlocked()
       } else if (outcome.kind === 'wrong') setNotice({ code: 'E-14', remaining: outcome.remaining })
@@ -87,6 +89,7 @@ export function useAdminUnlock(initialLockedUntil: string | null, onUnlocked: ()
 
   return {
     locked,
+    lockedUntil,
     secondsLeft: lockedUntil === null ? 0 : Math.max(0, Math.ceil((lockedUntil - now) / 1000)),
     notice,
     isPending: unlock.isPending,

@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { FavoriteButton } from "../ui/FavoriteButton";
@@ -20,15 +20,17 @@ export type MerchantCardData = {
   coverUri: string | null;
   logoUri: string | null;
   isFavorite: boolean;
+  mapsUrl: string;
   /** A-19: null when the user has no card here yet. */
   progress: { stamps: number; required: number; rewardTitle: string } | null;
 };
 
 export type MerchantCardProps = {
   merchant: MerchantCardData;
-  onPress: () => void;
-  onOpenMap: () => void;
-  onToggleFavorite: () => void;
+  // WHY: callbacks receive the card's values so the screen can pass one stable function to every card (memo).
+  onPress: (id: string, name: string) => void;
+  onOpenMap: (url: string) => void;
+  onToggleFavorite: (id: string, isFavorite: boolean) => void;
   testID?: string;
 };
 
@@ -84,13 +86,13 @@ function EmptyCover({ name }: { name: string }) {
   );
 }
 
-export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, testID }: MerchantCardProps) {
-  const { name, categoryLabel, description, coverUri, logoUri, isFavorite, progress } = merchant;
+export const MerchantCard = memo(function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, testID }: MerchantCardProps) {
+  const { id, name, mapsUrl, categoryLabel, description, coverUri, logoUri, isFavorite, progress } = merchant;
   const [failedCoverUri, setFailedCoverUri] = useState<string | null>(null);
   const [pressed, setPressed] = useState(false);
   // WHY: "Ver mapa" is a sibling of the open Pressable, because nested touchables would be
   // merged into one element by screen readers and swallow the map action.
-  const open = { onPress, onPressIn: () => setPressed(true), onPressOut: () => setPressed(false) };
+  const open = { onPress: () => onPress(id, name), onPressIn: () => setPressed(true), onPressOut: () => setPressed(false) };
 
   return (
     <View testID={testID}>
@@ -144,7 +146,7 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
         {/* A-21: "Ver mapa" is an outlined button in the bottom-right corner, inset from the card border. */}
         <View style={{ flexDirection: "row", justifyContent: "flex-end", padding: spacing.lg }}>
           <Pressable
-            onPress={onOpenMap}
+            onPress={() => onOpenMap(mapsUrl)}
             accessibilityRole="button"
             accessibilityLabel="Abrir en Google Maps"
             style={({ pressed: mapPressed }) => ({
@@ -169,10 +171,10 @@ export function MerchantCard({ merchant, onPress, onOpenMap, onToggleFavorite, t
       {/* WHY: sibling of the card, so tapping the heart never opens the merchant. */}
       <FavoriteButton
         isFavorite={isFavorite}
-        onToggle={onToggleFavorite}
+        onToggle={() => onToggleFavorite(id, isFavorite)}
         testID={testID && `${testID}-favorite`}
         style={{ position: "absolute", top: spacing.sm, right: spacing.sm }}
       />
     </View>
   );
-}
+});

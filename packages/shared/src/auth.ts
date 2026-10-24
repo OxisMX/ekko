@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ERRORS } from "./errors";
-import { MIN_AGE, TIMEZONE } from "./rules";
+import { MIN_AGE, PASSWORD_MIN_LENGTH, TIMEZONE } from "./rules";
 
 // WHY: client-side mirror of the server rules (F-02 validations, complete_profile); the DB stays
 // authoritative and re-checks everything.
@@ -44,7 +44,12 @@ const name = (label: string) =>
 
 const email = z.string().trim().pipe(z.email({ error: "Escribe un correo válido, por ejemplo nombre@correo.com." }));
 
-const newPassword = z.string().min(8, { error: "Tu contraseña debe tener al menos 8 caracteres." });
+// NOTE: mirrors Auth's `letters_digits` policy (config.toml); Supabase enforces it server-side.
+const newPassword = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, { error: `Usa al menos ${PASSWORD_MIN_LENGTH} caracteres.` })
+  .regex(/\p{L}/u, { error: "Incluye letras y números." })
+  .regex(/\d/, { error: "Incluye letras y números." });
 
 const birthDate = z
   .string()

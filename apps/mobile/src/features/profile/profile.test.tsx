@@ -107,6 +107,7 @@ describe("A-20 Perfil", () => {
     const cardRow = (n: number, stamps: number) => ({
       merchant_id: `m${n}`, merchant_name: "Café", logo_path: null, stamp_image_path: null, merchant_available: true,
       stamps_count: stamps, stamps_required: 8, cycle_expires_at: "2027-01-01T00:00:00Z", reward_available: false, wheel_status: "none",
+      stamps: [], reward_title: "Café americano", background_path: null, pending_extra_stamps: 0,
     });
     mockSupabase.rpc.mockImplementation((name: string) =>
       Promise.resolve({ data: name === "list_my_cards" ? [cardRow(1, 3), cardRow(2, 4)] : name === "list_my_redemptions" ? [row(1)] : profile, error: null })

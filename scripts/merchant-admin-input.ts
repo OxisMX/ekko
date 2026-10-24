@@ -18,6 +18,8 @@ const resetPinArgs = z.strictObject({
   pin: z.string().regex(/^\d{4}$/).optional(),
 });
 
+const revokeSessionsArgs = z.strictObject({ merchant: merchantRef });
+
 export type Parsed<T> = { ok: true; data: T } | { ok: false; errors: string[] };
 
 // Messages describe the rule, never the value, so a --pin typo cannot leak into the output.
@@ -84,4 +86,9 @@ export function parseResetPinArgs(argv: string[], rand?: (max: number) => number
   if (!parsed.ok) return parsed;
   const { merchant, pin } = parsed.data;
   return { ok: true, data: { merchantRef: merchant, pin: pin ?? generatePin(rand), generated: pin === undefined } };
+}
+
+export function parseRevokeSessionsArgs(argv: string[]): Parsed<{ merchantRef: string }> {
+  const parsed = parse(revokeSessionsArgs, argv, { merchant: { type: 'string' } });
+  return parsed.ok ? { ok: true, data: { merchantRef: parsed.data.merchant } } : parsed;
 }

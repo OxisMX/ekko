@@ -9,3 +9,4 @@ export const REDEMPTION_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const COUPON_VALIDITY = { wheelHours: 48, cardRewardDays: 30 } as const;
 export const TIMEZONE = "America/Mexico_City";
 export const MIN_AGE = 18;
+export const PASSWORD_MIN_LENGTH = 10;
