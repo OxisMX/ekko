@@ -8,7 +8,15 @@ import { useMerchantSession } from './panelOutlet'
 const PIN_LENGTH = 4
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
-const formatCountdown = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+// WHY hours: lockouts escalate 15 min -> 1 h -> 24 h, so minutes alone would read "1439:59".
+const formatCountdown = (seconds: number) => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hours = Math.floor(seconds / 3600)
+  const rest = `${pad(Math.floor((seconds % 3600) / 60))}:${pad(seconds % 60)}`
+  return hours > 0 ? `${hours}:${rest}` : `${Math.floor(seconds / 60)}:${pad(seconds % 60)}`
+}
+
+const formatClock = (ms: number) => new Date(ms).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
 
 function noticeText({ code, remaining }: UnlockNotice) {
   if (code === 'E-14' && remaining !== undefined)
@@ -72,6 +80,7 @@ export function PinDialog({ onUnlocked, onCancel, cancelLabel }: { onUnlocked: (
               <p className="font-semibold">{ERRORS['E-15'].message}</p>
               <p className="text-sm">
                 Podrás intentar de nuevo en <span className="font-bold tabular-nums">{formatCountdown(unlock.secondsLeft)}</span>
+                {unlock.secondsLeft >= 3600 && unlock.lockedUntil && <> (hasta el {formatClock(unlock.lockedUntil)}). También puedes pedir ayuda a Oxis.</>}
               </p>
             </div>
           </div>

@@ -124,7 +124,7 @@ describe('P-04 PIN unlock', () => {
     rpc.mockResolvedValueOnce({ data: { ok: false, error: 'E-15', locked_until: inMs(90_000) }, error: null })
     openPin()
     await typePin('0000')
-    expect(screen.getByRole('alert')).toHaveTextContent('Acceso bloqueado por 15 minutos')
+    expect(screen.getByRole('alert')).toHaveTextContent('Acceso bloqueado por demasiados intentos fallidos')
     expect(screen.getByText('1:30')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '1' })).toBeDisabled()
     await flush(90_000)

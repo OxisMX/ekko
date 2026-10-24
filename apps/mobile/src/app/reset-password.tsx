@@ -1,4 +1,4 @@
-import { ERRORS, resetPasswordSchema, type ResetPasswordValues } from "@ekko/shared";
+import { ERRORS, PASSWORD_MIN_LENGTH, resetPasswordSchema, type ResetPasswordValues } from "@ekko/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAuthApiError } from "@supabase/supabase-js";
 import { useMutation } from "@tanstack/react-query";
@@ -115,7 +115,7 @@ function NewPasswordForm({ onDone }: { onDone: () => void }) {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={fieldState.error?.message}
-            helper="Mínimo 8 caracteres"
+            helper={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres, con letras y números`}
             textContentType="newPassword"
             autoComplete="new-password"
             returnKeyType="next"

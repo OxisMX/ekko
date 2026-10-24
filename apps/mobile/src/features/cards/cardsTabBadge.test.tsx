@@ -15,6 +15,7 @@ jest.mock("../../lib/supabase", () => ({
 const card = (reward: boolean) => ({
   merchant_id: "m1", merchant_name: "Café", logo_path: null, stamp_image_path: null, merchant_available: true,
   stamps_count: 1, stamps_required: 8, cycle_expires_at: "2027-01-01T00:00:00Z", reward_available: reward, wheel_status: "none",
+  stamps: [], reward_title: "Café americano", background_path: null, pending_extra_stamps: 0,
 });
 const coupon = { id: "c1", merchant_id: "m1", merchant_name: "Café", source: "wheel", title: "2x1", description: null, terms: null, expires_at: "2027-01-01T00:00:00Z", merchant_available: true };
 

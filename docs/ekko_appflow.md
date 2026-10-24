@@ -570,7 +570,7 @@ Las RPC devuelven un código estable; la interfaz traduce cada código a un mens
 | E-12 | Código no encontrado | F-22 | Código no válido. | Revisar y volver a capturar. |
 | E-13 | Validador bloqueado | F-22 | Demasiados intentos. Espera unos minutos. | Esperar el tiempo indicado. |
 | E-14 | PIN incorrecto | F-23 | PIN incorrecto. Te quedan N intentos. | Reintentar. |
-| E-15 | PIN bloqueado | F-23 | Acceso bloqueado por 15 minutos. | Esperar o contactar a Oxis. |
+| E-15 | PIN bloqueado | F-23 | Acceso bloqueado por demasiados intentos fallidos (15 min, luego 1 h, luego 24 h). | Esperar o contactar a Oxis. |
 | E-16 | Sesión administrativa vencida | F-23, F-24 a F-27 | Ingresa tu PIN para continuar. | P-04 conservando el formulario. |
 | E-17 | Límite de push alcanzado | F-27 | Usaste tus 5 envíos de este mes. | Esperar al siguiente mes. |
 | E-18 | Sesión expirada | Global | Tu sesión expiró. | Iniciar sesión; regresar al destino previo. |

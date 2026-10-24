@@ -34,6 +34,10 @@ const card = (over: Partial<MyCard> = {}): MyCard => ({
   cycle_expires_at: "2027-04-12T12:00:00Z",
   reward_available: false,
   wheel_status: "no_wheel",
+  stamps: ["01", "08", "15"].map((day) => ({ granted_at: `2026-10-${day}T17:00:00Z`, is_bonus: false })),
+  reward_title: "Café americano",
+  background_path: null,
+  pending_extra_stamps: 0,
   ...over,
 });
 
@@ -46,34 +50,8 @@ function renderCards() {
   );
 }
 
-const detail = {
-  merchant: { id: "m1", name: "Café La Esquina", category: "cafeterias_postres", description: null, address: null, logo_path: null, cover_path: null, maps_url: null, reviews_url: null, available: true, is_favorite: false },
-  card: {
-    stamp_image_path: null,
-    has_relation: true,
-    stamps_required: 6,
-    stamps: ["01", "08", "15"].map((day) => ({ granted_at: `2026-10-${day}T17:00:00Z`, is_bonus: false })),
-    cycle_expires_at: "2027-04-12T12:00:00Z",
-    reward_title: "Café americano",
-    reward_description: null,
-    terms: null,
-    background_path: null,
-    pending_extra_stamps: 0,
-    reward_coupon_id: null,
-    stamped_today: false,
-  },
-  wheel: { status: "no_wheel" },
-  menu: { categories: [], products: [] },
-  offers: [],
-  coupons: [],
-};
-
-// list_my_cards answers `cardsResult`; get_merchant_detail (one per stacked card) answers `detail`.
+const answerRpc = (name: string) => Promise.resolve(name === "list_my_cards" ? cardsResult : { data: [], error: null });
 let cardsResult: { data: unknown; error: unknown };
-const answerRpc = (name: string) => {
-  if (name === "list_my_cards") return Promise.resolve(cardsResult);
-  return Promise.resolve({ data: name === "get_merchant_detail" ? detail : [], error: null });
-};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -93,7 +71,7 @@ describe("A-12 Mis Tarjetas", () => {
     expect(await screen.findByTestId("coupons-empty")).toBeOnTheScreen();
   });
 
-  it("shows a loading placeholder, then the stacked card with its real stamp card", async () => {
+  it("shows a loading placeholder, then the stacked card with its stamp card from the list item", async () => {
     // WHY: shared skeleton awaits the reduce-motion setting, which lets a render flush resolve instant mocks; delay data so the loading state is observable.
     mockSupabase.rpc.mockImplementation((name: string) => new Promise((resolve) => setTimeout(() => resolve(answerRpc(name)), 50)));
     await renderCards();
@@ -104,6 +82,7 @@ describe("A-12 Mis Tarjetas", () => {
     expect(screen.getByText("Vence el 12/04/2027")).toBeOnTheScreen();
     expect(screen.queryByText("Premio listo")).toBeNull();
     expect(mockSupabase.rpc).toHaveBeenCalledWith("list_my_cards");
+    expect(mockSupabase.rpc).not.toHaveBeenCalledWith("get_merchant_detail", expect.anything());
   });
 
   it("shows the reward and wheel states in the strip and a full accessibility label", async () => {

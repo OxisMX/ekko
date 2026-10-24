@@ -104,12 +104,6 @@ export const UnlockIcon = (p: IconProps) => (
   </Svg>
 )
 
-export const ArrowLeftIcon = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M19 12H5M11 6l-6 6 6 6" />
-  </Svg>
-)
-
 export const StoreIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 9l1.5-5h13L20 9M4 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 6 0 2.5 2.5 0 0 0 5 0M5 12v8h14v-8M10 20v-4h4v4" />

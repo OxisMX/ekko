@@ -16,6 +16,10 @@ const myCardsSchema = z.array(
     cycle_expires_at: z.string(),
     reward_available: z.boolean(),
     wheel_status: z.string(),
+    stamps: z.array(z.object({ granted_at: z.string(), is_bonus: z.boolean() })),
+    reward_title: z.string(),
+    background_path: z.string().nullable(),
+    pending_extra_stamps: z.number(),
   })
 );
 

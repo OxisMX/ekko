@@ -96,6 +96,15 @@ describe("A-02 Iniciar sesión", () => {
 });
 
 describe("A-03 Crear cuenta", () => {
+  it("states the password rule and rejects a short or letters-only password", async () => {
+    await renderScreen(<RegisterScreen />);
+    expect(screen.getByText("Mínimo 10 caracteres, con letras y números")).toBeOnTheScreen();
+    await fillRegister(new Date(2000, 0, 15));
+    await type("Contraseña", "sololetrasaqui");
+    await fireEvent.press(screen.getByTestId("register-submit"));
+    await waitFor(() => expect(mockSupabase.auth.signUp).not.toHaveBeenCalled());
+  });
+
   it("blocks an under-18 birth date before calling signUp (E-07 at the field)", async () => {
     await renderScreen(<RegisterScreen />);
     const today = new Date();

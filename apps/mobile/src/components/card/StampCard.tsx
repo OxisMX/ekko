@@ -1,7 +1,7 @@
 import { stampGridRows } from "@ekko/shared";
 import { Image } from "expo-image";
 import { useEffect, useRef, useState } from "react";
-import { Animated, type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import * as haptics from "../../lib/haptics";
 import { colors, fontFamily, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
@@ -45,6 +45,8 @@ export const STAMP_CARD_HEADER_HEIGHT = 64;
 const STAMP_MAX = 64;
 const NEW_RING = 3;
 const SLOT_GAP = spacing.sm;
+// Screen margin (list/scroll padding) plus the card's own padding, on both sides; every screen that hosts the card uses spacing.lg.
+const HORIZONTAL_INSETS = 4 * spacing.lg;
 const RING_FADE_MS = 1500;
 
 const dateText = [textStyles.label, { letterSpacing: 0, textTransform: "none" as const, color: colors.textPrimary, textAlign: "center" as const }];
@@ -186,8 +188,7 @@ export function StampCard({
   testID,
 }: StampCardProps) {
   const [failedBgUri, setFailedBgUri] = useState<string | null>(null);
-  // WHY: stamps are sized from the measured grid width; before the first layout they use the max size.
-  const [gridWidth, setGridWidth] = useState<number | null>(null);
+  const { width: windowWidth } = useWindowDimensions();
   const rows = stampGridRows(stampsRequired);
   const perRow = rows[0] ?? stampsRequired;
   const granted = Math.min(stamps.length, stampsRequired);
@@ -214,7 +215,8 @@ export function StampCard({
     .filter(Boolean)
     .join(". ");
   const showBg = backgroundUri && backgroundUri !== failedBgUri;
-  const slotWidth = gridWidth === null ? STAMP_MAX : Math.max(0, Math.floor((gridWidth - SLOT_GAP * (perRow - 1)) / perRow));
+  // WHY: derived from the window instead of an onLayout measurement, which cost a second render per card.
+  const slotWidth = Math.max(0, Math.floor((windowWidth - HORIZONTAL_INSETS - SLOT_GAP * (perRow - 1)) / perRow));
   const diameter = Math.min(STAMP_MAX, slotWidth);
 
   const grid = rows.map((count, rowIndex) => {
@@ -278,7 +280,7 @@ export function StampCard({
             Inside a stack the surrounding button already carries the label. */}
         <View accessible={!header} accessibilityLabel={header ? undefined : summary} style={{ gap: spacing.lg }}>
           {/* RN-71: only the grid is dimmed; text keeps AA contrast. */}
-          <View onLayout={(e: LayoutChangeEvent) => setGridWidth(e.nativeEvent.layout.width)} style={{ gap: spacing.md, opacity: available ? 1 : 0.5 }}>
+          <View style={{ gap: spacing.md, opacity: available ? 1 : 0.5 }}>
             {grid}
           </View>
           <View style={{ gap: spacing.xs }}>

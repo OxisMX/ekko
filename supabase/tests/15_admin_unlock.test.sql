@@ -84,7 +84,7 @@ select is((public.get_merchant_session() ->> 'pin_locked_until')::timestamptz, (
 -- Success
 select pg_temp.at(interval '15 min 1 s');
 select is(public.unlock_admin('0000') ->> 'remaining', '4', 'expired lock restarts the count: 4 remaining');
-select is(pg_temp.keys(public.unlock_admin('1234')), array['admin_unlocked_until', 'ok'], 'success keys');
+select is(pg_temp.keys(public.unlock_admin('1234')), array['admin_unlocked_until', 'failed_attempts', 'ok'], 'success keys');
 select is(pg_temp.counter(), '0/-', 'success resets the counter and the lock');
 select is((public.unlock_admin('1234') ->> 'admin_unlocked_until')::timestamptz, (select base + interval '20 min 1 s' from ctx),
   'session lasts 5 min from now (RN-64)');

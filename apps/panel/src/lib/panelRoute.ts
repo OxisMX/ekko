@@ -8,6 +8,8 @@ export type MerchantSession = {
   admin_unlocked_until: string | null
   pin_locked_until: string | null
   validator_locked_until: string | null
+  // Client-only: wrong PINs before the last correct unlock, set by useAdminUnlock for the owner notice (P-S1).
+  failed_pin_attempts?: number
 }
 
 export type PanelRoute = 'login' | 'cashier' | 'inactive'

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildOnboardingPlan, parseMerchantInput } from './merchant-input.ts';
+import { buildOnboardingPlan, generatePassword, parseMerchantInput } from './merchant-input.ts';
 
 const example = JSON.parse(readFileSync(new URL('./examples/merchant.example.json', import.meta.url), 'utf8'));
 const MERCHANT_ID = '11111111-2222-4333-8444-555555555555';
@@ -46,7 +46,9 @@ const rejections: Array<[string, string[], unknown]> = [
   ['unknown billing_period', ['billing_period'], 'monthly'],
   ['invalid paid_until', ['paid_until'], '2026-02-30'],
   ['invalid email', ['email'], 'nope'],
-  ['password under 12 chars', ['password'], 'short-pass1'],
+  ['password under 10 chars', ['password'], 'short-pa1'],
+  ['password without a digit', ['password'], 'only-letters-here'],
+  ['password without a letter', ['password'], '1234567890123'],
   ['3-digit PIN', ['pin'], '123'],
   ['non-digit PIN', ['pin'], '12a4'],
   ['numeric PIN', ['pin'], 1234],
@@ -102,4 +104,13 @@ test('the plan never contains the PIN or the password', () => {
   const text = JSON.stringify(buildOnboardingPlan(result.data, MERCHANT_ID));
   assert.ok(!text.includes(example.pin), 'PIN leaked into the plan');
   assert.ok(!text.includes(example.password), 'password leaked into the plan');
+});
+
+test('password is optional and generatePassword always satisfies the policy', () => {
+  assert.ok(parseMerchantInput(withField(['password'], undefined)).ok);
+  for (let i = 0; i < 200; i++) {
+    const password = generatePassword();
+    assert.ok(password.length >= 16);
+    assert.ok(parseMerchantInput(withField(['password'], password)).ok, 'generated password rejected by the rule');
+  }
 });

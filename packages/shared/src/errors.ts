@@ -13,7 +13,7 @@ export const ERRORS = {
   "E-12": { message: "Código no válido.", action: "Revisar y volver a capturar." },
   "E-13": { message: "Demasiados intentos. Espera unos minutos.", action: "Esperar el tiempo indicado." },
   "E-14": { message: "PIN incorrecto.", action: "Reintentar." },
-  "E-15": { message: "Acceso bloqueado por 15 minutos.", action: "Esperar o contactar a Oxis." },
+  "E-15": { message: "Acceso bloqueado por demasiados intentos fallidos.", action: "Esperar o contactar a Oxis." },
   "E-16": { message: "Ingresa tu PIN para continuar.", action: "Ingresar el PIN; el formulario se conserva." },
   "E-17": { message: "Usaste tus 5 envíos de este mes.", action: "Esperar al siguiente mes." },
   "E-18": { message: "Tu sesión expiró.", action: "Iniciar sesión." },

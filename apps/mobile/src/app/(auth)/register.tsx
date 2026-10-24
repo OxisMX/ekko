@@ -1,4 +1,4 @@
-import { ERRORS, localToday, registerSchema, type RegisterInput, type RegisterValues } from "@ekko/shared";
+import { ERRORS, localToday, PASSWORD_MIN_LENGTH, registerSchema, type RegisterInput, type RegisterValues } from "@ekko/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
@@ -119,7 +119,7 @@ export default function RegisterScreen() {
             onBlur={field.onBlur}
             // A-12: the rule stays visible under the field until it turns into an error.
             error={fieldState.error?.message}
-            helper="Mínimo 8 caracteres"
+            helper={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres, con letras y números`}
             textContentType="newPassword"
             autoComplete="new-password"
             returnKeyType="done"

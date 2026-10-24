@@ -107,8 +107,8 @@ select is_empty(
 select is(
   (select array_agg(name order by name) from app_functions f
    where schema_name = 'public' and not has_function_privilege('authenticated', oid, 'execute')),
-  array['anonymize_customer', 'create_push_campaign', 'get_push_recipients', 'record_push_result'],
-  'the only public functions closed to authenticated are the four internal RPCs'
+  array['anonymize_customer', 'create_push_campaign', 'get_push_recipients', 'record_push_result', 'revoke_user_sessions'],
+  'the only public functions closed to authenticated are the five internal RPCs'
 );
 select is(
   (select count(*)::int from app_functions

@@ -1,11 +1,12 @@
 // US-27 / F-30: merchant onboarding.
 //   node scripts/onboard-merchant.ts <path-to-merchant.json>
-// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL. Never logs secrets, password or PIN.
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL. Never logs the PIN; a generated password
+// is printed ONCE to stdout (the only way to hand it over), a provided one is never echoed.
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
-import { buildOnboardingPlan, parseMerchantInput } from './merchant-input.ts';
+import { buildOnboardingPlan, generatePassword, parseMerchantInput } from './merchant-input.ts';
 
 function fail(message: string, code = 1): never {
   console.error(`Error: ${message}`);
@@ -30,6 +31,7 @@ try {
 const parsed = parseMerchantInput(raw);
 if (!parsed.ok) fail(`invalid input:\n  ${parsed.errors.join('\n  ')}`);
 const input = parsed.data;
+const password = input.password ?? generatePassword();
 
 const sql = postgres(dbUrl, { max: 1, onnotice: () => {} });
 const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -51,7 +53,7 @@ try {
   // (a) Auth user. The auth_trigger migration keeps role = merchant only for admin-API users.
   const { data, error } = await supabase.auth.admin.createUser({
     email: plan.authUser.email,
-    password: input.password,
+    password,
     email_confirm: true,
     app_metadata: plan.authUser.app_metadata,
   });
@@ -78,6 +80,7 @@ try {
 
   console.log(`Merchant created: ${plan.merchant.id} (${plan.merchant.name})`);
   console.log(`Panel login: ${plan.authUser.email}`);
+  if (!input.password) console.log(`Panel password (shown once): ${password}`);
   console.log('Reminder: is_visible stays false until training is done (F-30 step 6).');
 } finally {
   await sql.end();

@@ -12,6 +12,10 @@ const card = (id: string, over: Partial<MyCard>): MyCard => ({
   cycle_expires_at: "2026-12-31T00:00:00Z",
   reward_available: false,
   wheel_status: "none",
+  stamps: [],
+  reward_title: "Premio",
+  background_path: null,
+  pending_extra_stamps: 0,
   ...over,
 });
 

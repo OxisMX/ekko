@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router'
-import { InsideAdminFrame } from '../lib/insideAdminFrame'
-import { AdminUnlockContext } from '../lib/adminUnlockContext'
+import { AdminUnlockContext, callWithUnlock } from '../lib/adminUnlockContext'
 import { canAccessAdmin } from '../lib/panelRoute'
 import { supabase } from '../lib/supabase'
 import { useMerchantSessionPatch } from '../lib/useAdminUnlock'
-import { toRedemptionError } from '../lib/useRedemption'
 import { useNow } from '../lib/useNow'
-import { ADMIN_GROUPS, ADMIN_SECTIONS, type AdminSection } from './adminSections'
+import { ADMIN_GROUPS, ADMIN_SECTIONS } from './adminSections'
 import { AlertIcon, ClockIcon, LockIcon, UnlockIcon } from './Icons'
 import { LogoutButton } from './LogoutButton'
 import { MerchantAvatar } from './MerchantAvatar'
@@ -29,6 +27,7 @@ const formatCountdown = (ms: number) => {
 export function AdminLayout() {
   const merchantSession = useMerchantSession()
   const { merchant, admin_unlocked_until } = merchantSession
+  const failedAttempts = merchantSession.failed_pin_attempts ?? 0
   const navigate = useNavigate()
   const patchSession = useMerchantSessionPatch()
   const now = useNow()
@@ -79,15 +78,13 @@ export function AdminLayout() {
     setExtending(true)
     setExtendFailed(false)
     try {
-      const { data, error } = await supabase.rpc('extend_admin_session')
-      if (error) throw error
+      // E-16 (window lapsed meanwhile): asks for the PIN in place, then retries.
+      const data = await callWithUnlock(requestUnlock, () => supabase.rpc('extend_admin_session'))
       const { expires_at } = data as { expires_at: string }
       extendedUntil.current = Date.parse(expires_at)
       patchSession({ admin_unlocked_until: expires_at })
-    } catch (err) {
-      // The window lapsed meanwhile: ask for the PIN in place instead of failing.
-      if (toRedemptionError(err as { code?: string }).code === 'E-16') await requestUnlock().catch(() => undefined)
-      else setExtendFailed(true)
+    } catch {
+      setExtendFailed(true)
     } finally {
       setExtending(false)
     }
@@ -126,23 +123,35 @@ export function AdminLayout() {
             onClick={() => void extend()}
             disabled={extending || remainingMs >= EXTEND_MAX_REMAINING_MS}
             aria-label="Extender sesión de administración 5 minutos"
-            title={remainingMs >= EXTEND_MAX_REMAINING_MS ? 'La sesión ya tiene el máximo de tiempo (15 minutos)' : undefined}
-            className={`${btnSecondary} flex items-center gap-2`}
+            title={remainingMs >= EXTEND_MAX_REMAINING_MS ? 'La sesión ya tiene el máximo de tiempo (15 minutos)' : 'Extender 5 minutos'}
+            className={`${btnSecondary} flex min-w-12 items-center justify-center gap-2 px-3 xl:px-5`}
           >
             <ClockIcon className="size-5" />
-            {extending ? 'Extendiendo…' : '+5 min'}
+            {extending ? <span className="hidden xl:inline">Extendiendo…</span> : <span>+5<span className="hidden xl:inline"> min</span></span>}
           </button>
           {extendFailed && (
             <p role="alert" className="text-sm font-semibold text-danger">
               No se pudo extender. Intenta de nuevo.
             </p>
           )}
-          <LogoutButton />
+          <LogoutButton compact />
           <button type="button" onClick={leave} className={`${btnPrimary} flex items-center gap-2`}>
             <LockIcon className="size-5" />
             Bloquear y volver a Caja
           </button>
         </header>
+
+        {failedAttempts > 0 && (
+          <div role="status" className="mx-6 mt-4 flex items-start gap-3 rounded-card bg-warning/25 p-4">
+            <AlertIcon className="mt-0.5 size-5 shrink-0" />
+            <p className="flex-1 font-semibold">
+              Hubo {failedAttempts} {failedAttempts === 1 ? 'intento fallido' : 'intentos fallidos'} de PIN desde la última vez que entraste. Si no fuiste tú, cambia el PIN con Oxis.
+            </p>
+            <button type="button" onClick={() => patchSession({ failed_pin_attempts: 0 })} className={btnSecondary}>
+              Entendido
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-1 flex-col lg:flex-row">
           <nav aria-label="Secciones administrativas" className="border-b border-black/10 bg-surface lg:w-56 lg:shrink-0 lg:border-r lg:border-b-0">
@@ -173,9 +182,7 @@ export function AdminLayout() {
           </nav>
           <div className="flex flex-1 flex-col">
             <main className="flex flex-1 flex-col p-6">
-              <InsideAdminFrame value>
-                <Outlet context={{ merchantSession }} />
-              </InsideAdminFrame>
+              <Outlet context={{ merchantSession }} />
             </main>
             <footer className="px-6 pb-4 text-xs text-text-secondary">
               Ekko Rewards · Panel del comercio · versión <span className="font-mono">{__COMMIT_HASH__}</span>
@@ -199,21 +206,5 @@ export function AdminLayout() {
         )}
       </div>
     </AdminUnlockContext>
-  )
-}
-
-export function AdminPlaceholderPage({ section }: { section: AdminSection }) {
-  const { Icon } = section
-  return (
-    <section aria-labelledby="admin-title" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <h1 id="admin-title" className="text-h1 font-bold">
-        {section.title}
-      </h1>
-      <div className="flex flex-col items-center rounded-card bg-surface px-6 py-12 text-center">
-        <Icon className="size-12 text-navy" />
-        <p className="mt-4 text-lg font-semibold">Disponible próximamente</p>
-        <p className="mt-1 max-w-md text-text-secondary">{section.purpose}</p>
-      </div>
-    </section>
   )
 }

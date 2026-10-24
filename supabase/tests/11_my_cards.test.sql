@@ -46,10 +46,10 @@ select is(public.list_my_cards(), '[]'::jsonb, 'a customer without relations get
 -- Shape and values (U1 @ C1)
 select pg_temp.login('10000000-0000-0000-0000-0000000000a1');
 select is(jsonb_array_length(public.list_my_cards()), 1, 'U1 has exactly one card');
-select is(pg_temp.keys(public.list_my_cards() -> 0), array['cycle_expires_at', 'logo_path', 'merchant_available', 'merchant_id', 'merchant_name',
-  'reward_available', 'stamp_image_path', 'stamps_count', 'stamps_required', 'wheel_status'], 'a card has exactly the documented keys');
-select is((public.list_my_cards() -> 0) - 'cycle_expires_at' - 'merchant_name' - 'stamp_image_path', jsonb_build_object(
-  'merchant_id', '20000000-0000-0000-0000-0000000000c1', 'logo_path', 'merchants/c1/logo', 'merchant_available', true,
+select is(pg_temp.keys(public.list_my_cards() -> 0), array['background_path', 'cycle_expires_at', 'logo_path', 'merchant_available', 'merchant_id', 'merchant_name',
+  'pending_extra_stamps', 'reward_available', 'reward_title', 'stamp_image_path', 'stamps', 'stamps_count', 'stamps_required', 'wheel_status'], 'a card has exactly the documented keys');
+select is((public.list_my_cards() -> 0) - 'cycle_expires_at' - 'merchant_name' - 'stamp_image_path' - 'stamps' - 'reward_title', jsonb_build_object(
+  'merchant_id', '20000000-0000-0000-0000-0000000000c1', 'logo_path', 'merchants/c1/logo', 'background_path', null, 'pending_extra_stamps', 0, 'merchant_available', true,
   'stamps_count', 3, 'stamps_required', 6, 'reward_available', false, 'wheel_status', 'available'), 'U1 @ C1: 3 of 6, no reward, wheel available');
 select is((public.list_my_cards() -> 0 ->> 'cycle_expires_at')::timestamptz, (select expires_at from pg_temp.cycle_expiry('50000000-0000-0000-0000-000000000001')),
   'cycle_expires_at is the active cycle expiry');
@@ -76,8 +76,8 @@ select is(pg_temp.order_of(), array['0c1', '0c2'], 'order follows created_at des
 -- U4: inactive merchant listed; reward_available, then merchant_available, decide the order
 select pg_temp.login('10000000-0000-0000-0000-0000000000a4');
 select is(pg_temp.order_of(), array['0c1', '0c3'], 'reward + available first, then reward at the unavailable merchant');
-select is((select e - 'cycle_expires_at' - 'merchant_name' - 'logo_path' - 'stamp_image_path' from jsonb_array_elements(public.list_my_cards()) e where e ->> 'merchant_id' like '%c3'),
-  '{"merchant_id":"20000000-0000-0000-0000-0000000000c3","merchant_available":false,"stamps_count":0,"stamps_required":6,"reward_available":true,"wheel_status":"unavailable"}'::jsonb,
+select is((select e - 'cycle_expires_at' - 'merchant_name' - 'logo_path' - 'stamp_image_path' - 'stamps' - 'reward_title' from jsonb_array_elements(public.list_my_cards()) e where e ->> 'merchant_id' like '%c3'),
+  '{"merchant_id":"20000000-0000-0000-0000-0000000000c3","background_path":null,"pending_extra_stamps":0,"merchant_available":false,"stamps_count":0,"stamps_required":6,"reward_available":true,"wheel_status":"unavailable"}'::jsonb,
   'the inactive merchant is listed with merchant_available false and wheel unavailable (RN-71)');
 select is((select e ->> 'wheel_status' from jsonb_array_elements(public.list_my_cards()) e where e ->> 'merchant_id' like '%c1'), 'spun', 'U4 @ C1 wheel is spun');
 

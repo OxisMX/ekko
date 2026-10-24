@@ -14,6 +14,7 @@ import { myCouponsKey } from "../../features/coupons/myCoupons";
 import { useCouponRedeemed } from "../../features/coupons/couponStatus";
 import { useRevealedCoupon } from "../../features/coupons/revealCoupon";
 import { merchantDetailKey } from "../../features/merchant/merchantDetail";
+import { myRedemptionsKey } from "../../features/profile/redemptions";
 import { toAppError } from "../../lib/appError";
 import { success } from "../../lib/haptics";
 import {
@@ -41,6 +42,7 @@ export default function CouponCodeScreen() {
   const refreshLists = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: myCouponsKey });
     void queryClient.invalidateQueries({ queryKey: myCardsKey });
+    void queryClient.invalidateQueries({ queryKey: myRedemptionsKey });
     if (merchantId)
       void queryClient.invalidateQueries({
         queryKey: merchantDetailKey(merchantId),

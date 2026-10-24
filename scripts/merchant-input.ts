@@ -1,5 +1,18 @@
 // Pure validation and row mapping for onboard-merchant.ts (US-27). No I/O here so it is testable.
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+
+// Same policy as Auth (config.toml: min 10, letters_digits) and the shared newPassword rule.
+const PASSWORD_MIN_LENGTH = 10;
+const strongPassword = z.string().min(PASSWORD_MIN_LENGTH).regex(/\p{L}/u).regex(/\d/);
+
+// WHY loop: base64url of random bytes can, rarely, lack a digit or a letter; retry until it complies.
+export function generatePassword(): string {
+  for (;;) {
+    const candidate = randomBytes(12).toString('base64url');
+    if (strongPassword.safeParse(candidate).success) return candidate;
+  }
+}
 
 const httpsUrl = z.url({ protocol: /^https$/ });
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -22,7 +35,8 @@ export const merchantInputSchema = z.strictObject({
   billing_period: z.enum(['quarterly', 'annual']),
   paid_until: z.iso.date(),
   email: z.email(),
-  password: z.string().min(12),
+  // WHY optional: onboard-merchant generates a strong one when omitted.
+  password: strongPassword.optional(),
   pin: z.string().regex(/^\d{4}$/),
   loyalty_program: z.strictObject({
     stamps_required: z.int().min(4).max(10),

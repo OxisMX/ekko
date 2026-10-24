@@ -5,13 +5,20 @@ import { ModalDialog } from './ModalDialog'
 import { btnDanger, btnSecondary } from './ui'
 
 // P-14: signing out drops the whole till, so it always asks first (focus starts on "Cancelar").
-export function LogoutButton() {
+// compact: icon-only below xl so the admin header keeps room for the business name (label stays for screen readers).
+export function LogoutButton({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={`${btnSecondary} flex items-center gap-2`}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+        className={`${btnSecondary} flex items-center justify-center gap-2 ${compact ? 'min-w-12 px-3 xl:px-5' : ''}`}
+      >
         <LogoutIcon className="size-5" />
-        Cerrar sesión
+        <span className={compact ? 'hidden xl:inline' : ''}>Cerrar sesión</span>
       </button>
       {open && <LogoutDialog onClose={() => setOpen(false)} />}
     </>

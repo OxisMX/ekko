@@ -49,7 +49,7 @@ const validRegister = {
   first_name: "  Daniela ",
   last_name: "Ruiz",
   email: " daniela@example.com ",
-  password: "12345678",
+  password: "abcdefgh12",
   birth_date: "2000-03-12",
   privacy_accepted: true,
 };
@@ -70,7 +70,7 @@ describe("registerSchema", () => {
     ["first_name", "   Al   ".replace("l", "")],
     ["last_name", "x".repeat(51)],
     ["email", "daniela@"],
-    ["password", "1234567"],
+    ["password", "abcdefgh1"],
     ["birth_date", ""],
     ["privacy_accepted", false],
   ])("rejects invalid %s", (field, value) => {
@@ -106,14 +106,23 @@ describe("signInSchema / recoverSchema / resetPasswordSchema", () => {
     expect(Object.keys(fieldErrors(signInSchema.safeParse({ email: "", password: "" })))).toEqual(["email", "password"]);
   });
 
+  it.each([
+    ["too short", "abcdefg12", "Usa al menos 10 caracteres."],
+    ["no digit", "abcdefghijk", "Incluye letras y números."],
+    ["no letter", "1234567890", "Incluye letras y números."],
+  ])("password rule: %s", (_label, password, message) => {
+    const result = resetPasswordSchema.safeParse({ password, confirm: password });
+    expect(fieldErrors(result).password).toContain(message);
+  });
+
   it("recover needs a valid email", () => {
     expect(recoverSchema.safeParse({ email: "a@b.mx" }).success).toBe(true);
     expect(recoverSchema.safeParse({ email: "nope" }).success).toBe(false);
   });
 
-  it("reset needs 8+ characters and a matching confirmation", () => {
-    expect(resetPasswordSchema.safeParse({ password: "12345678", confirm: "12345678" }).success).toBe(true);
-    expect(fieldErrors(resetPasswordSchema.safeParse({ password: "12345678", confirm: "12345679" }))).toHaveProperty("confirm");
+  it("reset needs a strong password and a matching confirmation", () => {
+    expect(resetPasswordSchema.safeParse({ password: "abcdefgh12", confirm: "abcdefgh12" }).success).toBe(true);
+    expect(fieldErrors(resetPasswordSchema.safeParse({ password: "abcdefgh12", confirm: "abcdefgh13" }))).toHaveProperty("confirm");
     expect(fieldErrors(resetPasswordSchema.safeParse({ password: "123", confirm: "123" }))).toHaveProperty("password");
   });
 });

@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabase";
 // Backend get_coupon_status (A-65): cheap, unrate-limited, E-12 if the coupon isn't the caller's.
 const couponStatusSchema = z.object({ status: z.string(), redeemed_at: z.string().nullable() });
 
-export const COUPON_STATUS_POLL_MS = 5000;
+export const COUPON_STATUS_POLL_MS = 8000;
 
 async function fetchCouponStatus(couponId: string) {
   const { data, error } = await supabase.rpc("get_coupon_status", { p_coupon_id: couponId });

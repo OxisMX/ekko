@@ -490,6 +490,9 @@ isOneToOne: false
 "reveal_coupon_code":
 { Args: { "p_coupon_id": string }; Returns: Json
                            },
+"revoke_user_sessions":
+{ Args: { "p_user_id": string }; Returns: number
+                           },
 "set_product_flags":
 { Args: { "p_id": string,"p_is_featured": boolean,"p_sold_out_today": boolean }; Returns: Json
                            },

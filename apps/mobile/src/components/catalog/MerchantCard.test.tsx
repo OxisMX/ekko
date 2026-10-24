@@ -9,6 +9,7 @@ const merchant = {
   coverUri: "https://example.com/cover_540.webp",
   logoUri: null,
   isFavorite: false,
+  mapsUrl: "https://maps.example/cafe",
   progress: null,
 };
 
@@ -27,11 +28,11 @@ describe("MerchantCard", () => {
     await render(<MerchantCard merchant={merchant} onPress={onPress} onOpenMap={onOpenMap} onToggleFavorite={jest.fn()} />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Abrir en Google Maps" }));
-    expect(onOpenMap).toHaveBeenCalledTimes(1);
+    expect(onOpenMap).toHaveBeenCalledWith("https://maps.example/cafe");
     expect(onPress).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByRole("button", { name: "Café La Esquina, Cafeterías" }));
-    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onPress).toHaveBeenCalledWith("m1", "Café La Esquina");
     expect(onOpenMap).toHaveBeenCalledTimes(1);
   });
 
@@ -42,7 +43,7 @@ describe("MerchantCard", () => {
     const heart = screen.getByRole("button", { name: "Agregar a favoritos" });
     expect(heart).not.toBeSelected();
     await fireEvent.press(heart);
-    expect(onToggleFavorite).toHaveBeenCalledTimes(1);
+    expect(onToggleFavorite).toHaveBeenCalledWith("m1", false);
     expect(onPress).not.toHaveBeenCalled();
   });
 
