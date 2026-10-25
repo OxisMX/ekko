@@ -89,7 +89,7 @@ La verificación de nonce queda activa en ambos. La app usa la redirección `ekk
 4. **Cloudflare Pages:** crear un proyecto (*Direct Upload*, sin conectar Git). Dominios: `ekko.oxis.mx` (rama de producción `main`) y `staging.ekko.oxis.mx` como CNAME a `develop.<proyecto>.pages.dev`. Crear el token de API.
 5. **EAS:** `cd apps/mobile && eas init`; poner el `projectId` en `EAS_PROJECT_ID` de `app.config.ts` y hacer commit (activa `updates.url`). Crear los tres entornos y sus variables en expo.dev y el token de robot.
 6. **GitHub:** crear los Environments `staging` y `production` con sus secretos y variables. En `production` → *Required reviewers* (PO y R4) y limitar *Deployment branches* a `main`. Ramas `main` y `develop` protegidas (Plan §6.1).
-7. **Tiendas:** registrar `mx.oxis.ekko` en App Store Connect y Google Play (la primera subida a Play es manual). Copiar el Apple ID numérico a `EXPO_ASC_APP_ID`. Configurar las credenciales de submit en EAS.
+7. **Tiendas:** registrar `mx.oxis.ekko` en App Store Connect y Google Play (la primera subida a Play es manual). Copiar el Apple ID numérico a `EXPO_ASC_APP_ID`. Configurar las credenciales de submit en EAS. Notas y cuenta demo para App Review: [ekko_app_review.md](ekko_app_review.md).
 8. **Enlaces universales (DEP-01, SP-2):** con el Team ID, agregar `apps/panel/public/.well-known/apple-app-site-association` y `assetlinks.json` (SHA-256 de cada keystore EAS y de Play App Signing), según [spikes](ekko_spikes.md) SP-2.
 9. **Activar los despliegues:** en GitHub → Settings → Variables (repositorio) crear `DEPLOY_ENABLED = true`. Mientras no exista, los workflows de staging y producción se omiten sin fallar.
 10. Primer `git push` a `develop`, luego PR a `main`, y aprobar el despliegue de producción.
@@ -107,3 +107,6 @@ La verificación de nonce queda activa en ambos. La app usa la redirección `ekk
 - [ ] Un build `staging` instala, muestra "Ekko (Staging)" y recibe el `eas update` del canal `staging`.
 - [ ] Tras `eas build` y `submit` de producción, el build aparece en TestFlight y en la pista cerrada de Play.
 - [ ] Probado un rollback del panel (runbooks §8.2) y de una OTA (§8.1) en staging.
+- [ ] `EXPO_PUBLIC_APP_URL` está definida en el entorno `production` de EAS (si falta, la app usa `http://localhost:5173`, `visitToken.ts`).
+- [ ] Publicadas `https://ekko.oxis.mx/privacidad` y `/terminos` (con la sección `#ruleta` con las bases de la ruleta) y el buzón `soporte@oxis.mx` recibe correo.
+- [ ] Comercio de revisión oculto y cliente demo preparados ([ekko_app_review.md](ekko_app_review.md)).

@@ -42,6 +42,13 @@ async function uploadAvatar(userId: string, localUri: string): Promise<string> {
   return path;
 }
 
+// Apple 4.5.4: promotional push is opt-in (push_opt_in defaults to false). Accepting the notifications
+// explainer, whose copy mentions offers, is the consent.
+export async function optInToPromotions(): Promise<void> {
+  const { error } = await supabase.rpc("set_push_opt_in", { p_value: true });
+  if (error) throw error;
+}
+
 /** E-23 fields first_name/last_name/avatar_path/push_opt_in. A new photo (local uri) is uploaded first. */
 export function useUpdateProfile() {
   const { session } = useAuth();

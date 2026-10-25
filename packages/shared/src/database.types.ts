@@ -496,6 +496,9 @@ isOneToOne: false
 "set_product_flags":
 { Args: { "p_id": string,"p_is_featured": boolean,"p_sold_out_today": boolean }; Returns: Json
                            },
+"set_push_opt_in":
+{ Args: { "p_value": boolean }; Returns: undefined
+                           },
 "sign_out_device":
 { Args: { "p_device_id_digest": string }; Returns: Json
                            },

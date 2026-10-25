@@ -1,4 +1,4 @@
-import { ERRORS, localToday, PASSWORD_MIN_LENGTH, registerSchema, type RegisterInput, type RegisterValues } from "@ekko/shared";
+import { ERRORS, localToday, PASSWORD_MIN_LENGTH, PRIVACY_URL, registerSchema, type RegisterInput, type RegisterValues } from "@ekko/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
@@ -17,8 +17,6 @@ import { fromIsoDate, toIsoDate } from "../../lib/calendarDate";
 import { reportError } from "../../lib/sentry";
 import { colors, MAX_FONT_SCALE, radii, spacing, textStyles } from "../../theme";
 
-// TODO(legal, PRD 12.1): confirm the final privacy notice URL before release.
-const PRIVACY_URL = "https://ekko.oxis.mx/privacidad";
 
 // A-03 / F-02 (US-01). On success the gate takes the user to A-05 (GatedStack afterSignUp).
 export default function RegisterScreen() {

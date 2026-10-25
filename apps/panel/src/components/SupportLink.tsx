@@ -1,7 +1,5 @@
+import { SUPPORT_EMAIL } from '@ekko/shared'
 import type { ReactNode } from 'react'
-
-// NOTE: placeholder address; confirm the real Oxis support mailbox before shipping.
-export const SUPPORT_EMAIL = 'soporte@oxis.mx'
 
 export function SupportLink({ children }: { children: ReactNode }) {
   return (

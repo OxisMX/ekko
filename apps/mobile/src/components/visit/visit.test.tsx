@@ -79,22 +79,19 @@ describe("VisitResult", () => {
 });
 
 describe("PermissionExplainer", () => {
-  it("notifications variant lists concrete benefits and declines with a text link (A-82, A-17)", async () => {
-    const onSecondary = jest.fn();
-    await render(<PermissionExplainer variant="notifications" onPrimary={jest.fn()} onSecondary={onSecondary} />);
+  it("notifications variant lists concrete benefits and only offers Continuar (A-82, Apple 5.1.1(iv))", async () => {
+    await render(<PermissionExplainer variant="notifications" onPrimary={jest.fn()} />);
     expect(screen.getByText(/cupón esté por vencer/)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Ahora no" }));
-    expect(onSecondary).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeOnTheScreen();
   });
 
   it("camera variant asks for permission", async () => {
     const onPrimary = jest.fn();
-    const onSecondary = jest.fn();
-    await render(<PermissionExplainer variant="camera" onPrimary={onPrimary} onSecondary={onSecondary} />);
-    await fireEvent.press(screen.getByRole("button", { name: "Permitir cámara" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Ahora no" }));
+    await render(<PermissionExplainer variant="camera" onPrimary={onPrimary} />);
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     expect(onPrimary).toHaveBeenCalledTimes(1);
-    expect(onSecondary).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 
   it("denied variant sends to settings", async () => {

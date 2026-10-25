@@ -1,4 +1,5 @@
-import { ERRORS } from "@ekko/shared";
+import { ERRORS, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from "@ekko/shared";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
@@ -35,6 +36,7 @@ export function ProfileScreen() {
         <ProfileInfo profile={profile.data} />
         <EmailVerificationBanner />
         <HistoryRow />
+        <LinkRows />
         <SignOutButton />
         <DeleteAccountEntry />
         {__DEV__ ? <DevSimulatePush /> : null}
@@ -123,6 +125,35 @@ function HistoryRow() {
       <Gift size={20} color={colors.navy} />
       <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary }]}>
         Historial de canjes
+      </Text>
+      <ChevronRight size={18} color={colors.textSecondary} />
+    </Pressable>
+  );
+}
+
+// Apple 5.1.1(i) / 1.5: privacy, terms and support must be reachable inside the app.
+function LinkRows() {
+  const open = (url: string) => () => void Linking.openURL(url).catch(reportError);
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <LinkRow label="Ayuda y soporte" onPress={open(`mailto:${SUPPORT_EMAIL}`)} testID="profile-support" />
+      <LinkRow label="Aviso de privacidad" onPress={open(PRIVACY_URL)} testID="profile-privacy" />
+      <LinkRow label="Términos y condiciones" onPress={open(TERMS_URL)} testID="profile-terms" />
+    </View>
+  );
+}
+
+// NOTE: same look as HistoryRow minus the leading icon (no new icon for a legal link).
+function LinkRow({ label, onPress, testID }: { label: string; onPress: () => void; testID: string }) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={onPress}
+      testID={testID}
+      style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surfaceMuted, borderRadius: radii.card, paddingHorizontal: spacing.lg }}
+    >
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[textStyles.body, { flex: 1, color: colors.textPrimary }]}>
+        {label}
       </Text>
       <ChevronRight size={18} color={colors.textSecondary} />
     </Pressable>

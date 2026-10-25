@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { generatePin, parseResetPinArgs, parseRevokeSessionsArgs, parseStatusArgs } from './merchant-admin-input.ts';
+import { generatePin, parseResetPinArgs, parseReviewDemoArgs, parseRevokeSessionsArgs, parseStatusArgs } from './merchant-admin-input.ts';
 
 const TODAY = '2026-10-21';
 const ID = '11111111-2222-4333-8444-555555555555';
@@ -67,4 +67,13 @@ test('revoke-sessions takes exactly one merchant reference', () => {
   assert.ok(!parseRevokeSessionsArgs([]).ok);
   assert.ok(!parseRevokeSessionsArgs(['--merchant', 'nope']).ok);
   assert.ok(!parseRevokeSessionsArgs(['--merchant', ID, '--all']).ok);
+});
+
+test('review-demo needs a merchant (email or id) and a customer email, nothing else', () => {
+  assert.deepEqual(ok(parseReviewDemoArgs(['--merchant', ID, '--customer', 'revisor@oxis.mx'])), { merchantRef: ID, customerEmail: 'revisor@oxis.mx' });
+  assert.ok(parseReviewDemoArgs(['--merchant', 'panel@oxis.mx', '--customer', 'revisor@oxis.mx']).ok);
+  assert.ok(!parseReviewDemoArgs(['--merchant', ID]).ok);
+  assert.ok(!parseReviewDemoArgs(['--customer', 'revisor@oxis.mx']).ok);
+  assert.ok(!parseReviewDemoArgs(['--merchant', ID, '--customer', ID]).ok);
+  assert.ok(!parseReviewDemoArgs(['--merchant', ID, '--customer', 'a@b.co', '--force']).ok);
 });

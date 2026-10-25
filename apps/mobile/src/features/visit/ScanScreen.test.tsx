@@ -36,7 +36,7 @@ describe("A-13 / A-14 scanner", () => {
   it("explains before asking for the camera (undetermined)", async () => {
     mockPermission = { granted: false, canAskAgain: true };
     await render(<ScanScreen />);
-    await fireEvent.press(screen.getByRole("button", { name: "Permitir cámara" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     expect(mockRequest).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("scan-camera")).toBeNull();
   });

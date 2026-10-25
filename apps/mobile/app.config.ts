@@ -36,7 +36,24 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   userInterfaceStyle: "light",
-  ios: { bundleIdentifier: variant.id, associatedDomains: [associatedDomain], usesAppleSignIn: true },
+  ios: {
+    bundleIdentifier: variant.id,
+    associatedDomains: [associatedDomain],
+    usesAppleSignIn: true,
+    // WHY: only HTTPS and system crypto; declaring it avoids the export-compliance hold on every build.
+    config: { usesNonExemptEncryption: false },
+    // WHY: Expo aggregates the pods' manifests; this covers the app target's own Required Reason APIs.
+    // Verify in Xcode's privacy report on the first EAS build.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyAccessedAPITypes: [
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults", NSPrivacyAccessedAPITypeReasons: ["CA92.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp", NSPrivacyAccessedAPITypeReasons: ["C617.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime", NSPrivacyAccessedAPITypeReasons: ["35F9.1"] },
+        { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace", NSPrivacyAccessedAPITypeReasons: ["E174.1"] },
+      ],
+    },
+  },
   android: {
     package: variant.id,
     intentFilters: [

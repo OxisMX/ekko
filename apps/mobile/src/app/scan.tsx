@@ -64,7 +64,7 @@ export default function ScanScreen() {
         <PermissionExplainer
           variant={denied ? "denied" : "camera"}
           onPrimary={() => void (denied ? Linking.openSettings() : requestPermission())}
-          onSecondary={close}
+          onSecondary={denied ? close : undefined}
           testID={denied ? "scan-permission-denied" : "scan-permission-explainer"}
         />
       </View>
